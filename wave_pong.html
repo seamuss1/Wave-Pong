@@ -506,9 +506,17 @@
 .gameOverPanel {
   max-width: 940px;
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   background:
     radial-gradient(circle at top center, rgba(255, 211, 77, 0.12), transparent 26%),
     linear-gradient(180deg, rgba(8, 14, 24, 0.98), rgba(7, 11, 19, 0.96));
+}
+
+.gameOverActions {
+  align-self: stretch;
+  margin-bottom: 2px;
 }
 
 .gameOverTag {
@@ -940,6 +948,10 @@
 
   <div id="gameOverOverlay" class="overlay hidden">
     <div class="card centerPanel gameOverPanel">
+      <div class="btnRow gameOverActions" style="justify-content: center;">
+        <button id="rematchBtn" class="primary">Rematch</button>
+        <button id="gameOverMenuBtn" class="secondary">New Setup</button>
+      </div>
       <div class="tiny gameOverTag">Match complete</div>
       <h2 id="winnerTitle">Left Paddle Wins</h2>
       <p id="winnerSubtitle">Somewhere, a scoreboard is weeping softly.</p>
@@ -953,10 +965,6 @@
           <h2 style="font-size: 18px; margin-bottom: 10px;">History</h2>
           <div id="gameOverHistoryStats" class="compareGrid"></div>
         </div>
-      </div>
-      <div class="btnRow" style="justify-content: center;">
-        <button id="rematchBtn" class="primary">Rematch</button>
-        <button id="gameOverMenuBtn" class="secondary">New Setup</button>
       </div>
     </div>
   </div>
@@ -1032,7 +1040,7 @@
       const GOAL_XP = 52;
       const OPPONENT_HIT_XP = 15;
       const PULSE_POWERUP_XP = 82;
-      const MINION_XP = 38;
+      const MINION_XP = 58;
       const DEBUFF_XP_LOSS = 76;
       const YELLOW_HIT_XP_LOSS = 34;
 
@@ -1177,6 +1185,14 @@
         down: false
       };
 
+      const REDUCED_WAVE_FX = (() => {
+        try {
+          return window.self !== window.top;
+        } catch (err) {
+          return true;
+        }
+      })();
+
       const state = {
         running: false,
         paused: false,
@@ -1205,7 +1221,9 @@
         comboFlash: 0,
         impacts: 0,
         longRallyTriggered: false,
-        helpReturnToPause: false
+        nextLongRallySpawnAt: 13.2,
+        helpReturnToPause: false,
+        lowPerfEffects: REDUCED_WAVE_FX
       };
 
       const world = {
@@ -1789,7 +1807,9 @@ function firePulse(paddle) {
       vx: Math.cos(paddle.aimAngle) * stats.speed,
       vy: Math.sin(paddle.aimAngle) * stats.speed,
       trail: [],
+      trailSpawnTimer: 0,
       diffraction: [],
+      diffractionBudget: state.lowPerfEffects ? 1 : 4,
       hitBallIds: new Set(),
       hitPaddleIds: new Set()
     });
@@ -1825,10 +1845,13 @@ function firePulse(paddle) {
 }
 
 function maybeTriggerLongRallyMultiball() {
-        if (state.longRallyTriggered || world.balls.length !== 1) return;
-        if (state.roundSeconds < 13.2 && state.rally < 15) return;
+        if (world.balls.length >= 4) return;
+        const nextAt = state.nextLongRallySpawnAt || 13.2;
+        const rallyThreshold = 15 + Math.max(0, world.balls.length - 1) * 6;
+        if (state.roundSeconds < nextAt && state.rally < rallyThreshold) return;
         state.longRallyTriggered = true;
-        const base = world.balls[0];
+        state.nextLongRallySpawnAt = state.roundSeconds + 8.4 + world.balls.length * 1.8;
+        const base = world.balls[(Math.random() * world.balls.length) | 0] || world.balls[0];
         const clone = createBall(base.vx >= 0 ? 1 : -1, W / 2, H / 2);
         clone.vx = -base.vx * 0.9;
         clone.vy = (base.vy >= 0 ? -1 : 1) * Math.max(220, Math.abs(base.vy) * 0.92);
@@ -1910,6 +1933,7 @@ function resetMatch() {
   state.activePowerLabel = 'None';
   state.lastPowerType = null;
   state.longRallyTriggered = false;
+  state.nextLongRallySpawnAt = 13.2;
   world.powerups.length = 0;
   world.particles.length = 0;
   world.pulses.length = 0;
@@ -1947,7 +1971,8 @@ function spawnServe(direction) {
   state.serveDirection = direction;
   state.rally = 0;
   state.roundSeconds = 0;
-  state.longRallyTriggered = world.balls.length > 1;
+  state.longRallyTriggered = false;
+  state.nextLongRallySpawnAt = 13.2;
   if (state.powerDurationTimer <= 0) state.activePowerLabel = 'None';
   createReplacementBall(direction);
   updateUI();
@@ -2081,7 +2106,7 @@ function applyTheme(name) {
 function spawnPowerup() {
   const roll = Math.random();
   let type;
-  if (roll < 0.34) {
+  if (roll < 0.56) {
     type = 'minion';
   } else {
     const pool = ['grow', 'overcharge', 'capacitor', 'rapid', 'multi', 'pulse', 'shrink', 'slow', 'jam', 'drain'];
@@ -2143,13 +2168,15 @@ function applyPowerup(type, scoredByLeft) {
     beneficiary.pulseCharge = Math.min(getPaddleMaxCharge(beneficiary), (beneficiary.pulseCharge || 0) + 0.16);
     state.powerDurationTimer = Math.max(state.powerDurationTimer, 7.4);
   } else if (type === 'multi') {
-    const clone = world.balls[0] || createBall(scoredByLeft ? 1 : -1);
-    const extra = createBall(scoredByLeft ? 1 : -1, clone.x, clone.y);
-    extra.vx = -clone.vx * 0.9;
-    extra.vy = clone.vy * -0.88;
-    extra.trail = [];
-    clampBallSpeed(extra, BALL_SPEED_CAP * 0.92);
-    world.balls.push(extra);
+    if (world.balls.length < 5) {
+      const clone = world.balls[0] || createBall(scoredByLeft ? 1 : -1);
+      const extra = createBall(scoredByLeft ? 1 : -1, clone.x, clone.y);
+      extra.vx = -clone.vx * 0.9;
+      extra.vy = clone.vy * -0.88;
+      extra.trail = [];
+      clampBallSpeed(extra, BALL_SPEED_CAP * 0.92);
+      world.balls.push(extra);
+    }
   } else if (type === 'pulse') {
     adjustWaveXP(beneficiary, PULSE_POWERUP_XP);
   } else if (type === 'minion') {
@@ -2195,7 +2222,8 @@ function handleGoal(leftScored) {
 
         state.rally = 0;
         state.roundSeconds = 0;
-        state.longRallyTriggered = world.balls.length > 1;
+        state.longRallyTriggered = false;
+        state.nextLongRallySpawnAt = 13.2;
 
         updateUI();
         showMessage(scoreLines[(Math.random() * scoreLines.length) | 0], 1.25);
@@ -2445,15 +2473,21 @@ function updatePulses(dt) {
             pulse.prevY = pulse.y;
             pulse.x += pulse.vx * dt;
             pulse.y += pulse.vy * dt;
-            pulse.trail.push({ x: pulse.x, y: pulse.y, angle: pulse.angle, life: 0.24 });
-            if (pulse.trail.length > 10) pulse.trail.shift();
+            pulse.trailSpawnTimer = (pulse.trailSpawnTimer || 0) - dt;
+            const trailInterval = state.lowPerfEffects ? 0.055 : 0.02;
+            if (pulse.trailSpawnTimer <= 0) {
+              pulse.trailSpawnTimer = trailInterval;
+              pulse.trail.push({ x: pulse.x, y: pulse.y, angle: pulse.angle, life: state.lowPerfEffects ? 0.16 : 0.24 });
+            }
+            const maxTrail = state.lowPerfEffects ? 4 : 10;
+            if (pulse.trail.length > maxTrail) pulse.trail.splice(0, pulse.trail.length - maxTrail);
             for (let t = pulse.trail.length - 1; t >= 0; t--) {
               pulse.trail[t].life -= dt;
               if (pulse.trail[t].life <= 0) pulse.trail.splice(t, 1);
             }
             for (let d = pulse.diffraction.length - 1; d >= 0; d--) {
               pulse.diffraction[d].life -= dt;
-              pulse.diffraction[d].phase += dt * 7.5;
+              pulse.diffraction[d].phase += dt * (state.lowPerfEffects ? 5.2 : 7.5);
               if (pulse.diffraction[d].life <= 0) pulse.diffraction.splice(d, 1);
             }
 
@@ -2467,9 +2501,10 @@ function updatePulses(dt) {
               const normal = topContact ? 1 : -1;
               pulse.vy *= -1;
               pulse.angle = Math.atan2(pulse.vy, pulse.vx);
-              pulse.diffraction.push({ x: pulse.x, y: clamp(pulse.y + normal * pulse.arcRadius, 24, H - 24), normal, life: 0.64, phase: 0 });
-              if (pulse.diffraction.length > 4) pulse.diffraction.shift();
-              emitParticles(pulse.x, pulse.y, 8, pulse.color, 180);
+              pulse.diffraction.push({ x: pulse.x, y: clamp(pulse.y + normal * pulse.arcRadius, 24, H - 24), normal, life: state.lowPerfEffects ? 0.34 : 0.64, phase: 0 });
+              const maxDiffraction = state.lowPerfEffects ? 1 : 4;
+              if (pulse.diffraction.length > maxDiffraction) pulse.diffraction.splice(0, pulse.diffraction.length - maxDiffraction);
+              emitParticles(pulse.x, pulse.y, state.lowPerfEffects ? 4 : 8, pulse.color, 180);
             }
 
             const goalMargin = (pulse.arcRadius || 0) + getPulseHalfThickness(pulse) + 24;
@@ -2659,8 +2694,8 @@ function updateParticles(dt) {
 
         if (!state.powerupsEnabled || state.gameOver || state.menuOpen) return;
         state.powerSpawnTimer -= dt;
-        if (state.powerSpawnTimer <= 0 && world.powerups.length < 2) {
-          state.powerSpawnTimer = 5.2 + Math.random() * 3.2;
+        if (state.powerSpawnTimer <= 0 && world.powerups.length < 3) {
+          state.powerSpawnTimer = 3.8 + Math.random() * 2.1;
           spawnPowerup();
         }
       }
@@ -3110,47 +3145,65 @@ function renderPulses() {
 
           if (pulse.mode === 'push') {
             const thickness = getPulseThickness(pulse);
-            for (const t of pulse.trail) {
-              ctx.save();
-              ctx.globalAlpha = clamp(t.life / 0.24, 0, 1) * 0.34;
-              ctx.strokeStyle = pulse.color;
-              ctx.lineWidth = thickness * 0.66;
-              ctx.shadowColor = pulse.glow;
-              ctx.shadowBlur = 16;
-              ctx.beginPath();
-              ctx.arc(t.x, t.y, pulse.arcRadius, t.angle - pulse.cone, t.angle + pulse.cone);
-              ctx.stroke();
-              ctx.restore();
-            }
+            const reduced = state.lowPerfEffects;
 
-            for (const d of pulse.diffraction) {
-              const lifeAlpha = clamp(d.life / 0.6, 0, 1);
-              const spread = 58 + (1 - lifeAlpha) * 120;
-              const amp = 16 + lifeAlpha * 14;
-              for (let band = 0; band < 3; band++) {
+            if (!reduced) {
+              for (const t of pulse.trail) {
                 ctx.save();
-                ctx.globalAlpha = lifeAlpha * (0.24 - band * 0.05);
-                ctx.strokeStyle = band === 0 ? 'rgba(255, 248, 188, 1)' : (band === 1 ? 'rgba(255, 225, 108, 1)' : 'rgba(255, 211, 77, 1)');
-                ctx.lineWidth = Math.max(2, 6 - band * 1.4);
+                ctx.globalAlpha = clamp(t.life / 0.24, 0, 1) * 0.34;
+                ctx.strokeStyle = pulse.color;
+                ctx.lineWidth = thickness * 0.66;
                 ctx.shadowColor = pulse.glow;
-                ctx.shadowBlur = 14;
+                ctx.shadowBlur = 16;
                 ctx.beginPath();
-                let started = false;
-                for (let ox = -spread; ox <= spread; ox += 8) {
-                  const envelope = Math.exp(-(ox * ox) / (2 * spread * spread));
-                  const wave = Math.sin(ox * 0.08 + d.phase * 3.1 + band * 0.95);
-                  const interference = Math.sin(ox * 0.17 - d.phase * 1.8 + band * 0.55);
-                  const y = d.y + d.normal * ((band + 1) * 10 + (wave + 0.55 * interference) * amp * envelope);
-                  const x = d.x + ox;
-                  if (!started) {
-                    ctx.moveTo(x, y);
-                    started = true;
-                  } else {
-                    ctx.lineTo(x, y);
-                  }
-                }
+                ctx.arc(t.x, t.y, pulse.arcRadius, t.angle - pulse.cone, t.angle + pulse.cone);
                 ctx.stroke();
                 ctx.restore();
+              }
+            } else {
+              const t = pulse.trail[pulse.trail.length - 1];
+              if (t) {
+                ctx.save();
+                ctx.globalAlpha = clamp(t.life / 0.16, 0, 1) * 0.18;
+                ctx.strokeStyle = pulse.color;
+                ctx.lineWidth = Math.max(10, thickness * 0.44);
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, pulse.arcRadius, t.angle - pulse.cone, t.angle + pulse.cone);
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+
+            if (!reduced) {
+              for (const d of pulse.diffraction) {
+                const lifeAlpha = clamp(d.life / 0.6, 0, 1);
+                const spread = 58 + (1 - lifeAlpha) * 120;
+                const amp = 16 + lifeAlpha * 14;
+                for (let band = 0; band < 3; band++) {
+                  ctx.save();
+                  ctx.globalAlpha = lifeAlpha * (0.24 - band * 0.05);
+                  ctx.strokeStyle = band === 0 ? 'rgba(255, 248, 188, 1)' : (band === 1 ? 'rgba(255, 225, 108, 1)' : 'rgba(255, 211, 77, 1)');
+                  ctx.lineWidth = Math.max(2, 6 - band * 1.4);
+                  ctx.shadowColor = pulse.glow;
+                  ctx.shadowBlur = 14;
+                  ctx.beginPath();
+                  let started = false;
+                  for (let ox = -spread; ox <= spread; ox += 8) {
+                    const envelope = Math.exp(-(ox * ox) / (2 * spread * spread));
+                    const wave = Math.sin(ox * 0.08 + d.phase * 3.1 + band * 0.95);
+                    const interference = Math.sin(ox * 0.17 - d.phase * 1.8 + band * 0.55);
+                    const y = d.y + d.normal * ((band + 1) * 10 + (wave + 0.55 * interference) * amp * envelope);
+                    const x = d.x + ox;
+                    if (!started) {
+                      ctx.moveTo(x, y);
+                      started = true;
+                    } else {
+                      ctx.lineTo(x, y);
+                    }
+                  }
+                  ctx.stroke();
+                  ctx.restore();
+                }
               }
             }
 
@@ -3158,15 +3211,15 @@ function renderPulses() {
             ctx.strokeStyle = `rgba(255, 211, 77, ${0.42 + alpha * 0.44})`;
             ctx.lineWidth = thickness;
             ctx.shadowColor = pulse.glow;
-            ctx.shadowBlur = 30;
+            ctx.shadowBlur = reduced ? 10 : 30;
             ctx.beginPath();
             ctx.arc(pulse.x, pulse.y, pulse.arcRadius, pulse.angle - pulse.cone, pulse.angle + pulse.cone);
             ctx.stroke();
             ctx.restore();
 
             ctx.save();
-            ctx.strokeStyle = `rgba(255, 248, 198, ${0.28 + alpha * 0.34})`;
-            ctx.lineWidth = Math.max(10, thickness * 0.3);
+            ctx.strokeStyle = `rgba(255, 248, 198, ${reduced ? (0.16 + alpha * 0.18) : (0.28 + alpha * 0.34)})`;
+            ctx.lineWidth = reduced ? Math.max(6, thickness * 0.18) : Math.max(10, thickness * 0.3);
             ctx.beginPath();
             ctx.arc(pulse.x, pulse.y, pulse.arcRadius, pulse.angle - pulse.cone * 0.42, pulse.angle + pulse.cone * 0.42);
             ctx.stroke();
@@ -3199,7 +3252,7 @@ function renderPulses() {
         }
       }
 
-      function renderOverlayFX() {
+function renderOverlayFX() {
 
         const alpha = Math.min(0.22, state.comboFlash * 0.9);
         if (alpha > 0) {
