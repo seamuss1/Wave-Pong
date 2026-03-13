@@ -1,0 +1,3158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game Wave Pong</title>
+  <style>
+    :root {
+      --bg1: #07111f;
+      --bg2: #02060d;
+      --panel: rgba(12, 22, 38, 0.82);
+      --panel-strong: rgba(10, 18, 30, 0.94);
+      --line: rgba(255, 255, 255, 0.15);
+      --text: #ebf3ff;
+      --muted: #9ab0cf;
+      --accent: #66e3ff;
+      --accent-2: #a66bff;
+      --good: #86ffb1;
+      --warn: #ffd06e;
+      --danger: #ff6a8b;
+      --glow: 0 0 16px rgba(102, 227, 255, 0.35), 0 0 36px rgba(166, 107, 255, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(102, 227, 255, 0.16), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(166, 107, 255, 0.18), transparent 28%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+    }
+
+    #gameCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background: transparent;
+      z-index: 0;
+    }
+
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .topbar {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .pill, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      backdrop-filter: blur(10px);
+      box-shadow: var(--glow);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      min-height: 52px;
+    }
+
+    .scoreboard {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.04em;
+    }
+
+    .scoreboard .sep {
+      color: var(--muted);
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .meta {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .big {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .message {
+      position: absolute;
+      top: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: rgba(8, 15, 27, 0.7);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #f7fbff;
+      box-shadow: var(--glow);
+      opacity: 0;
+      transition: opacity 250ms ease, transform 250ms ease;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-align: center;
+      max-width: min(80vw, 720px);
+    }
+
+    .message.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .message:not(.show) {
+      transform: translateX(-50%) translateY(-6px);
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.22);
+      pointer-events: auto;
+      transition: opacity 200ms ease;
+      z-index: 50;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .card {
+      position: relative;
+      z-index: 55;
+      width: min(920px, calc(100vw - 32px));
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: 0 12px 50px rgba(0,0,0,0.35), var(--glow);
+      padding: 28px;
+    }
+
+    .hero {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: clamp(34px, 5vw, 62px);
+      line-height: 0.95;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(15px, 1.8vw, 18px);
+      max-width: 52ch;
+    }
+
+    .badgeRow {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .badge {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: #d9e7ff;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .grid {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 18px;
+    }
+
+    .section {
+      padding: 18px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .section h2 {
+      margin: 0 0 12px 0;
+      font-size: 18px;
+      letter-spacing: 0.03em;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .controlItem {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    select, input[type="number"], input[type="checkbox"] + span, button {
+      font: inherit;
+    }
+
+    select,
+    input[type="number"] {
+      appearance: none;
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      outline: none;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--text);
+    }
+
+    .toggle input {
+      transform: scale(1.2);
+      accent-color: var(--accent);
+    }
+
+    .btnRow {
+      margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    button {
+      position: relative;
+      z-index: 60;
+      pointer-events: auto;
+      cursor: pointer;
+      border: none;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.06);
+    }
+
+    button:active {
+      transform: translateY(0);
+      filter: brightness(0.97);
+    }
+
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #69f2df);
+      color: #041521;
+      box-shadow: 0 8px 26px rgba(102, 227, 255, 0.28);
+    }
+
+    .secondary {
+      background: linear-gradient(135deg, var(--accent-2), #6c8dff);
+      color: white;
+      box-shadow: 0 8px 26px rgba(108, 141, 255, 0.24);
+    }
+
+    .ghost {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .stat .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat .value {
+      margin-top: 4px;
+      font-weight: 800;
+      font-size: 22px;
+    }
+
+    .footerNote {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .centerPanel {
+      text-align: center;
+      max-width: 560px;
+    }
+
+    .centerPanel h2 {
+      margin: 0 0 8px 0;
+      font-size: clamp(30px, 4vw, 50px);
+    }
+
+    .centerPanel p {
+      color: var(--muted);
+      margin: 0 0 18px 0;
+    }
+
+    .tiny {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    .hotkeyHint {
+      position: absolute;
+      bottom: 18px;
+      left: 18px;
+      padding: 10px 14px;
+      font-size: 12px;
+    }
+
+    .rightHint {
+      left: auto;
+      right: 18px;
+    }
+.iconHud {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 260px;
+  flex-wrap: wrap;
+}
+
+.iconTray {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 88px;
+  flex-wrap: wrap;
+}
+
+.iconTray.mid {
+  min-width: 44px;
+  justify-content: center;
+}
+
+.statusIcon {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  box-shadow: 0 0 14px rgba(255,255,255,0.08);
+}
+
+.statusIcon.wave {
+  background: rgba(123, 210, 255, 0.18);
+  color: #dff5ff;
+  border-color: rgba(123, 210, 255, 0.42);
+}
+
+.statusIcon.solid {
+  background: rgba(255, 124, 215, 0.18);
+  color: #ffe6f8;
+  border-color: rgba(255, 124, 215, 0.45);
+}
+
+.statusIcon.push {
+  background: rgba(255, 211, 77, 0.2);
+  color: #fff4c6;
+  border-color: rgba(255, 211, 77, 0.5);
+}
+
+.statusIcon.buff {
+  background: rgba(134, 255, 177, 0.18);
+  color: #dcffe8;
+  border-color: rgba(134, 255, 177, 0.42);
+}
+
+.statusIcon.debuff {
+  background: rgba(255, 106, 139, 0.18);
+  color: #ffe3ea;
+  border-color: rgba(255, 106, 139, 0.42);
+}
+
+.statusIcon.neutral {
+  background: rgba(255,255,255,0.1);
+  color: #f3f7ff;
+  border-color: rgba(255,255,255,0.24);
+}
+
+.statusIcon.empty {
+  opacity: 0.45;
+}
+
+.gameOverPanel {
+  max-width: 940px;
+  text-align: left;
+  background:
+    radial-gradient(circle at top center, rgba(255, 211, 77, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(8, 14, 24, 0.98), rgba(7, 11, 19, 0.96));
+}
+
+.gameOverTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  margin-bottom: 10px;
+}
+
+.gameOverScoreLine {
+  margin: 10px 0 18px 0;
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #fff6d8;
+  text-shadow: 0 0 18px rgba(255, 211, 77, 0.2);
+  text-align: center;
+}
+
+.gameOverStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0 8px 0;
+}
+
+.compareGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.compareHeader, .compareRow {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) minmax(110px, 1.2fr) minmax(72px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.compareHeader {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  padding-bottom: 4px;
+}
+
+.compareRow {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-weight: 700;
+}
+
+.compareRow .metric {
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+}
+
+.compareRow .leftVal {
+  text-align: left;
+}
+
+.compareRow .rightVal {
+  text-align: right;
+}
+
+
+    @media (max-width: 820px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .gameOverStatsGrid {
+        grid-template-columns: 1fr;
+      }
+
+      .scoreboard {
+        font-size: 22px;
+      }
+
+      .topbar {
+        top: 12px;
+        left: 12px;
+        right: 12px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div class="hud">
+    <div class="topbar">
+      <div class="pill scoreboard">
+        <span id="leftName">PLAYER</span>
+        <span id="leftScore">0</span>
+        <span class="sep">:</span>
+        <span id="rightScore">0</span>
+        <span id="rightName">CPU</span>
+      </div>
+
+      <div class="stack">
+        <div class="pill">
+          <div>
+            <div class="meta">Mode</div>
+            <div class="big" id="modeLabel">VS CPU</div>
+          </div>
+          <div>
+            <div class="meta">Difficulty</div>
+            <div class="big" id="difficultyLabel">Spicy</div>
+          </div>
+        </div>
+        <div class="pill">
+          <div>
+            <div class="meta">Rally</div>
+            <div class="big" id="rallyLabel">0</div>
+          </div>
+          <div>
+            <div class="meta">Best Rally</div>
+            <div class="big" id="bestRallyLabel">0</div>
+          </div>
+          <div>
+            <div class="meta">Status</div>
+            <div class="iconHud">
+              <div class="iconTray" id="leftStatusIcons"></div>
+              <div class="iconTray mid" id="globalStatusIcons"></div>
+              <div class="iconTray" id="rightStatusIcons"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="message" class="message">Ball deployed.</div>
+
+    <div class="pill hotkeyHint">F or Space fire • / fire • P pause • M mute • Esc menu</div>
+    <div class="pill hotkeyHint rightHint" id="statusPill">Ready to embarrass a rectangle.</div>
+  </div>
+
+  <div id="menuOverlay" class="overlay">
+    <div class="card">
+      <div class="hero">
+        <div>
+          <h1>Game Wave<br>Pong</h1>
+          <p class="subtitle">An unapologetically flashy browser pong game with laser aimers, defensive pink waves, offensive yellow arcs, XP minions, instant powerups, synthesized sound, and enough attitude to make the ball feel judged.</p>
+          <div class="badgeRow">
+            <div class="badge">Single file</div>
+            <div class="badge">Drop into browser</div>
+            <div class="badge">Keyboard controls</div>
+            <div class="badge">No libraries</div>
+          </div>
+        </div>
+        <div class="section" style="min-width: 230px;">
+          <h2>Today in sports</h2>
+          <div class="tiny">Breaking</div>
+          <p style="margin: 10px 0 0 0; color: var(--muted); line-height: 1.5;">The left paddle has been seen training at altitude. The right paddle denies all allegations of rust.</p>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="section">
+          <h2>Rules and controls</h2>
+          <div class="controls">
+            <div class="controlItem"><strong>Player 1</strong><br>W and S move • F or Space fires pulse</div>
+            <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move • / fires pulse</div>
+            <div class="controlItem"><strong>Pause</strong><br>P</div>
+            <div class="controlItem"><strong>Menu</strong><br>Escape</div>
+            <div class="controlItem"><strong>Mute</strong><br>M</div>
+            <div class="controlItem"><strong>Restart</strong><br>Use the menu button</div>
+            <div class="controlItem"><strong>Pulse cannon</strong><br>It auto charges. Blue costs 15 percent, pink costs 50 percent, and gold cashes out the full base bar. Cap Bank stretches the meter to 150 percent and Rapid Charge makes it refill faster.</div>
+          </div>
+          <div class="footerNote">
+            Catch floating powerups to stretch paddles, overcap your wave bar, turbo charge recharge speed, shrink rivals, split the ball, or bend time. Waves gain passive XP, bonus XP for goals, and extra XP for smacking your opponent. Long rallies can still crack open into multiball, just a little later. Best rally is saved in your browser.
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Match setup</h2>
+          <div class="form">
+            <label>
+              Game Mode
+              <select id="modeSelect">
+                <option value="cpu">Player vs CPU</option>
+                <option value="pvp">Two Players</option>
+              </select>
+            </label>
+
+            <label>
+              Difficulty
+              <select id="difficultySelect">
+                <option value="chill">Chill</option>
+                <option value="spicy" selected>Spicy</option>
+                <option value="absurd">Ridiculous</option>
+              </select>
+            </label>
+
+            <label>
+              Score to Win
+              <input id="scoreLimitSelect" type="number" min="1" step="1" value="7" />
+            </label>
+
+            <label>
+              Arena Theme
+              <select id="themeSelect">
+                <option value="neon" selected>Neon Night</option>
+                <option value="ember">Ember Court</option>
+                <option value="mint">Mint Storm</option>
+              </select>
+            </label>
+
+            <label class="toggle">
+              <input id="powerupsToggle" type="checkbox" checked />
+              <span>Enable powerups and chaos</span>
+            </label>
+
+            <label class="toggle">
+              <input id="trailToggle" type="checkbox" checked />
+              <span>Enable trails and particles</span>
+            </label>
+          </div>
+
+          <div class="btnRow">
+            <button id="startBtn" class="primary">Start Match</button>
+            <button id="demoBtn" class="secondary">CPU vs CPU Demo</button>
+            <button id="howBtn" class="ghost">Show a random insult</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Best rally</div>
+          <div id="menuBestRally" class="value">0</div>
+        </div>
+        <div class="stat">
+          <div class="label">Last winner</div>
+          <div id="lastWinnerStat" class="value">None</div>
+        </div>
+        <div class="stat">
+          <div class="label">Energy level</div>
+          <div id="energyStat" class="value">Maximum nonsense</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pauseOverlay" class="overlay hidden">
+    <div class="card centerPanel">
+      <div class="tiny">Match paused</div>
+      <h2>Everybody hold your pixels.</h2>
+      <p>The ball has agreed to remain dramatically suspended until you resume.</p>
+      <div class="btnRow" style="justify-content: center;">
+        <button id="resumeBtn" class="primary">Resume</button>
+        <button id="pauseMenuBtn" class="ghost">Back to Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gameOverOverlay" class="overlay hidden">
+    <div class="card centerPanel gameOverPanel">
+      <div class="tiny gameOverTag">Match complete</div>
+      <h2 id="winnerTitle">Left Paddle Wins</h2>
+      <p id="winnerSubtitle">Somewhere, a scoreboard is weeping softly.</p>
+      <div id="gameOverScoreLine" class="gameOverScoreLine">PLAYER 7 : 5 CPU</div>
+      <div class="gameOverStatsGrid">
+        <div class="section">
+          <h2 style="font-size: 18px; margin-bottom: 10px;">This match</h2>
+          <div id="gameOverMatchStats" class="compareGrid"></div>
+        </div>
+        <div class="section">
+          <h2 style="font-size: 18px; margin-bottom: 10px;">History</h2>
+          <div id="gameOverHistoryStats" class="compareGrid"></div>
+        </div>
+      </div>
+      <div class="btnRow" style="justify-content: center;">
+        <button id="rematchBtn" class="primary">Rematch</button>
+        <button id="gameOverMenuBtn" class="secondary">New Setup</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const ui = {
+        leftScore: document.getElementById('leftScore'),
+        rightScore: document.getElementById('rightScore'),
+        leftName: document.getElementById('leftName'),
+        rightName: document.getElementById('rightName'),
+        modeLabel: document.getElementById('modeLabel'),
+        difficultyLabel: document.getElementById('difficultyLabel'),
+        rallyLabel: document.getElementById('rallyLabel'),
+        bestRallyLabel: document.getElementById('bestRallyLabel'),
+        leftStatusIcons: document.getElementById('leftStatusIcons'),
+        globalStatusIcons: document.getElementById('globalStatusIcons'),
+        rightStatusIcons: document.getElementById('rightStatusIcons'),
+        statusPill: document.getElementById('statusPill'),
+        message: document.getElementById('message'),
+        menu: document.getElementById('menuOverlay'),
+        pause: document.getElementById('pauseOverlay'),
+        gameOver: document.getElementById('gameOverOverlay'),
+        winnerTitle: document.getElementById('winnerTitle'),
+        winnerSubtitle: document.getElementById('winnerSubtitle'),
+        gameOverScoreLine: document.getElementById('gameOverScoreLine'),
+        gameOverMatchStats: document.getElementById('gameOverMatchStats'),
+        gameOverHistoryStats: document.getElementById('gameOverHistoryStats'),
+        menuBestRally: document.getElementById('menuBestRally'),
+        lastWinnerStat: document.getElementById('lastWinnerStat'),
+        energyStat: document.getElementById('energyStat'),
+        modeSelect: document.getElementById('modeSelect'),
+        difficultySelect: document.getElementById('difficultySelect'),
+        scoreLimitSelect: document.getElementById('scoreLimitSelect'),
+        themeSelect: document.getElementById('themeSelect'),
+        powerupsToggle: document.getElementById('powerupsToggle'),
+        trailToggle: document.getElementById('trailToggle')
+      };
+
+      const W = 1280;
+      const H = 720;
+      let scale = 1;
+      let lastTime = 0;
+      let audioCtx = null;
+      let history;
+      let lastWinner = 'None';
+      let matchStats;
+      let messageTimer = 0;
+      let screenShake = 0;
+      let nextBallId = 1;
+
+      const BALL_SPEED_CAP = 920;
+      const BLUE_WAVE_COST = 0.15;
+      const PINK_WAVE_COST = 0.5;
+      const GOLD_WAVE_COST = 1;
+      const MIN_FIRE_CHARGE = BLUE_WAVE_COST;
+      const SOLID_CHARGE_THRESHOLD = PINK_WAVE_COST;
+      const FULL_CHARGE_THRESHOLD = GOLD_WAVE_COST;
+      const BASE_MAX_CHARGE = 1;
+      const OVERCAP_MAX_CHARGE = 1.5;
+      const HISTORY_KEY = 'gameWavePongHistoryV3';
+      const MAX_WAVE_LEVEL = 6;
+      const WAVE_LEVEL_XP = [0, 0, 180, 470, 930, 1520, 2250];
+      const PASSIVE_XP_PER_SEC = 2.15;
+      const GOAL_XP = 52;
+      const OPPONENT_HIT_XP = 15;
+      const PULSE_POWERUP_XP = 82;
+      const MINION_XP = 38;
+      const DEBUFF_XP_LOSS = 76;
+      const YELLOW_HIT_XP_LOSS = 34;
+
+      const defaultHistory = {
+        matches: 0,
+        leftWins: 0,
+        rightWins: 0,
+        leftPoints: 0,
+        rightPoints: 0,
+        leftBallHits: 0,
+        rightBallHits: 0,
+        leftShots: 0,
+        rightShots: 0,
+        leftWaveHits: 0,
+        rightWaveHits: 0,
+        leftPowerups: 0,
+        rightPowerups: 0,
+        bestRally: 0,
+        lastWinner: 'None'
+      };
+
+      const powerupDefs = {
+        grow: { icon: '⇕', label: 'Mega Paddle', kind: 'buff', color: '#86ffb1', fill: 'rgba(134, 255, 177, 0.22)', outline: 'rgba(134, 255, 177, 0.82)' },
+        overcharge: { icon: '⚡', label: 'Overcharge', kind: 'buff', color: '#71f1ff', fill: 'rgba(113, 241, 255, 0.22)', outline: 'rgba(113, 241, 255, 0.82)' },
+        capacitor: { icon: '▰', label: 'Cap Bank', kind: 'buff', color: '#78f0ff', fill: 'rgba(120, 240, 255, 0.22)', outline: 'rgba(120, 240, 255, 0.84)' },
+        rapid: { icon: '≫', label: 'Rapid Charge', kind: 'buff', color: '#fff085', fill: 'rgba(255, 240, 133, 0.22)', outline: 'rgba(255, 240, 133, 0.84)' },
+        multi: { icon: '◎', label: 'Multiball', kind: 'buff', color: '#ffd06e', fill: 'rgba(255, 208, 110, 0.22)', outline: 'rgba(255, 208, 110, 0.82)' },
+        pulse: { icon: '⟲', label: 'XP Surge', kind: 'buff', color: '#a7b6ff', fill: 'rgba(167, 182, 255, 0.22)', outline: 'rgba(167, 182, 255, 0.82)' },
+        shrink: { icon: '⇣', label: 'Shrink Hex', kind: 'debuff', color: '#ff88c6', fill: 'rgba(255, 136, 198, 0.22)', outline: 'rgba(255, 136, 198, 0.82)' },
+        slow: { icon: '⌛', label: 'Drag Field', kind: 'debuff', color: '#ff9d7e', fill: 'rgba(255, 157, 126, 0.22)', outline: 'rgba(255, 157, 126, 0.82)' },
+        jam: { icon: '✶', label: 'Aim Jam', kind: 'debuff', color: '#ff6a8b', fill: 'rgba(255, 106, 139, 0.22)', outline: 'rgba(255, 106, 139, 0.82)' },
+        drain: { icon: '◌', label: 'XP Drain', kind: 'debuff', color: '#ffb7ff', fill: 'rgba(255, 183, 255, 0.2)', outline: 'rgba(255, 183, 255, 0.82)' },
+        minion: { icon: '✹', label: 'XP Minion', kind: 'minion', color: '#8dff7f', fill: 'rgba(141, 255, 127, 0.18)', outline: 'rgba(141, 255, 127, 0.88)' }
+      };
+
+      function loadHistory() {
+        try {
+          const raw = localStorage.getItem(HISTORY_KEY);
+          if (!raw) return { ...defaultHistory };
+          return { ...defaultHistory, ...JSON.parse(raw) };
+        } catch (err) {
+          return { ...defaultHistory };
+        }
+      }
+
+      function saveHistory(history) {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      }
+
+      function createMatchStats() {
+        return {
+          leftShots: 0,
+          rightShots: 0,
+          leftBallHits: 0,
+          rightBallHits: 0,
+          leftWaveHits: 0,
+          rightWaveHits: 0,
+          leftPowerups: 0,
+          rightPowerups: 0,
+          longestRally: 0
+        };
+      }
+
+
+      history = loadHistory();
+      lastWinner = history.lastWinner || 'None';
+      matchStats = createMatchStats();
+
+      const wittyLines = [
+        'That rally had better footwork than most office meetings.',
+        'Your paddle is either a genius or deeply confused.',
+        'The ball would like a word with your defensive strategy.',
+        'This is less pong and more geometric drama.',
+        'One more point like that and the pixels unionize.',
+        'Somewhere, a very small commentator is losing composure.',
+        'The right paddle claims it lagged. Investigations continue.',
+        'The left paddle just posted that highlight to its story.',
+        'That was not a miss. That was an interpretive choice.',
+        'The ball has entered its villain era.'
+      ];
+
+      const scoreLines = [
+        'Clinical finish.',
+        'That point had paperwork and witnesses.',
+        'An absolute robbery at the netless court.',
+        'Some rectangles simply want it more.',
+        'The ball filed a change of address.',
+        'The crowd goes polite but sustained.',
+        'That one had a sequel budget.',
+        'A point so clean it squeaks.'
+      ];
+
+      const themes = {
+        neon: {
+          bgTop: '#07111f',
+          bgBottom: '#02060d',
+          glowA: '102, 227, 255',
+          glowB: '166, 107, 255',
+          accent: '#66e3ff',
+          accent2: '#a66bff',
+          paddleLeft: '#66e3ff',
+          paddleRight: '#ff8ad8',
+          ball: '#ffffff',
+          power: '#ffd06e'
+        },
+        ember: {
+          bgTop: '#1d0b09',
+          bgBottom: '#0c0605',
+          glowA: '255, 132, 74',
+          glowB: '255, 226, 92',
+          accent: '#ff844a',
+          accent2: '#ffe25c',
+          paddleLeft: '#ff844a',
+          paddleRight: '#ffd06e',
+          ball: '#fff8eb',
+          power: '#fff27d'
+        },
+        mint: {
+          bgTop: '#061915',
+          bgBottom: '#030907',
+          glowA: '116, 255, 204',
+          glowB: '111, 207, 255',
+          accent: '#74ffcc',
+          accent2: '#6fcfff',
+          paddleLeft: '#74ffcc',
+          paddleRight: '#6fcfff',
+          ball: '#f4fffd',
+          power: '#ffe18b'
+        }
+      };
+
+      const difficultyMap = {
+        chill: { aiSpeed: 740, aiError: 92, reaction: 0.12, ballSpeed: 600 },
+        spicy: { aiSpeed: 950, aiError: 36, reaction: 0.22, ballSpeed: 690 },
+        absurd: { aiSpeed: 1210, aiError: 14, reaction: 0.32, ballSpeed: 770 }
+      };
+
+      const input = {
+        w: false,
+        s: false,
+        up: false,
+        down: false
+      };
+
+      const state = {
+        running: false,
+        paused: false,
+        menuOpen: true,
+        gameOver: false,
+        demoMode: false,
+        mode: 'cpu',
+        difficulty: 'spicy',
+        scoreLimit: 7,
+        powerupsEnabled: true,
+        trailsEnabled: true,
+        theme: 'neon',
+        bestRally: Number(history.bestRally || localStorage.getItem('gameWavePongBestRally') || 0),
+        activePowerLabel: 'None',
+        powerSpawnTimer: 7,
+        powerDurationTimer: 0,
+        lastPowerType: null,
+        leftScore: 0,
+        rightScore: 0,
+        rally: 0,
+        roundSeconds: 0,
+        serveDirection: 1,
+        leftBoostTimer: 0,
+        rightBoostTimer: 0,
+        slowmoTimer: 0,
+        comboFlash: 0,
+        impacts: 0,
+        longRallyTriggered: false
+      };
+
+      const world = {
+        paddles: {
+          left: createPaddle(38, H / 2 - 70, 'left'),
+          right: createPaddle(W - 56, H / 2 - 70, 'right')
+        },
+        balls: [],
+        particles: [],
+        powerups: [],
+        pulses: [],
+        floatTexts: []
+      };
+
+      function createPaddle(x, y, side) {
+        return {
+          x,
+          y,
+          w: 18,
+          h: 140,
+          baseH: 140,
+          vy: 0,
+          speed: 920,
+          side,
+          flash: 0,
+          hitScale: 1,
+          aiJitter: 0,
+          aimAngle: side === 'left' ? 0 : Math.PI,
+          targetAimAngle: side === 'left' ? 0 : Math.PI,
+          cooldown: 0,
+          jamTimer: 0,
+          pulseLevel: 1,
+          waveXP: 0,
+          pulseCharge: BASE_MAX_CHARGE,
+          maxCharge: BASE_MAX_CHARGE,
+          overcapTimer: 0,
+          chargeBoostTimer: 0,
+          chargeGlowPhase: Math.random() * Math.PI * 2,
+          solidFlash: 0,
+          slowTimer: 0
+        };
+      }
+
+      function createBall(direction = 1, x = W / 2, y = H / 2) {
+        const baseSpeed = difficultyMap[state.difficulty].ballSpeed;
+        const sign = Math.random() < 0.5 ? -1 : 1;
+        const angle = sign * (0.48 + Math.random() * 0.32);
+        return {
+          id: nextBallId++,
+          x,
+          y,
+          r: 11,
+          vx: Math.cos(angle) * baseSpeed * direction,
+          vy: Math.sin(angle) * baseSpeed,
+          trail: [],
+          flash: 1,
+          hueShift: Math.random() * Math.PI * 2,
+          lastHitSide: null,
+          boostTimer: 0,
+          boostIntensity: 0,
+          boostColor: '#7bd2ff',
+          stunTimer: 0,
+          storedVx: 0,
+          storedVy: 0,
+          blueResistTimer: 0,
+          blueResistStrength: 0
+        };
+      }
+
+      function storeBestRally(value) {
+        state.bestRally = value;
+        localStorage.setItem('gameWavePongBestRally', String(value));
+        history.bestRally = Math.max(history.bestRally || 0, value);
+        saveHistory(history);
+      }
+
+      function formatStat(value) {
+        return typeof value === 'number' ? String(Math.round(value)) : String(value);
+      }
+
+      function makeStatusIcon(symbol, tone, title) {
+        return '<span class="statusIcon ' + tone + '" title="' + title + '">' + symbol + '</span>';
+      }
+
+      function renderStatusIcons() {
+        const left = world.paddles.left;
+        const right = world.paddles.right;
+
+        function chargeIconFor(paddle) {
+          if ((paddle.pulseCharge || 0) >= FULL_CHARGE_THRESHOLD) return makeStatusIcon('☀', 'push', 'Max charge');
+          if ((paddle.pulseCharge || 0) >= SOLID_CHARGE_THRESHOLD) return makeStatusIcon('◆', 'solid', 'Solid charge');
+          return makeStatusIcon('~', 'wave', 'Wave charge');
+        }
+
+        function iconsForPaddle(paddle) {
+          const icons = [
+            chargeIconFor(paddle),
+            makeStatusIcon('L' + paddle.pulseLevel, 'neutral', 'Wave level ' + paddle.pulseLevel)
+          ];
+          if (paddle.overcapTimer > 0.05) icons.push(makeStatusIcon('▰', 'buff', 'Cap Bank active'));
+          if (paddle.chargeBoostTimer > 0.05) icons.push(makeStatusIcon('≫', 'buff', 'Rapid Charge active'));
+          if (paddle.h > paddle.baseH + 8) icons.push(makeStatusIcon('⇕', 'buff', 'Mega Paddle active'));
+          if (paddle.h < paddle.baseH - 8) icons.push(makeStatusIcon('⇣', 'debuff', 'Shrink Hex active'));
+          if (paddle.slowTimer > 0.05) icons.push(makeStatusIcon('⌛', 'debuff', 'Drag Field active'));
+          if (paddle.jamTimer > 0.05) icons.push(makeStatusIcon('✶', 'debuff', 'Aim Jam active'));
+          return icons.length ? icons.join('') : makeStatusIcon('·', 'neutral empty', 'No active effects');
+        }
+
+        const globalIcons = [];
+        if (world.balls.length > 1) globalIcons.push(makeStatusIcon('◎' + world.balls.length, 'buff', 'Multiball active'));
+        if (state.slowmoTimer > 0.05) globalIcons.push(makeStatusIcon('⏳', 'neutral', 'Time distortion active'));
+        if (world.powerups.length > 0) {
+          const def = powerupDefs[world.powerups[0].type];
+          globalIcons.push(makeStatusIcon(def.kind === 'debuff' ? '!' : '+', def.kind, 'Powerup on field'));
+        }
+        if (!globalIcons.length) globalIcons.push(makeStatusIcon('·', 'neutral empty', 'No global effects'));
+
+        ui.leftStatusIcons.innerHTML = iconsForPaddle(left);
+        ui.rightStatusIcons.innerHTML = iconsForPaddle(right);
+        ui.globalStatusIcons.innerHTML = globalIcons.join('');
+      }
+
+      function spawnFloatText(x, y, text, kind = 'buff') {
+        world.floatTexts.push({
+          x,
+          y,
+          text,
+          kind,
+          life: 1.65,
+          maxLife: 1.65,
+          driftX: (Math.random() - 0.5) * 18,
+          driftY: -34 - Math.random() * 12
+        });
+      }
+
+      function updateFloatTexts(dt) {
+        for (let i = world.floatTexts.length - 1; i >= 0; i--) {
+          const t = world.floatTexts[i];
+          t.life -= dt;
+          t.x += t.driftX * dt;
+          t.y += t.driftY * dt;
+          if (t.life <= 0) world.floatTexts.splice(i, 1);
+        }
+      }
+
+      function renderFloatTexts() {
+        for (const t of world.floatTexts) {
+          const alpha = clamp(t.life / t.maxLife, 0, 1);
+          const color = t.kind === 'debuff' ? '#ffd7e1' : '#dcffe8';
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.font = '800 18px Inter, Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = 'rgba(4, 9, 18, 0.82)';
+          ctx.fillStyle = color;
+          ctx.strokeText(t.text, t.x, t.y);
+          ctx.fillText(t.text, t.x, t.y);
+          ctx.restore();
+        }
+      }
+
+      function buildCompareGrid(rows, leftLabel, rightLabel) {
+        let html = '<div class="compareHeader"><div>' + leftLabel + '</div><div style="text-align:center;">Metric</div><div style="text-align:right;">' + rightLabel + '</div></div>';
+        for (const row of rows) {
+          html += '<div class="compareRow"><div class="leftVal">' + formatStat(row.left) + '</div><div class="metric">' + row.label + '</div><div class="rightVal">' + formatStat(row.right) + '</div></div>';
+        }
+        return html;
+      }
+
+      function renderGameOverStats() {
+        const leftLabel = ui.leftName.textContent;
+        const rightLabel = ui.rightName.textContent;
+        ui.gameOverScoreLine.textContent = leftLabel + ' ' + state.leftScore + ' : ' + state.rightScore + ' ' + rightLabel;
+
+        const matchRows = [
+          { label: 'Goals', left: state.leftScore, right: state.rightScore },
+          { label: 'Ball Hits', left: matchStats.leftBallHits, right: matchStats.rightBallHits },
+          { label: 'Waves Fired', left: matchStats.leftShots, right: matchStats.rightShots },
+          { label: 'Wave Hits', left: matchStats.leftWaveHits, right: matchStats.rightWaveHits },
+          { label: 'Powerups', left: matchStats.leftPowerups, right: matchStats.rightPowerups },
+          { label: 'Best Rally', left: matchStats.longestRally, right: matchStats.longestRally }
+        ];
+
+        const historyRows = [
+          { label: 'Wins', left: history.leftWins, right: history.rightWins },
+          { label: 'Goals', left: history.leftPoints, right: history.rightPoints },
+          { label: 'Ball Hits', left: history.leftBallHits, right: history.rightBallHits },
+          { label: 'Waves Fired', left: history.leftShots, right: history.rightShots },
+          { label: 'Wave Hits', left: history.leftWaveHits, right: history.rightWaveHits },
+          { label: 'Powerups', left: history.leftPowerups, right: history.rightPowerups }
+        ];
+
+        ui.gameOverMatchStats.innerHTML = buildCompareGrid(matchRows, leftLabel, rightLabel);
+        ui.gameOverHistoryStats.innerHTML = buildCompareGrid(historyRows, leftLabel, rightLabel);
+      }
+
+      function recordMatchHistory(leftWon) {
+        history.matches += 1;
+        history.leftWins += leftWon ? 1 : 0;
+        history.rightWins += leftWon ? 0 : 1;
+        history.leftPoints += state.leftScore;
+        history.rightPoints += state.rightScore;
+        history.leftBallHits += matchStats.leftBallHits;
+        history.rightBallHits += matchStats.rightBallHits;
+        history.leftShots += matchStats.leftShots;
+        history.rightShots += matchStats.rightShots;
+        history.leftWaveHits += matchStats.leftWaveHits;
+        history.rightWaveHits += matchStats.rightWaveHits;
+        history.leftPowerups += matchStats.leftPowerups;
+        history.rightPowerups += matchStats.rightPowerups;
+        history.bestRally = Math.max(history.bestRally || 0, state.bestRally || 0, matchStats.longestRally || 0);
+        history.lastWinner = leftWon ? ui.leftName.textContent : ui.rightName.textContent;
+        lastWinner = history.lastWinner;
+        saveHistory(history);
+      }
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function angleDiff(a, b) {
+        let d = a - b;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        return d;
+      }
+
+      function clampBallSpeed(ball, maxSpeed = BALL_SPEED_CAP) {
+        const speed = Math.hypot(ball.vx, ball.vy);
+        if (speed <= maxSpeed || speed === 0) return;
+        const scaleFactor = maxSpeed / speed;
+        ball.vx *= scaleFactor;
+        ball.vy *= scaleFactor;
+      }
+
+      function getPaddleMaxCharge(paddle) {
+        return Math.max(BASE_MAX_CHARGE, paddle.maxCharge || BASE_MAX_CHARGE);
+      }
+
+      function refreshPaddleChargeState(paddle) {
+        paddle.maxCharge = (paddle.overcapTimer || 0) > 0 ? OVERCAP_MAX_CHARGE : BASE_MAX_CHARGE;
+        paddle.pulseCharge = clamp(paddle.pulseCharge || 0, 0, paddle.maxCharge);
+        return paddle.maxCharge;
+      }
+
+      function setBallBoost(ball, duration, intensity, color) {
+        ball.boostTimer = Math.max(ball.boostTimer || 0, duration);
+        ball.boostIntensity = Math.max(ball.boostIntensity || 0, intensity);
+        ball.boostColor = color;
+      }
+
+      function applyBallStun(ball, duration, vx, vy, color = '#7bd2ff') {
+        ball.stunTimer = Math.max(ball.stunTimer || 0, duration);
+        ball.storedVx = vx;
+        ball.storedVy = vy;
+        ball.vx = 0;
+        ball.vy = 0;
+        setBallBoost(ball, Math.max(0.08, duration * 0.9), 0.72, color);
+      }
+
+      function isBallMovingTowardPaddle(ball, side) {
+        return side === 'left' ? ball.vx < -30 : ball.vx > 30;
+      }
+
+      function isBallMovingAwayFromPaddle(ball, side) {
+        return side === 'left' ? ball.vx > 30 : ball.vx < -30;
+      }
+
+      function getLevelThreshold(level) {
+        return WAVE_LEVEL_XP[Math.max(1, Math.min(MAX_WAVE_LEVEL, level))] || 0;
+      }
+
+      function syncPaddleLevel(paddle) {
+        let level = 1;
+        const xp = Math.max(0, paddle.waveXP || 0);
+        for (let i = 2; i <= MAX_WAVE_LEVEL; i++) {
+          if (xp >= getLevelThreshold(i)) level = i;
+          else break;
+        }
+        paddle.waveXP = xp;
+        paddle.pulseLevel = level;
+        return level;
+      }
+
+      function getLevelProgress(paddle) {
+        const level = syncPaddleLevel(paddle);
+        if (level >= MAX_WAVE_LEVEL) return 1;
+        const floor = getLevelThreshold(level);
+        const ceil = getLevelThreshold(level + 1);
+        if (ceil <= floor) return 1;
+        return clamp(((paddle.waveXP || 0) - floor) / (ceil - floor), 0, 1);
+      }
+
+      function adjustWaveXP(paddle, delta, opts = {}) {
+        const before = paddle.pulseLevel || 1;
+        paddle.waveXP = Math.max(0, (paddle.waveXP || 0) + delta);
+        const after = syncPaddleLevel(paddle);
+        if (!opts.silent && after !== before) {
+          spawnFloatText(paddle.x + paddle.w / 2, paddle.y - 14, after > before ? 'Wave L' + after : 'Wave Down', after > before ? 'buff' : 'debuff');
+        }
+        return after;
+      }
+
+      function sanitizeScoreLimit(value) {
+        const parsed = Math.floor(Number(value));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
+      }
+
+      function createReplacementBall(direction) {
+        const ball = createBall(direction);
+        ball.x = W / 2;
+        ball.y = H / 2;
+        ball.flash = 1;
+        world.balls.push(ball);
+        return ball;
+      }
+
+      function getPulseOrigin(paddle) {
+        return {
+          x: paddle.side === 'left' ? paddle.x + paddle.w + 6 : paddle.x - 6,
+          y: paddle.y + paddle.h / 2
+        };
+      }
+
+      function pointSegmentDistance(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+        const t = clamp(((px - x1) * dx + (py - y1) * dy) / lenSq, 0, 1);
+        const cx = x1 + dx * t;
+        const cy = y1 + dy * t;
+        return Math.hypot(px - cx, py - cy);
+      }
+
+      function getPulseArcEndpoints(pulse) {
+        const radius = pulse.arcRadius || pulse.range || 0;
+        const start = pulse.angle - pulse.cone;
+        const end = pulse.angle + pulse.cone;
+        return {
+          x1: pulse.x + Math.cos(start) * radius,
+          y1: pulse.y + Math.sin(start) * radius,
+          x2: pulse.x + Math.cos(end) * radius,
+          y2: pulse.y + Math.sin(end) * radius
+        };
+      }
+
+function getPulseThickness(pulse, extra = 0) {
+  const base = pulse.renderThickness != null ? pulse.renderThickness : (pulse.waveThickness || 0);
+  return Math.max(8, base + extra);
+}
+
+function getPulseHalfThickness(pulse, extra = 0) {
+  return getPulseThickness(pulse, extra) * 0.5;
+}
+
+function pulseArcHitsBall(pulse, ball) {
+  const radius = pulse.arcRadius || pulse.range || 0;
+  return pulseArcSweepHitsBall(pulse, ball, radius, radius, 0);
+}
+
+function pulseArcPoseHitsBall(pulse, ball, cx, cy, thicknessBoost = 0) {
+  const radius = pulse.arcRadius || pulse.range || 0;
+  const halfThickness = getPulseHalfThickness(pulse, thicknessBoost);
+  const dx = ball.x - cx;
+  const dy = ball.y - cy;
+  const dist = Math.hypot(dx, dy) || 1;
+  const angle = Math.atan2(dy, dx);
+  const collisionPad = ball.r * 0.78 + Math.min(6, halfThickness * 0.12);
+  const anglePad = Math.min(0.3, Math.asin(clamp((collisionPad + halfThickness * 0.7) / Math.max(dist, 1), 0, 1)));
+  if (Math.abs(angleDiff(angle, pulse.angle)) > pulse.cone + anglePad) return false;
+  if (Math.abs(dist - radius) <= halfThickness + collisionPad) return true;
+  const edge = getPulseArcEndpoints({ ...pulse, x: cx, y: cy });
+  return pointSegmentDistance(ball.x, ball.y, edge.x1, edge.y1, edge.x2, edge.y2) <= halfThickness + collisionPad;
+}
+
+function pulseArcSweepHitsBall(pulse, ball, innerRadius, outerRadius, thicknessBoost = 0) {
+  const halfThickness = getPulseHalfThickness(pulse, thicknessBoost);
+  const dx = ball.x - pulse.x;
+  const dy = ball.y - pulse.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const angle = Math.atan2(dy, dx);
+  const collisionPad = ball.r * 0.76 + Math.min(6, halfThickness * 0.1);
+  const anglePad = Math.min(0.32, Math.asin(clamp((collisionPad + halfThickness * 0.68) / Math.max(dist, 1), 0, 1)));
+  if (Math.abs(angleDiff(angle, pulse.angle)) > pulse.cone + anglePad) return false;
+  const minRadius = Math.min(innerRadius, outerRadius);
+  const maxRadius = Math.max(innerRadius, outerRadius);
+  if (dist >= Math.max(0, minRadius - halfThickness - collisionPad) && dist <= maxRadius + halfThickness + collisionPad) return true;
+  const sampleRadius = clamp(dist, minRadius, maxRadius || minRadius);
+  const edge = getPulseArcEndpoints({ ...pulse, arcRadius: sampleRadius });
+  return pointSegmentDistance(ball.x, ball.y, edge.x1, edge.y1, edge.x2, edge.y2) <= halfThickness + collisionPad;
+}
+
+function pushPulseHitsBall(pulse, ball) {
+  const prevX = pulse.prevX == null ? pulse.x : pulse.prevX;
+  const prevY = pulse.prevY == null ? pulse.y : pulse.prevY;
+  const travel = Math.hypot(pulse.x - prevX, pulse.y - prevY);
+  const samples = Math.max(3, Math.ceil(travel / 10));
+  const thicknessBoost = Math.max(ball.r * 0.38, getPulseHalfThickness(pulse) * 0.12);
+  for (let s = 0; s <= samples; s++) {
+    const t = s / samples;
+    const cx = prevX + (pulse.x - prevX) * t;
+    const cy = prevY + (pulse.y - prevY) * t;
+    if (pulseArcPoseHitsBall(pulse, ball, cx, cy, thicknessBoost)) return true;
+  }
+  return false;
+}
+
+function pulseArcHitsPoint(px, py, pulse, radiusOverride = null) {
+        const radius = radiusOverride == null ? (pulse.arcRadius || pulse.range || 0) : radiusOverride;
+        const halfThickness = getPulseHalfThickness(pulse);
+        const dx = px - pulse.x;
+        const dy = py - pulse.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const diff = Math.abs(angleDiff(Math.atan2(dy, dx), pulse.angle));
+        if (diff > pulse.cone) return false;
+        return dist >= Math.max(0, radius - halfThickness) && dist <= radius + halfThickness;
+      }
+
+      function getPulseArcVerticalExtents(pulse, cx = pulse.x, cy = pulse.y) {
+        const radius = pulse.arcRadius || pulse.range || 0;
+        const halfThickness = getPulseHalfThickness(pulse);
+        const candidates = [pulse.angle - pulse.cone, pulse.angle + pulse.cone];
+        for (const vertical of [-Math.PI / 2, Math.PI / 2]) {
+          if (Math.abs(angleDiff(vertical, pulse.angle)) <= pulse.cone + 0.0001) candidates.push(vertical);
+        }
+        const sines = candidates.map((a) => Math.sin(a));
+        return {
+          top: cy + Math.min(...sines) * radius - halfThickness,
+          bottom: cy + Math.max(...sines) * radius + halfThickness
+        };
+      }
+
+      function getPulseRenderRadius(pulse) {
+        return pulse.mode === 'push'
+          ? (pulse.arcRadius || 0)
+          : Math.max(0, pulse.range * (1 - pulse.life / pulse.maxLife));
+      }
+
+      function pulseArcIntersectsPulse(pushPulse, otherPulse) {
+        if (pushPulse.side === otherPulse.side || otherPulse.mode !== 'solid') return false;
+        const otherRadius = getPulseRenderRadius(otherPulse);
+        if (otherRadius <= 0) return false;
+        const midX = otherPulse.x + Math.cos(otherPulse.angle) * otherRadius;
+        const midY = otherPulse.y + Math.sin(otherPulse.angle) * otherRadius;
+        if (pulseArcHitsPoint(midX, midY, pushPulse)) return true;
+        const otherEdge = getPulseArcEndpoints({ ...otherPulse, arcRadius: otherRadius });
+        return pulseArcHitsPoint(otherEdge.x1, otherEdge.y1, pushPulse) || pulseArcHitsPoint(otherEdge.x2, otherEdge.y2, pushPulse);
+      }
+
+      function pulseArcHitsPaddle(pulse, paddle) {
+        const centerX = paddle.x + paddle.w / 2;
+        const centerY = paddle.y + paddle.h / 2;
+        const dx = centerX - pulse.x;
+        const dy = centerY - pulse.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const diff = Math.abs(angleDiff(Math.atan2(dy, dx), pulse.angle));
+        const radius = pulse.arcRadius || pulse.range || 0;
+        const halfThickness = getPulseHalfThickness(pulse) + Math.max(paddle.w, paddle.h) * 0.18;
+        if (diff <= pulse.cone + 0.08 && Math.abs(dist - radius) <= halfThickness) return true;
+        const edge = getPulseArcEndpoints(pulse);
+        return pointSegmentDistance(centerX, centerY, edge.x1, edge.y1, edge.x2, edge.y2) <= halfThickness + Math.max(paddle.w, paddle.h) * 0.08;
+      }
+
+      function getPulseStats(paddle) {
+        const level = clamp(syncPaddleLevel(paddle) || 1, 1, MAX_WAVE_LEVEL);
+        const charge = clamp(paddle.pulseCharge || 0, 0, getPaddleMaxCharge(paddle));
+        const solidReady = charge >= SOLID_CHARGE_THRESHOLD;
+        const fullReady = charge >= FULL_CHARGE_THRESHOLD;
+
+        if (fullReady) {
+          const thickness = 92 + level * 6.2;
+          return {
+            level,
+            charge,
+            mode: 'push',
+            chargeCost: GOLD_WAVE_COST,
+            range: W,
+            strength: 206 + level * 15,
+            cone: 0.46 + level * 0.012,
+            cooldown: 0.07,
+            life: 7,
+            speed: 952 + level * 10,
+            arcRadius: 82 + level * 8.2,
+            waveThickness: thickness,
+            renderThickness: thickness,
+            color: '#ffd34d',
+            glow: '#ffe68c',
+            fill: 'rgba(255, 211, 77, 0.22)'
+          };
+        }
+
+        if (solidReady) {
+          const thickness = 32 + level * 2.4;
+          return {
+            level,
+            charge,
+            mode: 'solid',
+            chargeCost: PINK_WAVE_COST,
+            range: 208 + level * 10 + (charge - SOLID_CHARGE_THRESHOLD) * 42,
+            strength: 138 + level * 7 + charge * 18,
+            cone: 0.86 + level * 0.018,
+            cooldown: 0.052,
+            life: 0.29 + Math.min(0.08, 0.04 + (charge - SOLID_CHARGE_THRESHOLD) * 0.08),
+            waveThickness: thickness,
+            renderThickness: thickness,
+            color: '#ff7cd7',
+            glow: '#ffb3ec',
+            fill: 'rgba(255, 124, 215, 0.17)'
+          };
+        }
+
+        const thickness = 24 + level * 1.9;
+        const usableCharge = Math.max(charge, BLUE_WAVE_COST);
+        return {
+          level,
+          charge,
+          mode: 'wave',
+          chargeCost: BLUE_WAVE_COST,
+          range: 210 + usableCharge * 118 + level * 12,
+          strength: 118 + usableCharge * 42 + level * 7,
+          cone: 0.84 + usableCharge * 0.09 + level * 0.014,
+          cooldown: 0.03,
+          life: 0.18 + usableCharge * 0.04,
+          waveThickness: thickness,
+          renderThickness: thickness,
+          color: '#7bd2ff',
+          glow: '#7bd2ff',
+          fill: 'rgba(123, 210, 255, 0.1)'
+        };
+      }
+
+function updatePaddleAim(paddle, dt) {
+        const base = paddle.side === 'left' ? 0 : Math.PI;
+        const delta = clamp(paddle.vy / Math.max(500, paddle.speed), -1, 1) * 1.04;
+        paddle.targetAimAngle = paddle.side === 'left' ? base + delta : base - delta;
+        if (paddle.jamTimer > 0) {
+          paddle.targetAimAngle += Math.sin(performance.now() * 0.04 + (paddle.side === 'left' ? 0 : 1.9)) * 0.16 * Math.min(1, paddle.jamTimer + 0.25);
+        }
+        paddle.aimAngle += angleDiff(paddle.targetAimAngle, paddle.aimAngle) * Math.min(1, dt * 10);
+      }
+
+function firePulse(paddle) {
+  refreshPaddleChargeState(paddle);
+  if (paddle.cooldown > 0 || paddle.jamTimer > 0.1 || (paddle.pulseCharge || 0) < MIN_FIRE_CHARGE) return false;
+  const origin = getPulseOrigin(paddle);
+  const currentCharge = clamp(paddle.pulseCharge || 0, 0, getPaddleMaxCharge(paddle));
+  const stats = getPulseStats(paddle);
+  const usedCharge = Math.min(currentCharge, stats.chargeCost || currentCharge);
+  paddle.cooldown = Math.max(paddle.cooldown, stats.cooldown);
+  paddle.pulseCharge = Math.max(0, currentCharge - (stats.chargeCost || currentCharge));
+
+  if (paddle.side === 'left') matchStats.leftShots += 1;
+  else matchStats.rightShots += 1;
+
+  if (stats.mode === 'push') {
+    world.pulses.push({
+      mode: 'push',
+      x: origin.x,
+      y: origin.y,
+      prevX: origin.x,
+      prevY: origin.y,
+      angle: paddle.aimAngle,
+      side: paddle.side,
+      life: stats.life,
+      maxLife: stats.life,
+      strength: stats.strength,
+      level: stats.level,
+      charge: usedCharge,
+      arcRadius: stats.arcRadius,
+      cone: stats.cone,
+      waveThickness: stats.waveThickness,
+      renderThickness: stats.renderThickness,
+      color: stats.color,
+      glow: stats.glow,
+      fill: stats.fill,
+      vx: Math.cos(paddle.aimAngle) * stats.speed,
+      vy: Math.sin(paddle.aimAngle) * stats.speed,
+      trail: [],
+      diffraction: [],
+      hitBallIds: new Set(),
+      hitPaddleIds: new Set()
+    });
+    showMessage('Full charge force arc deployed. The whole bar just cashed out.', 1.02);
+  } else {
+    world.pulses.push({
+      mode: stats.mode,
+      x: origin.x,
+      y: origin.y,
+      angle: paddle.aimAngle,
+      side: paddle.side,
+      life: stats.life,
+      maxLife: stats.life,
+      range: stats.range,
+      strength: stats.strength,
+      cone: stats.cone,
+      waveThickness: stats.waveThickness,
+      renderThickness: stats.renderThickness,
+      level: stats.level,
+      radius: 0,
+      charge: usedCharge,
+      color: stats.color,
+      glow: stats.glow,
+      fill: stats.fill,
+      hitBallIds: new Set()
+    });
+  }
+
+  emitParticles(origin.x, origin.y, 14 + stats.level * 3, stats.color, 320 + stats.level * 24);
+  playTone(420 + stats.level * 55 + usedCharge * 160, 0.07, 'triangle', 0.04);
+  playTone(260 + stats.level * 30 + usedCharge * 120, 0.11, 'sine', 0.025);
+  return true;
+}
+
+function maybeTriggerLongRallyMultiball() {
+        if (state.longRallyTriggered || world.balls.length !== 1) return;
+        if (state.roundSeconds < 13.2 && state.rally < 15) return;
+        state.longRallyTriggered = true;
+        const base = world.balls[0];
+        const clone = createBall(base.vx >= 0 ? 1 : -1, W / 2, H / 2);
+        clone.vx = -base.vx * 0.9;
+        clone.vy = (base.vy >= 0 ? -1 : 1) * Math.max(220, Math.abs(base.vy) * 0.92);
+        clampBallSpeed(clone, BALL_SPEED_CAP * 0.96);
+        world.balls.push(clone);
+        showMessage('Long rally mutates into multiball. Absolutely no committee approved this.', 1.7);
+        updateStatus('Long rally chaos unlocked. Additional ball deployed.');
+        playTone(980, 0.08, 'triangle', 0.04);
+        emitParticles(W / 2, H / 2, 30, '#9fdcff', 360);
+      }
+
+      function resize() {
+
+        const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+        canvas.width = Math.floor(window.innerWidth * dpr);
+        canvas.height = Math.floor(window.innerHeight * dpr);
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        scale = Math.min(window.innerWidth / W, window.innerHeight / H);
+      }
+
+      function initAudio() {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      }
+
+      let muted = false;
+
+      function playTone(freq, duration = 0.08, type = 'square', volume = 0.03) {
+        if (muted || !audioCtx) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + duration + 0.01);
+      }
+
+      function showMessage(text, duration = 2.2) {
+        ui.message.textContent = text;
+        ui.message.classList.add('show');
+        messageTimer = duration;
+      }
+
+      function hideMessage() {
+        ui.message.classList.remove('show');
+      }
+
+      function updateStatus(text) {
+        ui.statusPill.textContent = text;
+      }
+
+function resetMatch() {
+  matchStats = createMatchStats();
+  state.leftScore = 0;
+  state.rightScore = 0;
+  state.rally = 0;
+  state.roundSeconds = 0;
+  state.leftBoostTimer = 0;
+  state.rightBoostTimer = 0;
+  state.slowmoTimer = 0;
+  state.comboFlash = 0;
+  state.impacts = 0;
+  state.powerSpawnTimer = 4.8 + Math.random() * 2.2;
+  state.powerDurationTimer = 0;
+  state.activePowerLabel = 'None';
+  state.lastPowerType = null;
+  state.longRallyTriggered = false;
+  world.powerups.length = 0;
+  world.particles.length = 0;
+  world.pulses.length = 0;
+  world.floatTexts.length = 0;
+  world.balls.length = 0;
+  world.paddles.left.y = H / 2 - world.paddles.left.h / 2;
+  world.paddles.right.y = H / 2 - world.paddles.right.h / 2;
+  world.paddles.left.h = world.paddles.left.baseH;
+  world.paddles.right.h = world.paddles.right.baseH;
+  world.paddles.left.cooldown = 0;
+  world.paddles.right.cooldown = 0;
+  world.paddles.left.jamTimer = 0;
+  world.paddles.right.jamTimer = 0;
+  world.paddles.left.waveXP = 0;
+  world.paddles.right.waveXP = 0;
+  world.paddles.left.pulseLevel = 1;
+  world.paddles.right.pulseLevel = 1;
+  world.paddles.left.maxCharge = BASE_MAX_CHARGE;
+  world.paddles.right.maxCharge = BASE_MAX_CHARGE;
+  world.paddles.left.overcapTimer = 0;
+  world.paddles.right.overcapTimer = 0;
+  world.paddles.left.chargeBoostTimer = 0;
+  world.paddles.right.chargeBoostTimer = 0;
+  world.paddles.left.pulseCharge = BASE_MAX_CHARGE;
+  world.paddles.right.pulseCharge = BASE_MAX_CHARGE;
+  world.paddles.left.solidFlash = 0;
+  world.paddles.right.solidFlash = 0;
+  world.paddles.left.slowTimer = 0;
+  world.paddles.right.slowTimer = 0;
+  spawnServe(state.serveDirection);
+  updateUI();
+}
+
+function spawnServe(direction) {
+  state.serveDirection = direction;
+  state.rally = 0;
+  state.roundSeconds = 0;
+  state.longRallyTriggered = world.balls.length > 1;
+  if (state.powerDurationTimer <= 0) state.activePowerLabel = 'None';
+  createReplacementBall(direction);
+  updateUI();
+  showMessage('Fresh ball deployed. The court refused to calm down.', 0.95);
+}
+
+function startMatch({ demo = false } = {}) {
+        initAudio();
+        state.mode = ui.modeSelect.value;
+        state.difficulty = ui.difficultySelect.value;
+        state.scoreLimit = sanitizeScoreLimit(ui.scoreLimitSelect.value);
+        ui.scoreLimitSelect.value = state.scoreLimit;
+        state.powerupsEnabled = ui.powerupsToggle.checked;
+        state.trailsEnabled = ui.trailToggle.checked;
+        state.theme = ui.themeSelect.value;
+        state.demoMode = demo;
+        state.running = true;
+        state.paused = false;
+        state.menuOpen = false;
+        state.gameOver = false;
+        state.serveDirection = Math.random() > 0.5 ? 1 : -1;
+        ui.menu.classList.add('hidden');
+        ui.pause.classList.add('hidden');
+        ui.gameOver.classList.add('hidden');
+        applyTheme(state.theme);
+        resetMatch();
+        updateStatus(demo ? 'Demo mode: two robots, one court.' : 'Match live. Rectangles are focused.');
+        showMessage(demo ? 'Demo mode activated. Nobody can complain about the controls.' : 'Game on.', 1.6);
+        playTone(330, 0.08, 'triangle', 0.04);
+        playTone(660, 0.12, 'triangle', 0.03);
+      }
+
+      function backToMenu() {
+        state.running = false;
+        state.paused = false;
+        state.menuOpen = true;
+        state.gameOver = false;
+        ui.menu.classList.remove('hidden');
+        ui.pause.classList.add('hidden');
+        ui.gameOver.classList.add('hidden');
+        updateStatus('Ready to embarrass a rectangle.');
+        updateMenuStats();
+      }
+
+      function pauseGame(toggle) {
+        if (!state.running || state.gameOver) return;
+        state.paused = typeof toggle === 'boolean' ? toggle : !state.paused;
+        ui.pause.classList.toggle('hidden', !state.paused);
+        if (state.paused) {
+          updateStatus('Paused. The ball is thinking about its choices.');
+          playTone(260, 0.08, 'sine', 0.03);
+        } else {
+          updateStatus('Match resumed. Brace for geometry.');
+          playTone(390, 0.08, 'sine', 0.03);
+        }
+      }
+
+function endMatch(leftWon) {
+  state.running = false;
+  state.gameOver = true;
+  const name = leftWon ? ui.leftName.textContent : ui.rightName.textContent;
+  recordMatchHistory(leftWon);
+  ui.winnerTitle.textContent = name + ' Wins';
+  ui.winnerSubtitle.textContent = wittyLines[(Math.random() * wittyLines.length) | 0];
+  renderGameOverStats();
+  ui.gameOver.classList.remove('hidden');
+  updateMenuStats();
+  updateStatus(name + ' won. The scoreboard has receipts.');
+  playTone(leftWon ? 560 : 430, 0.12, 'triangle', 0.05);
+  playTone(leftWon ? 720 : 510, 0.2, 'triangle', 0.04);
+}
+
+function updateMenuStats() {
+  ui.menuBestRally.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
+  ui.lastWinnerStat.textContent = lastWinner;
+  ui.energyStat.textContent = 'Wave cap L' + MAX_WAVE_LEVEL;
+}
+
+function updateUI() {
+  ui.leftScore.textContent = state.leftScore;
+  ui.rightScore.textContent = state.rightScore;
+  ui.leftName.textContent = state.demoMode ? 'CPU A' : 'PLAYER';
+  ui.rightName.textContent = state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU');
+  ui.modeLabel.textContent = state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU');
+  ui.difficultyLabel.textContent = state.difficulty === 'chill' ? 'Chill' : state.difficulty === 'spicy' ? 'Spicy' : 'Ridiculous';
+  ui.rallyLabel.textContent = state.rally;
+  ui.bestRallyLabel.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
+  renderStatusIcons();
+}
+
+function applyTheme(name) {
+        const t = themes[name] || themes.neon;
+        document.documentElement.style.setProperty('--bg1', t.bgTop);
+        document.documentElement.style.setProperty('--bg2', t.bgBottom);
+        document.documentElement.style.setProperty('--accent', t.accent);
+        document.documentElement.style.setProperty('--accent-2', t.accent2);
+      }
+
+      function emitParticles(x, y, count, color, speed = 260) {
+        if (!state.trailsEnabled) return;
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const s = speed * (0.2 + Math.random() * 0.8);
+          world.particles.push({
+            x,
+            y,
+            vx: Math.cos(a) * s,
+            vy: Math.sin(a) * s,
+            life: 0.45 + Math.random() * 0.35,
+            maxLife: 0.45 + Math.random() * 0.35,
+            size: 2 + Math.random() * 4,
+            color
+          });
+        }
+      }
+
+function spawnPowerup() {
+  const roll = Math.random();
+  let type;
+  if (roll < 0.34) {
+    type = 'minion';
+  } else {
+    const pool = ['grow', 'overcharge', 'capacitor', 'rapid', 'multi', 'pulse', 'shrink', 'slow', 'jam', 'drain'];
+    type = pool[(Math.random() * pool.length) | 0];
+  }
+  world.powerups.push({
+    type,
+    x: W * (0.3 + Math.random() * 0.4),
+    y: 78 + Math.random() * (H - 156),
+    r: type === 'minion' ? 16 : 18,
+    pulse: Math.random() * Math.PI * 2,
+    life: type === 'minion' ? 12.5 : 11
+  });
+  const def = powerupDefs[type];
+  if (def.kind === 'debuff') showMessage('Debuff powerup on the field. Somebody is about to get inconvenienced.', 1.8);
+  else if (def.kind === 'minion') showMessage('XP minion spawned. Hit it before somebody else farms it.', 1.6);
+  else showMessage('Buff powerup on the field. Chase the shiny advantage.', 1.8);
+  updateStatus('Field pickup spawned. ' + def.label + ' is live.');
+  playTone(def.kind === 'minion' ? 860 : 780, 0.06, 'triangle', 0.03);
+}
+
+
+function collectPowerup(item, pickedByLeft, source = 'ball') {
+  state.lastPowerType = null;
+  const def = powerupDefs[item.type] || powerupDefs.grow;
+  if (pickedByLeft) matchStats.leftPowerups += 1;
+  else matchStats.rightPowerups += 1;
+  applyPowerup(item.type, pickedByLeft);
+  spawnFloatText(item.x, item.y, def.label, def.kind === 'minion' ? 'buff' : def.kind);
+  const owner = pickedByLeft ? 'LEFT' : 'RIGHT';
+  updateStatus(owner + ' ' + (source === 'wave' ? 'wave' : 'ball') + ' snagged ' + def.label.toUpperCase() + '.');
+  emitParticles(item.x, item.y, def.kind === 'minion' ? 26 : 20, def.color, 320);
+  playTone(def.kind === 'minion' ? 1180 : 1040, 0.07, 'triangle', 0.04);
+}
+
+function applyPowerup(type, scoredByLeft) {
+  const left = world.paddles.left;
+  const right = world.paddles.right;
+  const beneficiary = scoredByLeft ? left : right;
+  const victim = scoredByLeft ? right : left;
+  const def = powerupDefs[type] || powerupDefs.grow;
+
+  state.activePowerLabel = def.label + ' • Wave L' + beneficiary.pulseLevel;
+  state.lastPowerType = type;
+  state.powerDurationTimer = 0;
+
+  if (type === 'grow') {
+    beneficiary.h = Math.min(210, beneficiary.h + 34);
+    if (beneficiary.side === 'left') state.leftBoostTimer = 6.4; else state.rightBoostTimer = 6.4;
+    state.powerDurationTimer = Math.max(state.powerDurationTimer, 6.4);
+    showMessage('Mega Paddle activated. More coverage, less panic.', 1.45);
+  } else if (type === 'overcharge') {
+    refreshPaddleChargeState(beneficiary);
+    beneficiary.pulseCharge = getPaddleMaxCharge(beneficiary);
+    beneficiary.cooldown = Math.min(beneficiary.cooldown, 0.02);
+    showMessage('Overcharge loaded. Your bar is instantly topped off.', 1.5);
+  } else if (type === 'capacitor') {
+    beneficiary.overcapTimer = Math.max(beneficiary.overcapTimer || 0, 8.5);
+    beneficiary.maxCharge = OVERCAP_MAX_CHARGE;
+    beneficiary.pulseCharge = Math.min(beneficiary.maxCharge, (beneficiary.pulseCharge || 0) + 0.35);
+    state.powerDurationTimer = Math.max(state.powerDurationTimer, 8.5);
+    showMessage('Cap Bank online. The wave bar stretches to 150 percent.', 1.5);
+  } else if (type === 'rapid') {
+    beneficiary.chargeBoostTimer = Math.max(beneficiary.chargeBoostTimer || 0, 7.4);
+    beneficiary.pulseCharge = Math.min(getPaddleMaxCharge(beneficiary), (beneficiary.pulseCharge || 0) + 0.16);
+    state.powerDurationTimer = Math.max(state.powerDurationTimer, 7.4);
+    showMessage('Rapid Charge active. The bar now refills like it drank espresso.', 1.5);
+  } else if (type === 'multi') {
+    const clone = world.balls[0] || createBall(scoredByLeft ? 1 : -1);
+    const extra = createBall(scoredByLeft ? 1 : -1, clone.x, clone.y);
+    extra.vx = -clone.vx * 0.9;
+    extra.vy = clone.vy * -0.88;
+    extra.trail = [];
+    clampBallSpeed(extra, BALL_SPEED_CAP * 0.92);
+    world.balls.push(extra);
+    showMessage('Multiball engaged. The court has lost containment.', 1.6);
+  } else if (type === 'pulse') {
+    adjustWaveXP(beneficiary, PULSE_POWERUP_XP);
+    showMessage('XP Surge acquired. Your waves just got meaner.', 1.45);
+  } else if (type === 'minion') {
+    adjustWaveXP(beneficiary, MINION_XP);
+    showMessage('XP Minion popped. Your wave tech just leveled up a little.', 1.35);
+  } else if (type === 'shrink') {
+    victim.h = Math.max(92, victim.h - 26);
+    if (victim.side === 'left') state.leftBoostTimer = 5.8; else state.rightBoostTimer = 5.8;
+    state.powerDurationTimer = Math.max(state.powerDurationTimer, 5.8);
+    showMessage('Shrink Hex landed. Somebody misplaced part of a paddle.', 1.45);
+  } else if (type === 'slow') {
+    victim.slowTimer = Math.max(victim.slowTimer || 0, 3.8);
+    state.powerDurationTimer = Math.max(state.powerDurationTimer, 3.8);
+    showMessage('Drag Field landed. Their paddle now moves like it regrets everything.', 1.45);
+  } else if (type === 'jam') {
+    victim.jamTimer = Math.max(victim.jamTimer || 0, 3.1);
+    state.powerDurationTimer = Math.max(state.powerDurationTimer, 3.1);
+    showMessage('Aim Jam landed. Their aimer now has trust issues.', 1.45);
+  } else if (type === 'drain') {
+    victim.pulseCharge = Math.max(0, (victim.pulseCharge || 0) - 0.34);
+    adjustWaveXP(victim, -DEBUFF_XP_LOSS);
+    showMessage('XP Drain landed. Their wave program just got audited.', 1.45);
+  }
+
+  syncPaddleLevel(left);
+  syncPaddleLevel(right);
+  updateUI();
+  playTone(900, 0.08, 'triangle', 0.045);
+  emitParticles(W / 2, H / 2, def.kind === 'minion' ? 18 : 24, def.color, 330);
+}
+
+function handleGoal(leftScored) {
+        const scorer = leftScored ? world.paddles.left : world.paddles.right;
+        const scorerName = leftScored ? ui.leftName.textContent : ui.rightName.textContent;
+        if (leftScored) {
+          state.leftScore += 1;
+          state.serveDirection = -1;
+        } else {
+          state.rightScore += 1;
+          state.serveDirection = 1;
+        }
+
+        adjustWaveXP(scorer, GOAL_XP);
+
+        if (state.rally > state.bestRally) {
+          storeBestRally(state.rally);
+        }
+
+        state.rally = 0;
+        state.roundSeconds = 0;
+        state.longRallyTriggered = world.balls.length > 1;
+
+        updateUI();
+        showMessage(scoreLines[(Math.random() * scoreLines.length) | 0], 1.25);
+        updateStatus(scorerName + ' scores. New ball deployed immediately.');
+        playTone(leftScored ? 510 : 390, 0.09, 'square', 0.05);
+        emitParticles(leftScored ? 110 : W - 110, H / 2, 30, leftScored ? themes[state.theme].paddleLeft : themes[state.theme].paddleRight, 370);
+        screenShake = Math.max(screenShake, 10);
+
+        if (state.leftScore >= state.scoreLimit || state.rightScore >= state.scoreLimit) {
+          endMatch(state.leftScore > state.rightScore);
+          return;
+        }
+
+        spawnServe(state.serveDirection);
+      }
+
+function updatePaddle(paddle, upPressed, downPressed, dt) {
+        const jamFactor = paddle.jamTimer > 0 ? 0.56 + Math.sin(performance.now() * 0.03 + (paddle.side === 'left' ? 0 : 2.2)) * 0.08 : 1;
+        const slowFactor = paddle.slowTimer > 0 ? 0.62 : 1;
+        let targetV = 0;
+        if (upPressed && !downPressed) targetV = -paddle.speed * jamFactor * slowFactor;
+        if (downPressed && !upPressed) targetV = paddle.speed * jamFactor * slowFactor;
+        paddle.vy += (targetV - paddle.vy) * Math.min(1, dt * 18);
+        paddle.y += paddle.vy * dt;
+        paddle.y = Math.max(20, Math.min(H - 20 - paddle.h, paddle.y));
+        paddle.flash = Math.max(0, paddle.flash - dt * 3.6);
+        paddle.hitScale += (1 - paddle.hitScale) * Math.min(1, dt * 12);
+        paddle.cooldown = Math.max(0, paddle.cooldown - dt);
+        paddle.jamTimer = Math.max(0, paddle.jamTimer - dt);
+        paddle.slowTimer = Math.max(0, paddle.slowTimer - dt);
+        paddle.solidFlash = Math.max(0, paddle.solidFlash - dt * 3.5);
+        paddle.overcapTimer = Math.max(0, (paddle.overcapTimer || 0) - dt);
+        paddle.chargeBoostTimer = Math.max(0, (paddle.chargeBoostTimer || 0) - dt);
+        syncPaddleLevel(paddle);
+        refreshPaddleChargeState(paddle);
+        const chargeRate = (0.152 + paddle.pulseLevel * 0.0105) * (paddle.chargeBoostTimer > 0 ? 1.9 : 1);
+        paddle.pulseCharge = clamp((paddle.pulseCharge || 0) + dt * chargeRate, 0, getPaddleMaxCharge(paddle));
+        updatePaddleAim(paddle, dt);
+      }
+
+function updateAI(paddle, dt, isLeft) {
+        const diff = difficultyMap[state.difficulty];
+        const balls = world.balls;
+        let targetY = H / 2;
+        let chosen = null;
+
+        for (const ball of balls) {
+          const headingToward = isLeft ? ball.vx < 0 : ball.vx > 0;
+          if (!headingToward && chosen) continue;
+          if (!chosen || Math.abs(ball.x - paddle.x) < Math.abs(chosen.x - paddle.x)) {
+            chosen = ball;
+          }
+        }
+        chosen ||= balls[0];
+
+        if (chosen) {
+          const distance = Math.abs(chosen.x - paddle.x);
+          const lead = Math.min(0.85, distance / W);
+          targetY = chosen.y + chosen.vy * lead * (0.25 + diff.reaction) + (Math.sin(performance.now() * 0.002 + paddle.aiJitter) * diff.aiError);
+        }
+
+        const center = paddle.y + paddle.h / 2;
+        const delta = targetY - center;
+        const deadband = 8 + diff.aiError * 0.08;
+        let up = false;
+        let down = false;
+        if (delta < -deadband) up = true;
+        if (delta > deadband) down = true;
+
+        const originalSpeed = paddle.speed;
+        paddle.speed = diff.aiSpeed;
+        updatePaddle(paddle, up, down, dt);
+        paddle.speed = originalSpeed;
+
+        if (chosen && paddle.cooldown <= 0 && paddle.jamTimer <= 0.08 && (paddle.pulseCharge || 0) >= MIN_FIRE_CHARGE) {
+          const origin = getPulseOrigin(paddle);
+          const dx = chosen.x - origin.x;
+          const dy = chosen.y - origin.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const pulseStats = getPulseStats(paddle);
+          const diffAngle = Math.abs(angleDiff(Math.atan2(dy, dx), paddle.aimAngle));
+          const headingToward = isLeft ? chosen.vx < 0 : chosen.vx > 0;
+          const fireWindow = pulseStats.mode === 'push' ? W : (headingToward ? pulseStats.range * 0.95 : pulseStats.range * 0.7);
+          const angleWindow = pulseStats.mode === 'push' ? 0.24 : pulseStats.cone * (pulseStats.mode === 'solid' ? 0.72 : 0.8);
+          if (dist < fireWindow && diffAngle < angleWindow) {
+            const chance = pulseStats.mode === 'push' ? (0.24 + diff.reaction * 0.45) : (headingToward ? (0.52 + diff.reaction * 0.8) : 0.18);
+            if (Math.random() < chance * dt * 14) {
+              firePulse(paddle);
+            }
+          }
+        }
+      }
+
+      function collideBallWithPaddle(ball, paddle) {
+
+        if (
+          ball.x + ball.r >= paddle.x &&
+          ball.x - ball.r <= paddle.x + paddle.w &&
+          ball.y + ball.r >= paddle.y &&
+          ball.y - ball.r <= paddle.y + paddle.h
+        ) {
+          const offset = ((ball.y - (paddle.y + paddle.h / 2)) / (paddle.h / 2));
+          const direction = paddle.side === 'left' ? 1 : -1;
+          let speed = Math.min(BALL_SPEED_CAP, Math.hypot(ball.vx, ball.vy) * 1.028 + 22);
+          const angle = offset * 1.05;
+          ball.vx = Math.cos(angle) * speed * direction;
+          ball.vy = Math.sin(angle) * speed + paddle.vy * 0.16;
+          ball.x = paddle.side === 'left' ? paddle.x + paddle.w + ball.r : paddle.x - ball.r;
+
+          if ((paddle.pulseCharge || 0) >= SOLID_CHARGE_THRESHOLD) {
+            const fullChargeHit = (paddle.pulseCharge || 0) >= FULL_CHARGE_THRESHOLD;
+            const forceColor = fullChargeHit ? '#ffd34d' : '#ff7cd7';
+            if (fullChargeHit) {
+              const forceSpeed = Math.min(BALL_SPEED_CAP * 0.98, Math.max(speed * 0.98, 620 + paddle.pulseLevel * 16));
+              const forceAngle = clamp(offset * 0.7 + Math.sin(paddle.aimAngle) * 0.14, -0.92, 0.92);
+              ball.vx = Math.cos(forceAngle) * forceSpeed * direction;
+              ball.vy = Math.sin(forceAngle) * forceSpeed + paddle.vy * 0.12 + Math.sin(paddle.aimAngle) * 18;
+            } else {
+              const defensiveSpeed = Math.min(BALL_SPEED_CAP * 0.88, Math.max(500 + paddle.pulseLevel * 12, speed * 0.94));
+              const defensiveAngle = clamp(offset * 0.62 + Math.sin(paddle.aimAngle) * 0.1, -0.82, 0.82);
+              ball.vx = Math.cos(defensiveAngle) * defensiveSpeed * direction;
+              ball.vy = Math.sin(defensiveAngle) * defensiveSpeed + paddle.vy * 0.1;
+            }
+            paddle.solidFlash = 0.35;
+            emitParticles(ball.x, ball.y, 20 + paddle.pulseLevel * 2, forceColor, 340);
+            playTone(340 + paddle.pulseLevel * 38, 0.06, 'triangle', 0.05);
+            screenShake = Math.max(screenShake, fullChargeHit ? 6 : 4);
+          }
+
+          ball.lastHitSide = paddle.side;
+          state.rally += 1;
+          state.impacts += 1;
+          if (paddle.side === 'left') matchStats.leftBallHits += 1;
+          else matchStats.rightBallHits += 1;
+          paddle.flash = 1;
+          paddle.hitScale = 1.16;
+          state.comboFlash = 0.22;
+          matchStats.longestRally = Math.max(matchStats.longestRally, state.rally);
+          if (state.rally > state.bestRally) {
+            storeBestRally(state.rally);
+          }
+          if (state.rally % 7 === 0) {
+            showMessage('Rally x' + state.rally + '. Nobody blink.', 1.1);
+          }
+          updateUI();
+          playTone(180 + Math.min(700, state.rally * 14), 0.045, 'square', 0.04);
+          emitParticles(ball.x, ball.y, 14, paddle.side === 'left' ? themes[state.theme].paddleLeft : themes[state.theme].paddleRight, 300);
+          screenShake = Math.max(screenShake, 4);
+        }
+      }
+
+function updateBalls(dt) {
+  const slowFactor = state.slowmoTimer > 0 ? 0.7 : 1;
+  for (let i = world.balls.length - 1; i >= 0; i--) {
+    const ball = world.balls[i];
+    ball.flash = Math.max(0, ball.flash - dt * 2.5);
+    ball.hueShift += dt * 4;
+    ball.boostTimer = Math.max(0, (ball.boostTimer || 0) - dt);
+    ball.boostIntensity = Math.max(0, (ball.boostIntensity || 0) - dt * 1.8);
+    ball.blueResistTimer = Math.max(0, (ball.blueResistTimer || 0) - dt);
+    if (ball.blueResistTimer <= 0) ball.blueResistStrength = 0;
+
+    const hadStun = (ball.stunTimer || 0) > 0;
+    if (hadStun) {
+      ball.stunTimer = Math.max(0, ball.stunTimer - dt);
+      if (ball.stunTimer <= 0) {
+        ball.vx = ball.storedVx || ball.vx;
+        ball.vy = ball.storedVy || ball.vy;
+        ball.storedVx = 0;
+        ball.storedVy = 0;
+      }
+    }
+
+    if (!hadStun || ball.stunTimer <= 0) {
+      ball.x += ball.vx * dt * slowFactor;
+      ball.y += ball.vy * dt * slowFactor;
+    } else {
+      ball.flash = Math.max(ball.flash, 0.82);
+      ball.hueShift += dt * 8;
+    }
+
+    if (state.trailsEnabled) {
+      ball.trail.push({ x: ball.x, y: ball.y, life: 0.35, boost: ball.boostTimer > 0 ? ball.boostColor : null });
+      if (ball.trail.length > 16) ball.trail.shift();
+      for (let t = ball.trail.length - 1; t >= 0; t--) {
+        ball.trail[t].life -= dt;
+        if (ball.trail[t].life <= 0) ball.trail.splice(t, 1);
+      }
+    } else {
+      ball.trail.length = 0;
+    }
+
+    if (ball.stunTimer > 0) {
+      continue;
+    }
+
+    if (ball.y - ball.r <= 12) {
+      ball.y = 12 + ball.r;
+      ball.vy = Math.abs(ball.vy);
+      clampBallSpeed(ball);
+      playTone(270, 0.04, 'sine', 0.02);
+      emitParticles(ball.x, ball.y, 10, themes[state.theme].ball, 200);
+    }
+    if (ball.y + ball.r >= H - 12) {
+      ball.y = H - 12 - ball.r;
+      ball.vy = -Math.abs(ball.vy);
+      clampBallSpeed(ball);
+      playTone(270, 0.04, 'sine', 0.02);
+      emitParticles(ball.x, ball.y, 10, themes[state.theme].ball, 200);
+    }
+
+    collideBallWithPaddle(ball, world.paddles.left);
+    collideBallWithPaddle(ball, world.paddles.right);
+
+    for (let p = world.powerups.length - 1; p >= 0; p--) {
+      const item = world.powerups[p];
+      const dx = ball.x - item.x;
+      const dy = ball.y - item.y;
+      if (dx * dx + dy * dy <= (ball.r + item.r) * (ball.r + item.r)) {
+        const pickedByLeft = ball.vx > 0;
+        world.powerups.splice(p, 1);
+        collectPowerup(item, pickedByLeft, 'ball');
+      }
+    }
+
+    clampBallSpeed(ball);
+
+    if (ball.x + ball.r < 0) {
+      world.balls.splice(i, 1);
+      handleGoal(false);
+      if (state.gameOver) return;
+      continue;
+    }
+    if (ball.x - ball.r > W) {
+      world.balls.splice(i, 1);
+      handleGoal(true);
+      if (state.gameOver) return;
+      continue;
+    }
+  }
+}
+
+function updatePulses(dt) {
+        for (let i = world.pulses.length - 1; i >= 0; i--) {
+          const pulse = world.pulses[i];
+
+          if (pulse.mode === 'push') {
+            pulse.life -= dt;
+            pulse.prevX = pulse.x;
+            pulse.prevY = pulse.y;
+            pulse.x += pulse.vx * dt;
+            pulse.y += pulse.vy * dt;
+            pulse.trail.push({ x: pulse.x, y: pulse.y, angle: pulse.angle, life: 0.24 });
+            if (pulse.trail.length > 10) pulse.trail.shift();
+            for (let t = pulse.trail.length - 1; t >= 0; t--) {
+              pulse.trail[t].life -= dt;
+              if (pulse.trail[t].life <= 0) pulse.trail.splice(t, 1);
+            }
+            for (let d = pulse.diffraction.length - 1; d >= 0; d--) {
+              pulse.diffraction[d].life -= dt;
+              pulse.diffraction[d].phase += dt * 7.5;
+              if (pulse.diffraction[d].life <= 0) pulse.diffraction.splice(d, 1);
+            }
+
+            const extents = getPulseArcVerticalExtents(pulse);
+            const clipAllowance = Math.min(54, 12 + getPulseHalfThickness(pulse) * 0.56);
+            const topContact = extents.top <= 24 - clipAllowance;
+            const bottomContact = extents.bottom >= H - 24 + clipAllowance;
+            if (topContact || bottomContact) {
+              if (topContact) pulse.y += (24 - clipAllowance) - extents.top;
+              if (bottomContact) pulse.y += (H - 24 + clipAllowance) - extents.bottom;
+              const normal = topContact ? 1 : -1;
+              pulse.vy *= -1;
+              pulse.angle = Math.atan2(pulse.vy, pulse.vx);
+              pulse.diffraction.push({ x: pulse.x, y: clamp(pulse.y + normal * pulse.arcRadius, 24, H - 24), normal, life: 0.64, phase: 0 });
+              if (pulse.diffraction.length > 4) pulse.diffraction.shift();
+              emitParticles(pulse.x, pulse.y, 8, pulse.color, 180);
+            }
+
+            const goalMargin = (pulse.arcRadius || 0) + getPulseHalfThickness(pulse) + 24;
+            if (pulse.x < -goalMargin || pulse.x > W + goalMargin) {
+              world.pulses.splice(i, 1);
+              continue;
+            }
+
+            const owner = pulse.side === 'left' ? world.paddles.left : world.paddles.right;
+            const opponent = pulse.side === 'left' ? world.paddles.right : world.paddles.left;
+            if (!pulse.hitPaddleIds.has(opponent.side) && pulseArcHitsPaddle(pulse, opponent)) {
+              pulse.hitPaddleIds.add(opponent.side);
+              const cx = opponent.x + opponent.w / 2;
+              const cy = opponent.y + opponent.h / 2;
+              const nudge = clamp(Math.sin(pulse.angle) * 230, -230, 230);
+              opponent.y = clamp(opponent.y + nudge, 20, H - 20 - opponent.h);
+              opponent.vy += nudge * 20;
+              opponent.flash = 1;
+              opponent.hitScale = 1.26;
+              opponent.slowTimer = Math.max(opponent.slowTimer || 0, 1.85);
+              opponent.pulseCharge = Math.min(opponent.pulseCharge || 0, SOLID_CHARGE_THRESHOLD - 0.02);
+              adjustWaveXP(owner, OPPONENT_HIT_XP);
+              adjustWaveXP(opponent, -YELLOW_HIT_XP_LOSS);
+              emitParticles(cx, cy, 30, pulse.color, 340);
+              playTone(520, 0.05, 'triangle', 0.04);
+            }
+
+            for (let j = world.pulses.length - 1; j >= 0; j--) {
+              const otherPulse = world.pulses[j];
+              if (otherPulse === pulse || otherPulse.side === pulse.side || otherPulse.mode !== 'solid') continue;
+              if (!pulseArcIntersectsPulse(pulse, otherPulse)) continue;
+              const burstRadius = getPulseRenderRadius(otherPulse);
+              emitParticles(otherPulse.x + Math.cos(otherPulse.angle) * burstRadius, otherPulse.y + Math.sin(otherPulse.angle) * burstRadius, 18, pulse.color, 260);
+              world.pulses.splice(j, 1);
+              if (j < i) i -= 1;
+            }
+
+            for (let p = world.powerups.length - 1; p >= 0; p--) {
+              const item = world.powerups[p];
+              if (!pulseArcHitsPoint(item.x, item.y, pulse)) continue;
+              world.powerups.splice(p, 1);
+              collectPowerup(item, pulse.side === 'left', 'wave');
+            }
+
+            for (const ball of world.balls) {
+              if (pulse.hitBallIds.has(ball.id)) continue;
+              if (!pushPulseHitsBall(pulse, ball)) continue;
+              pulse.hitBallIds.add(ball.id);
+
+              const incomingSpeed = Math.hypot(ball.vx, ball.vy);
+              const offset = clamp((ball.y - pulse.y) / Math.max(44, pulse.arcRadius * 0.72), -1, 1);
+              const impactAngle = Math.atan2(ball.y - pulse.y, ball.x - pulse.x);
+              const angularFactor = clamp(1 - Math.abs(angleDiff(impactAngle, pulse.angle)) / Math.max(0.001, pulse.cone), 0, 1);
+              const sweetFactor = Math.pow(angularFactor, 1.7);
+              const yellowInfluence = ball.blueResistTimer > 0 ? clamp(0.62 + (1 - (ball.blueResistStrength || 0.55)) * 0.18, 0.56, 0.8) : 1;
+
+              if (sweetFactor > 0.74) {
+                const targetSpeed = Math.min(BALL_SPEED_CAP * 0.97, Math.max(incomingSpeed * 1.02, 600 + pulse.level * 12 + sweetFactor * 42));
+                const targetAngle = pulse.angle + offset * 0.1;
+                const targetVx = Math.cos(targetAngle) * targetSpeed;
+                const targetVy = Math.sin(targetAngle) * targetSpeed;
+                ball.vx += (targetVx - ball.vx) * yellowInfluence;
+                ball.vy += (targetVy - ball.vy) * yellowInfluence;
+                setBallBoost(ball, 0.46 + yellowInfluence * 0.12, 0.9, '#ffd34d');
+              } else if (incomingSpeed <= BALL_SPEED_CAP * 0.92) {
+                const direction = pulse.side === 'left' ? 1 : -1;
+                const targetSpeed = Math.min(BALL_SPEED_CAP * 0.91, Math.max(498 + pulse.level * 11, incomingSpeed * 0.982 + 8 + sweetFactor * 18));
+                const angle = clamp(offset * (0.68 - sweetFactor * 0.16) + Math.sin(pulse.angle) * (0.12 + sweetFactor * 0.14), -0.9, 0.9);
+                const targetVx = Math.cos(angle) * targetSpeed * direction;
+                const targetVy = Math.sin(angle) * targetSpeed + Math.sin(pulse.angle) * (14 + sweetFactor * 12) + offset * (18 - sweetFactor * 5);
+                ball.vx += (targetVx - ball.vx) * yellowInfluence;
+                ball.vy += (targetVy - ball.vy) * yellowInfluence;
+              } else {
+                const nudge = (20 + pulse.level * 2.6 + sweetFactor * 26) * yellowInfluence;
+                ball.vx += Math.cos(pulse.angle) * nudge;
+                ball.vy += Math.sin(pulse.angle) * (nudge * 0.8) + offset * 12 * yellowInfluence;
+                clampBallSpeed(ball, BALL_SPEED_CAP);
+              }
+
+              pulse.arcRadius += 1.6;
+              pulse.renderThickness = Math.min(150, getPulseThickness(pulse) + 0.75);
+              pulse.waveThickness = pulse.renderThickness;
+
+              if (pulse.side === 'left') matchStats.leftWaveHits += 1;
+              else matchStats.rightWaveHits += 1;
+
+              clampBallSpeed(ball, BALL_SPEED_CAP);
+              ball.lastHitSide = pulse.side;
+              ball.flash = 1;
+              screenShake = Math.max(screenShake, 6 + pulse.level);
+              emitParticles(ball.x, ball.y, 18 + pulse.level * 2, pulse.color, 280 + pulse.level * 20);
+              playTone(680 + pulse.level * 18, 0.045, 'triangle', 0.03);
+            }
+          } else {
+            const prevRadius = pulse.radius || 0;
+            pulse.life -= dt;
+            pulse.radius = getPulseRenderRadius(pulse);
+            const radius = pulse.radius;
+
+            for (const ball of world.balls) {
+              if (pulse.hitBallIds.has(ball.id)) continue;
+              if (!pulseArcSweepHitsBall(pulse, ball, prevRadius, radius)) continue;
+              pulse.hitBallIds.add(ball.id);
+
+              if (pulse.mode === 'solid') {
+                const direction = pulse.side === 'left' ? 1 : -1;
+                const offset = clamp((ball.y - pulse.y) / Math.max(46, radius * 0.5), -1, 1);
+                const speed = Math.min(BALL_SPEED_CAP * 0.88, Math.max(500 + pulse.level * 10, Math.hypot(ball.vx, ball.vy) * 0.95 + 26));
+                const angle = clamp(offset * 0.42 + Math.sin(pulse.angle) * 0.08, -0.6, 0.6);
+                ball.vx = Math.cos(angle) * speed * direction;
+                ball.vy = Math.sin(angle) * speed + Math.sin(pulse.angle) * 10;
+              } else {
+                const dx = ball.x - pulse.x;
+                const dy = ball.y - pulse.y;
+                const dist = Math.hypot(dx, dy) || 1;
+                const awayX = dx / dist;
+                const awayY = dy / dist;
+                const impactAngle = Math.atan2(dy, dx);
+                const sweetFactor = Math.pow(clamp(1 - Math.abs(angleDiff(impactAngle, pulse.angle)) / Math.max(0.001, pulse.cone), 0, 1), 1.55);
+                const movingToward = isBallMovingTowardPaddle(ball, pulse.side);
+                const movingAway = isBallMovingAwayFromPaddle(ball, pulse.side);
+                const aimBlend = 0.16 + sweetFactor * 0.38;
+                const force = pulse.strength * (0.7 + sweetFactor * 0.52);
+                let outVx = ball.vx + (awayX * (1 - aimBlend) + Math.cos(pulse.angle) * aimBlend) * force;
+                let outVy = ball.vy + (awayY * (1 - aimBlend) + Math.sin(pulse.angle) * aimBlend) * force;
+
+                if (movingAway) {
+                  const speed = Math.hypot(outVx, outVy) || 1;
+                  const targetSpeed = Math.min(BALL_SPEED_CAP * 0.96, Math.max(speed * (1.05 + sweetFactor * 0.08), 520 + pulse.level * 11 + sweetFactor * 54));
+                  const dirX = (outVx / speed) * (0.72 - sweetFactor * 0.05) + Math.cos(pulse.angle) * (0.28 + sweetFactor * 0.1);
+                  const dirY = (outVy / speed) * (0.72 - sweetFactor * 0.05) + Math.sin(pulse.angle) * (0.28 + sweetFactor * 0.1);
+                  const dirLen = Math.hypot(dirX, dirY) || 1;
+                  outVx = dirX / dirLen * targetSpeed;
+                  outVy = dirY / dirLen * targetSpeed;
+                  setBallBoost(ball, 0.42 + sweetFactor * 0.18, 0.8 + sweetFactor * 0.4, '#7bd2ff');
+                  if (sweetFactor > 0.72) {
+                    ball.blueResistTimer = Math.max(ball.blueResistTimer || 0, 1.2 + sweetFactor * 0.35);
+                    ball.blueResistStrength = Math.max(ball.blueResistStrength || 0, 0.55 + sweetFactor * 0.22);
+                  }
+                }
+
+                if (movingToward) {
+                  const stunDuration = 0.06 + sweetFactor * 0.07;
+                  applyBallStun(ball, stunDuration, outVx, outVy, '#7bd2ff');
+                } else {
+                  ball.vx = outVx;
+                  ball.vy = outVy;
+                }
+              }
+
+              if (pulse.side === 'left') matchStats.leftWaveHits += 1;
+              else matchStats.rightWaveHits += 1;
+
+              clampBallSpeed(ball, BALL_SPEED_CAP);
+              ball.lastHitSide = pulse.side;
+              ball.flash = 1;
+              screenShake = Math.max(screenShake, 5 + pulse.level * 0.7);
+              emitParticles(ball.x, ball.y, 12 + pulse.level * 2, pulse.color, 280 + pulse.level * 20);
+              playTone(620 + pulse.level * 28, 0.04, 'triangle', 0.03);
+            }
+          }
+
+          if (pulse.life <= 0) world.pulses.splice(i, 1);
+        }
+      }
+
+function updateParticles(dt) {
+
+        for (let i = world.particles.length - 1; i >= 0; i--) {
+          const p = world.particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.98;
+          p.vy *= 0.98;
+          p.life -= dt;
+          if (p.life <= 0) world.particles.splice(i, 1);
+        }
+      }
+
+      function updatePowerups(dt) {
+        for (let i = world.powerups.length - 1; i >= 0; i--) {
+          const p = world.powerups[i];
+          p.life -= dt;
+          p.pulse += dt * 4;
+          if (p.life <= 0) world.powerups.splice(i, 1);
+        }
+
+        if (!state.powerupsEnabled || state.gameOver || state.menuOpen) return;
+        state.powerSpawnTimer -= dt;
+        if (state.powerSpawnTimer <= 0 && world.powerups.length < 2) {
+          state.powerSpawnTimer = 5.2 + Math.random() * 3.2;
+          spawnPowerup();
+        }
+      }
+
+      function updateTimers(dt) {
+        state.roundSeconds += dt;
+        state.leftBoostTimer = Math.max(0, state.leftBoostTimer - dt);
+        state.rightBoostTimer = Math.max(0, state.rightBoostTimer - dt);
+        state.slowmoTimer = Math.max(0, state.slowmoTimer - dt);
+        state.comboFlash = Math.max(0, state.comboFlash - dt);
+        screenShake = Math.max(0, screenShake - dt * 22);
+        if (messageTimer > 0) {
+          messageTimer -= dt;
+          if (messageTimer <= 0) hideMessage();
+        }
+        if (state.powerDurationTimer > 0) {
+          state.powerDurationTimer -= dt;
+          if (state.powerDurationTimer <= 0) {
+            world.paddles.left.h += (world.paddles.left.baseH - world.paddles.left.h);
+            world.paddles.right.h += (world.paddles.right.baseH - world.paddles.right.h);
+            state.activePowerLabel = 'None';
+            updateUI();
+          }
+        }
+        const left = world.paddles.left;
+        const right = world.paddles.right;
+        adjustWaveXP(left, PASSIVE_XP_PER_SEC * dt, { silent: true });
+        adjustWaveXP(right, PASSIVE_XP_PER_SEC * dt, { silent: true });
+        left.h += (left.baseH - left.h) * Math.min(1, dt * 1.8);
+        right.h += (right.baseH - right.h) * Math.min(1, dt * 1.8);
+        left.y = Math.max(20, Math.min(H - 20 - left.h, left.y));
+        right.y = Math.max(20, Math.min(H - 20 - right.h, right.y));
+      }
+
+function update(dt) {
+        if (!state.running || state.paused || state.menuOpen || state.gameOver) return;
+
+        updateTimers(dt);
+
+        if (state.demoMode) {
+          updateAI(world.paddles.left, dt, true);
+          updateAI(world.paddles.right, dt, false);
+        } else {
+          const leftUp = input.w || (state.mode !== 'pvp' && input.up);
+          const leftDown = input.s || (state.mode !== 'pvp' && input.down);
+          updatePaddle(world.paddles.left, leftUp, leftDown, dt);
+          if (state.mode === 'pvp') {
+            updatePaddle(world.paddles.right, input.up, input.down, dt);
+          } else {
+            updateAI(world.paddles.right, dt, false);
+          }
+        }
+
+        updateBalls(dt);
+        maybeTriggerLongRallyMultiball();
+        updatePulses(dt);
+        updateParticles(dt);
+        updateFloatTexts(dt);
+        updatePowerups(dt);
+        updateUI();
+      }
+
+      function roundedRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+
+      function drawGlowLine(x1, y1, x2, y2, color, width) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = width * 2.2;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function renderBackground() {
+        const t = themes[state.theme];
+        const g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, t.bgTop);
+        g.addColorStop(1, t.bgBottom);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+
+        const pulse = 0.5 + Math.sin(performance.now() * 0.0013) * 0.1;
+        const rg1 = ctx.createRadialGradient(W * 0.18, H * 0.2, 10, W * 0.18, H * 0.2, 320);
+        rg1.addColorStop(0, `rgba(${t.glowA}, ${0.18 * pulse})`);
+        rg1.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = rg1;
+        ctx.fillRect(0, 0, W, H);
+
+        const rg2 = ctx.createRadialGradient(W * 0.82, H * 0.8, 10, W * 0.82, H * 0.8, 340);
+        rg2.addColorStop(0, `rgba(${t.glowB}, ${0.16 * pulse})`);
+        rg2.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = rg2;
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([12, 18]);
+        ctx.beginPath();
+        ctx.moveTo(W / 2, 24);
+        ctx.lineTo(W / 2, H - 24);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 3;
+        roundedRect(14, 14, W - 28, H - 28, 24);
+        ctx.stroke();
+      }
+
+      function renderAimer(paddle) {
+        const origin = getPulseOrigin(paddle);
+        const stats = getPulseStats(paddle);
+        const readiness = paddle.cooldown > 0 ? clamp(1 - paddle.cooldown / stats.cooldown, 0.15, 1) : 1;
+        const len = stats.mode === 'push' ? W * 0.64 : stats.range * (0.34 + (paddle.pulseCharge || 0) * 0.38);
+        const coreColor = stats.mode === 'push' ? '255, 189, 89' : (stats.mode === 'solid' ? '255, 124, 215' : '123, 210, 255');
+        const accentColor = stats.mode === 'push' ? '255, 232, 174' : (stats.mode === 'solid' ? '255, 204, 242' : '170, 225, 255');
+        const beamX = origin.x + Math.cos(paddle.aimAngle) * len;
+        const beamY = origin.y + Math.sin(paddle.aimAngle) * len;
+
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = `rgba(${coreColor}, ${0.22 + readiness * 0.48})`;
+        ctx.lineWidth = stats.mode === 'push' ? 4.4 : (stats.mode === 'solid' ? 3.6 : 3);
+        ctx.shadowColor = stats.glow;
+        ctx.shadowBlur = stats.mode === 'push' ? 26 : 18;
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(beamX, beamY);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(${accentColor}, ${0.16 + readiness * 0.22})`;
+        ctx.lineWidth = 1.6;
+        const sideA = paddle.aimAngle + (stats.mode === 'push' ? 0.05 : 0.08);
+        const sideB = paddle.aimAngle - (stats.mode === 'push' ? 0.05 : 0.08);
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(origin.x + Math.cos(sideA) * (len * 0.78), origin.y + Math.sin(sideA) * (len * 0.78));
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(origin.x + Math.cos(sideB) * (len * 0.78), origin.y + Math.sin(sideB) * (len * 0.78));
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function renderPulseMeters(paddle) {
+        refreshPaddleChargeState(paddle);
+        const maxCharge = getPaddleMaxCharge(paddle);
+        const barWidth = 74 * maxCharge;
+        const baseX = paddle.side === 'left' ? paddle.x + 2 : paddle.x - (barWidth - 16);
+        const baseY = paddle.y - 24;
+        const charge = clamp(paddle.pulseCharge || 0, 0, maxCharge);
+        const meterColor = charge >= FULL_CHARGE_THRESHOLD ? '#ffbd59' : (charge >= SOLID_CHARGE_THRESHOLD ? '#ff7cd7' : '#7bd2ff');
+        const xpProgress = getLevelProgress(paddle);
+        const xpColor = paddle.pulseLevel >= MAX_WAVE_LEVEL ? '#ffd34d' : '#a66bff';
+        const pulseLight = (paddle.overcapTimer > 0 || paddle.chargeBoostTimer > 0)
+          ? (0.14 + 0.18 * (0.5 + 0.5 * Math.sin(performance.now() * 0.016 + paddle.chargeGlowPhase)))
+          : 0;
+        const fillWidth = charge <= 0 ? 0 : Math.max(8, barWidth * (charge / maxCharge));
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        roundedRect(baseX, baseY, barWidth, 7, 4);
+        ctx.fill();
+        if (maxCharge > BASE_MAX_CHARGE) {
+          ctx.fillStyle = 'rgba(120, 240, 255, 0.08)';
+          roundedRect(baseX + 74, baseY, barWidth - 74, 7, 4);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(120, 240, 255, 0.32)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(baseX + 74, baseY - 1);
+          ctx.lineTo(baseX + 74, baseY + 8);
+          ctx.stroke();
+        }
+        if (fillWidth > 0) {
+          ctx.fillStyle = meterColor;
+          ctx.shadowColor = meterColor;
+          ctx.shadowBlur = 14;
+          roundedRect(baseX, baseY, fillWidth, 7, 4);
+          ctx.fill();
+          if (pulseLight > 0) {
+            ctx.globalAlpha = pulseLight;
+            ctx.fillStyle = '#fffef5';
+            roundedRect(baseX + 1.4, baseY + 1.1, Math.max(0, fillWidth - 2.8), 2.4, 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        }
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        roundedRect(baseX, baseY + 11, 74, 5, 3);
+        ctx.fill();
+        ctx.fillStyle = xpColor;
+        ctx.shadowColor = xpColor;
+        ctx.shadowBlur = 10;
+        roundedRect(baseX, baseY + 11, Math.max(6, 74 * xpProgress), 5, 3);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.font = '800 11px Inter, Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('L' + paddle.pulseLevel + (paddle.pulseLevel >= MAX_WAVE_LEVEL ? ' MAX' : ''), baseX + barWidth * 0.5, baseY - 2);
+        ctx.restore();
+      }
+
+function renderPowerups() {
+        for (const p of world.powerups) {
+          const def = powerupDefs[p.type] || powerupDefs.grow;
+          const pulse = 1 + Math.sin(p.pulse) * 0.14;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.shadowColor = def.color;
+          ctx.shadowBlur = def.kind === 'minion' ? 28 : 22;
+
+          if (def.kind === 'debuff') {
+            ctx.rotate(Math.PI / 4);
+            ctx.fillStyle = def.fill;
+            roundedRect(-p.r * pulse, -p.r * pulse, p.r * 2 * pulse, p.r * 2 * pulse, 8);
+            ctx.fill();
+            ctx.strokeStyle = def.outline;
+            ctx.lineWidth = 3;
+            roundedRect(-p.r * pulse, -p.r * pulse, p.r * 2 * pulse, p.r * 2 * pulse, 8);
+            ctx.stroke();
+            ctx.rotate(-Math.PI / 4);
+          } else if (def.kind === 'minion') {
+            const spikes = 8;
+            const outer = p.r * 1.15 * pulse;
+            const inner = p.r * 0.58 * pulse;
+            ctx.beginPath();
+            for (let i = 0; i < spikes * 2; i++) {
+              const r = i % 2 === 0 ? outer : inner;
+              const a = -Math.PI / 2 + i * Math.PI / spikes;
+              const x = Math.cos(a) * r;
+              const y = Math.sin(a) * r;
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = def.fill;
+            ctx.fill();
+            ctx.strokeStyle = def.outline;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, 0, p.r * 0.42 * pulse, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(235,255,236,0.9)';
+            ctx.fill();
+          } else {
+            ctx.fillStyle = def.fill;
+            ctx.beginPath();
+            ctx.arc(0, 0, p.r * pulse, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = def.outline;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, p.r * pulse, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = def.kind === 'minion' ? '#06210d' : '#091018';
+          ctx.font = def.kind === 'minion' ? 'bold 17px Inter, Segoe UI, sans-serif' : 'bold 18px Inter, Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(def.icon, 0, def.kind === 'minion' ? 0 : 1);
+          ctx.restore();
+        }
+      }
+
+function renderPaddle(paddle) {
+        const t = themes[state.theme];
+        const color = paddle.side === 'left' ? t.paddleLeft : t.paddleRight;
+        renderAimer(paddle);
+        ctx.save();
+        const boost = paddle.side === 'left' ? state.leftBoostTimer : state.rightBoostTimer;
+        ctx.translate(0, 0);
+        ctx.shadowBlur = 28 + boost * 10;
+        ctx.shadowColor = color;
+        ctx.fillStyle = color;
+        const wobble = paddle.jamTimer > 0 ? Math.sin(performance.now() * 0.08 + (paddle.side === 'left' ? 0 : 1.4)) * 3.5 * Math.min(1, paddle.jamTimer + 0.15) : 0;
+        const w = paddle.w * paddle.hitScale;
+        const x = paddle.x - (w - paddle.w) / 2 + wobble;
+        const h = paddle.h * (1 + paddle.flash * 0.04);
+        const y = paddle.y - (h - paddle.h) / 2;
+        roundedRect(x, y, w, h, 12);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        roundedRect(x + 3, y + 4, Math.max(4, w * 0.28), h - 8, 10);
+        ctx.fill();
+        if (paddle.jamTimer > 0) {
+          ctx.strokeStyle = 'rgba(180, 230, 255, 0.8)';
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 4; i++) {
+            const yy = y + 10 + i * (h - 20) / 3;
+            ctx.beginPath();
+            ctx.moveTo(x - 4, yy + Math.sin(performance.now() * 0.03 + i) * 2);
+            ctx.lineTo(x + w + 4, yy + Math.cos(performance.now() * 0.035 + i * 1.7) * 2);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+        renderPulseMeters(paddle);
+      }
+
+function renderBalls() {
+
+        const t = themes[state.theme];
+        for (const ball of world.balls) {
+          const hitColor = ball.lastHitSide === 'left' ? t.paddleLeft : (ball.lastHitSide === 'right' ? t.paddleRight : t.ball);
+          if (state.trailsEnabled) {
+            for (let i = 0; i < ball.trail.length; i++) {
+              const trail = ball.trail[i];
+              const alpha = Math.max(0, trail.life / 0.35) * (i / Math.max(1, ball.trail.length));
+              ctx.save();
+              ctx.globalAlpha = alpha * 0.55;
+              ctx.fillStyle = trail.boost || hitColor;
+              ctx.beginPath();
+              ctx.arc(trail.x, trail.y, ball.r * (0.35 + alpha * 0.5), 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          }
+          ctx.save();
+          const boostAlpha = clamp(ball.boostTimer || 0, 0, 0.55) / 0.55;
+          if (boostAlpha > 0) {
+            const speed = Math.hypot(ball.vx, ball.vy) || 1;
+            const nx = ball.vx / speed;
+            const ny = ball.vy / speed;
+            const boostColor = ball.boostColor || '#7bd2ff';
+            ctx.strokeStyle = boostColor;
+            ctx.shadowColor = boostColor;
+            ctx.shadowBlur = 16 + boostAlpha * 12;
+            ctx.lineCap = 'round';
+            for (let lane = -1; lane <= 1; lane++) {
+              const sideX = -ny * lane * 4.5;
+              const sideY = nx * lane * 4.5;
+              ctx.globalAlpha = boostAlpha * (lane === 0 ? 0.5 : 0.28);
+              ctx.lineWidth = lane === 0 ? 4.4 : 2.3;
+              ctx.beginPath();
+              ctx.moveTo(ball.x + sideX, ball.y + sideY);
+              ctx.lineTo(ball.x - nx * (20 + boostAlpha * 16) + sideX, ball.y - ny * (20 + boostAlpha * 16) + sideY);
+              ctx.stroke();
+            }
+          }
+
+          ctx.globalAlpha = 1;
+          ctx.shadowColor = boostAlpha > 0 ? (ball.boostColor || hitColor) : hitColor;
+          ctx.shadowBlur = 20 + ball.flash * 12 + boostAlpha * 10;
+          ctx.fillStyle = hitColor;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = boostAlpha > 0 ? 'rgba(255,250,228,0.96)' : 'rgba(255,255,255,0.92)';
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ball.r * 0.52, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (ball.lastHitSide) {
+            ctx.strokeStyle = boostAlpha > 0 ? (ball.boostColor || 'rgba(255,255,255,0.8)') : 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 1.6 + boostAlpha * 1.2;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r - 1.2, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          const resistAlpha = clamp(ball.blueResistTimer || 0, 0, 1.5) / 1.5;
+          if (resistAlpha > 0) {
+            ctx.strokeStyle = `rgba(123, 210, 255, ${0.2 + resistAlpha * 0.45})`;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r + 3.8, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          const stunAlpha = clamp(ball.stunTimer || 0, 0, 0.16) / 0.16;
+          if (stunAlpha > 0) {
+            ctx.strokeStyle = `rgba(123, 210, 255, ${0.2 + stunAlpha * 0.5})`;
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r + 7.5, Math.sin(ball.hueShift * 2) * 0.4, Math.sin(ball.hueShift * 2) * 0.4 + Math.PI * 1.3);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+
+function renderParticles() {
+        for (const p of world.particles) {
+          const alpha = Math.max(0, p.life / p.maxLife);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+function renderPulses() {
+        for (const pulse of world.pulses) {
+          const alpha = clamp(pulse.life / pulse.maxLife, 0, 1);
+
+          if (pulse.mode === 'push') {
+            const thickness = getPulseThickness(pulse);
+            for (const t of pulse.trail) {
+              ctx.save();
+              ctx.globalAlpha = clamp(t.life / 0.24, 0, 1) * 0.34;
+              ctx.strokeStyle = pulse.color;
+              ctx.lineWidth = thickness * 0.66;
+              ctx.shadowColor = pulse.glow;
+              ctx.shadowBlur = 16;
+              ctx.beginPath();
+              ctx.arc(t.x, t.y, pulse.arcRadius, t.angle - pulse.cone, t.angle + pulse.cone);
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            for (const d of pulse.diffraction) {
+              const lifeAlpha = clamp(d.life / 0.6, 0, 1);
+              const spread = 58 + (1 - lifeAlpha) * 120;
+              const amp = 16 + lifeAlpha * 14;
+              for (let band = 0; band < 3; band++) {
+                ctx.save();
+                ctx.globalAlpha = lifeAlpha * (0.24 - band * 0.05);
+                ctx.strokeStyle = band === 0 ? 'rgba(255, 248, 188, 1)' : (band === 1 ? 'rgba(255, 225, 108, 1)' : 'rgba(255, 211, 77, 1)');
+                ctx.lineWidth = Math.max(2, 6 - band * 1.4);
+                ctx.shadowColor = pulse.glow;
+                ctx.shadowBlur = 14;
+                ctx.beginPath();
+                let started = false;
+                for (let ox = -spread; ox <= spread; ox += 8) {
+                  const envelope = Math.exp(-(ox * ox) / (2 * spread * spread));
+                  const wave = Math.sin(ox * 0.08 + d.phase * 3.1 + band * 0.95);
+                  const interference = Math.sin(ox * 0.17 - d.phase * 1.8 + band * 0.55);
+                  const y = d.y + d.normal * ((band + 1) * 10 + (wave + 0.55 * interference) * amp * envelope);
+                  const x = d.x + ox;
+                  if (!started) {
+                    ctx.moveTo(x, y);
+                    started = true;
+                  } else {
+                    ctx.lineTo(x, y);
+                  }
+                }
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(255, 211, 77, ${0.42 + alpha * 0.44})`;
+            ctx.lineWidth = thickness;
+            ctx.shadowColor = pulse.glow;
+            ctx.shadowBlur = 30;
+            ctx.beginPath();
+            ctx.arc(pulse.x, pulse.y, pulse.arcRadius, pulse.angle - pulse.cone, pulse.angle + pulse.cone);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(255, 248, 198, ${0.28 + alpha * 0.34})`;
+            ctx.lineWidth = Math.max(10, thickness * 0.3);
+            ctx.beginPath();
+            ctx.arc(pulse.x, pulse.y, pulse.arcRadius, pulse.angle - pulse.cone * 0.42, pulse.angle + pulse.cone * 0.42);
+            ctx.stroke();
+            ctx.restore();
+            continue;
+          }
+
+          const radius = pulse.radius != null ? pulse.radius : getPulseRenderRadius(pulse);
+          const thickness = getPulseThickness(pulse);
+          ctx.save();
+          ctx.strokeStyle = pulse.mode === 'solid'
+            ? `rgba(255, 124, 215, ${0.34 + alpha * 0.56})`
+            : `rgba(123, 210, 255, ${0.3 + alpha * 0.5})`;
+          ctx.lineWidth = thickness;
+          ctx.shadowColor = pulse.glow;
+          ctx.shadowBlur = pulse.mode === 'solid' ? 30 : 24;
+          ctx.beginPath();
+          ctx.arc(pulse.x, pulse.y, radius, pulse.angle - pulse.cone, pulse.angle + pulse.cone);
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.save();
+          ctx.fillStyle = pulse.fill;
+          ctx.beginPath();
+          ctx.moveTo(pulse.x, pulse.y);
+          ctx.arc(pulse.x, pulse.y, radius, pulse.angle - pulse.cone, pulse.angle + pulse.cone);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function renderOverlayFX() {
+
+        const alpha = Math.min(0.22, state.comboFlash * 0.9);
+        if (alpha > 0) {
+          ctx.save();
+          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+          ctx.fillRect(0, 0, W, H);
+          ctx.restore();
+        }
+
+        if (state.slowmoTimer > 0) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(120, 180, 255, 0.06)';
+          ctx.fillRect(0, 0, W, H);
+          ctx.restore();
+          drawGlowLine(50, 50, W - 50, 50, 'rgba(120,180,255,0.45)', 2);
+          drawGlowLine(50, H - 50, W - 50, H - 50, 'rgba(120,180,255,0.35)', 2);
+        }
+      }
+
+      function renderStatsOnCanvas() {
+        ctx.save();
+        ctx.font = '700 24px Inter, Segoe UI, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(state.scoreLimit), W / 2, 68);
+        ctx.restore();
+      }
+
+      function render() {
+        ctx.save();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.translate((window.innerWidth - W * scale) / 2, (window.innerHeight - H * scale) / 2);
+        ctx.scale(scale, scale);
+        if (screenShake > 0) {
+          ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+        }
+
+        renderBackground();
+        renderPowerups();
+        renderPulses();
+        renderParticles();
+        renderFloatTexts();
+        renderPaddle(world.paddles.left);
+        renderPaddle(world.paddles.right);
+        renderBalls();
+        renderOverlayFX();
+        renderStatsOnCanvas();
+        ctx.restore();
+      }
+
+      function loop(ts) {
+        const dt = Math.min(0.018, (ts - lastTime) / 1000 || 0.016);
+        lastTime = ts;
+        update(dt);
+        render();
+        requestAnimationFrame(loop);
+      }
+
+      document.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        if (key === 'w') input.w = true;
+        else if (key === 's') input.s = true;
+        else if (e.key === 'ArrowUp') input.up = true;
+        else if (e.key === 'ArrowDown') input.down = true;
+        else if (key === 'f' || e.code === 'Space') {
+          e.preventDefault();
+          if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver) firePulse(world.paddles.left);
+        } else if (key === '/') {
+          if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver && state.mode === 'pvp' && !state.demoMode) firePulse(world.paddles.right);
+        } else if (key === 'm') {
+          muted = !muted;
+          updateStatus(muted ? 'Muted. Silent chaos enabled.' : 'Unmuted. The bleeps have returned.');
+        } else if (key === 'p') {
+          e.preventDefault();
+          if (state.menuOpen) return;
+          pauseGame();
+        } else if (key === 'r') {
+        } else if (key === 'escape') {
+          if (state.menuOpen) return;
+          backToMenu();
+        }
+      });
+
+      document.addEventListener('keyup', (e) => {
+
+        const key = e.key.toLowerCase();
+        if (key === 'w') input.w = false;
+        else if (key === 's') input.s = false;
+        else if (e.key === 'ArrowUp') input.up = false;
+        else if (e.key === 'ArrowDown') input.down = false;
+      });
+
+      function wireMenuButton(id, handler) {
+        const el = document.getElementById(id);
+        let lastPointerFire = 0;
+        const run = (event) => {
+          if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          handler();
+        };
+        el.addEventListener('pointerdown', (event) => {
+          lastPointerFire = performance.now();
+          run(event);
+        });
+        el.addEventListener('click', (event) => {
+          if (performance.now() - lastPointerFire < 250) return;
+          run(event);
+        });
+      }
+
+      wireMenuButton('startBtn', () => startMatch({ demo: false }));
+      wireMenuButton('demoBtn', () => startMatch({ demo: true }));
+      wireMenuButton('resumeBtn', () => pauseGame(false));
+      wireMenuButton('pauseMenuBtn', backToMenu);
+      wireMenuButton('rematchBtn', () => startMatch({ demo: state.demoMode }));
+      wireMenuButton('gameOverMenuBtn', backToMenu);
+      wireMenuButton('howBtn', () => {
+        showMessage(wittyLines[(Math.random() * wittyLines.length) | 0], 2.2);
+      });
+
+      ['change', 'input'].forEach(evt => {
+        ui.themeSelect.addEventListener(evt, () => applyTheme(ui.themeSelect.value));
+        ui.difficultySelect.addEventListener(evt, () => updateStatus('Difficulty set to ' + ui.difficultySelect.options[ui.difficultySelect.selectedIndex].text + '.'));
+        ui.scoreLimitSelect.addEventListener(evt, () => {
+          const value = sanitizeScoreLimit(ui.scoreLimitSelect.value);
+          if (String(value) !== ui.scoreLimitSelect.value) ui.scoreLimitSelect.value = value;
+          updateStatus('Goal limit set to ' + value + '.');
+        });
+      });
+
+      window.addEventListener('resize', resize);
+      window.addEventListener('pointerdown', initAudio, { once: true });
+
+      resize();
+      applyTheme(state.theme);
+      updateMenuStats();
+      updateUI();
+      render();
+      requestAnimationFrame(loop);
+      showMessage('Open the match menu and unleash the rectangles.', 2.1);
+    })();
+  </script>
+</body>
+</html>
