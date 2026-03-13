@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Game Wave Pong</title>
+  <title>Wave Pong</title>
   <style>
     :root {
       --bg1: #07111f;
@@ -61,7 +61,7 @@
       left: 18px;
       right: 18px;
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: flex-start;
       gap: 16px;
     }
@@ -83,7 +83,7 @@
     }
 
     .scoreboard {
-      display: flex;
+      display: none;
       align-items: center;
       gap: 16px;
       font-weight: 700;
@@ -150,11 +150,12 @@
       inset: 0;
       display: grid;
       place-items: center;
-      padding: 24px;
+      padding: 12px;
       background: rgba(0, 0, 0, 0.22);
       pointer-events: auto;
       transition: opacity 200ms ease;
       z-index: 50;
+      overflow: auto;
     }
 
     .overlay.hidden {
@@ -165,12 +166,14 @@
     .card {
       position: relative;
       z-index: 55;
-      width: min(920px, calc(100vw - 32px));
+      width: min(920px, calc(100vw - 24px));
+      max-height: calc(100vh - 24px);
+      overflow: auto;
       background: var(--panel-strong);
       border: 1px solid var(--line);
       border-radius: 28px;
       box-shadow: 0 12px 50px rgba(0,0,0,0.35), var(--glow);
-      padding: 28px;
+      padding: 24px;
     }
 
     .hero {
@@ -279,6 +282,12 @@
       background: rgba(255,255,255,0.05);
       color: var(--text);
       outline: none;
+    }
+
+    select option,
+    select optgroup {
+      background: #0d1726;
+      color: var(--text);
     }
 
     .toggle {
@@ -576,6 +585,159 @@
 }
 
 
+
+
+    .menuCard {
+      display: grid;
+      gap: 18px;
+    }
+
+    .menuHeader {
+      display: grid;
+      gap: 8px;
+    }
+
+    .menuHeader h1 {
+      margin: 0;
+      line-height: 1;
+    }
+
+    .menuSubtle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .helpGrid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 1.05fr 1fr;
+      margin-top: 16px;
+    }
+
+    .helpList,
+    .powerList {
+      display: grid;
+      gap: 10px;
+    }
+
+    .powerRow {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .powerRow .iconBox {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      font-weight: 800;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .powerRow .title {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: 0.03em;
+    }
+
+    .powerRow .desc {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .helpNote {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 10px;
+    }
+
+    .srOnly {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .pauseGrid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+      text-align: left;
+    }
+
+    .miniStatGrid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .miniStat {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .miniStat .label {
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .miniStat .value {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    .pauseStatusWrap {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pauseStatusRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .pauseStatusName {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .pauseStatusRow .iconTray {
+      min-width: auto;
+      justify-content: flex-end;
+    }
+
     @media (max-width: 820px) {
       .grid {
         grid-template-columns: 1fr;
@@ -594,6 +756,13 @@
       }
 
       .gameOverStatsGrid {
+        grid-template-columns: 1fr;
+      }
+
+      .helpGrid,
+      .pauseGrid,
+      .miniStatGrid,
+      .form {
         grid-template-columns: 1fr;
       }
 
@@ -625,159 +794,145 @@
         <span id="rightScore">0</span>
         <span id="rightName">CPU</span>
       </div>
-
-      <div class="stack">
-        <div class="pill">
-          <div>
-            <div class="meta">Mode</div>
-            <div class="big" id="modeLabel">VS CPU</div>
-          </div>
-          <div>
-            <div class="meta">Difficulty</div>
-            <div class="big" id="difficultyLabel">Spicy</div>
-          </div>
-        </div>
-        <div class="pill">
-          <div>
-            <div class="meta">Rally</div>
-            <div class="big" id="rallyLabel">0</div>
-          </div>
-          <div>
-            <div class="meta">Best Rally</div>
-            <div class="big" id="bestRallyLabel">0</div>
-          </div>
-          <div>
-            <div class="meta">Status</div>
-            <div class="iconHud">
-              <div class="iconTray" id="leftStatusIcons"></div>
-              <div class="iconTray mid" id="globalStatusIcons"></div>
-              <div class="iconTray" id="rightStatusIcons"></div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <div id="message" class="message">Ball deployed.</div>
-
-    <div class="pill hotkeyHint">F or Space fire • / fire • P pause • M mute • Esc menu</div>
-    <div class="pill hotkeyHint rightHint" id="statusPill">Ready to embarrass a rectangle.</div>
+    <div id="statusPill" class="srOnly">Ready to embarrass a rectangle.</div>
   </div>
 
   <div id="menuOverlay" class="overlay">
-    <div class="card">
-      <div class="hero">
-        <div>
-          <h1>Game Wave<br>Pong</h1>
-          <p class="subtitle">An unapologetically flashy browser pong game with laser aimers, defensive pink waves, offensive yellow arcs, XP minions, instant powerups, synthesized sound, and enough attitude to make the ball feel judged.</p>
-          <div class="badgeRow">
-            <div class="badge">Single file</div>
-            <div class="badge">Drop into browser</div>
-            <div class="badge">Keyboard controls</div>
-            <div class="badge">No libraries</div>
-          </div>
-        </div>
-        <div class="section" style="min-width: 230px;">
-          <h2>Today in sports</h2>
-          <div class="tiny">Breaking</div>
-          <p style="margin: 10px 0 0 0; color: var(--muted); line-height: 1.5;">The left paddle has been seen training at altitude. The right paddle denies all allegations of rust.</p>
-        </div>
+    <div class="card menuCard">
+      <div class="menuHeader">
+        <h1>Wave Pong</h1>
+        <div class="menuSubtle">Set up the match here, then open Help for controls, rules, and powerups.</div>
       </div>
 
-      <div class="grid">
+      <div class="section">
+        <h2>Match setup</h2>
+        <div class="form">
+          <label>
+            Game Mode
+            <select id="modeSelect">
+              <option value="cpu">Player vs CPU</option>
+              <option value="pvp">Two Players</option>
+            </select>
+          </label>
+
+          <label>
+            Difficulty
+            <select id="difficultySelect">
+              <option value="chill">Chill</option>
+              <option value="spicy" selected>Spicy</option>
+              <option value="absurd">Ridiculous</option>
+            </select>
+          </label>
+
+          <label>
+            Score to Win
+            <input id="scoreLimitSelect" type="number" min="1" step="1" value="7" />
+          </label>
+
+          <label>
+            Arena Theme
+            <select id="themeSelect">
+              <option value="neon" selected>Neon Night</option>
+              <option value="ember">Ember Court</option>
+              <option value="mint">Mint Storm</option>
+            </select>
+          </label>
+
+          <label class="toggle">
+            <input id="powerupsToggle" type="checkbox" checked />
+            <span>Enable powerups and chaos</span>
+          </label>
+
+          <label class="toggle">
+            <input id="trailToggle" type="checkbox" checked />
+            <span>Enable trails and particles</span>
+          </label>
+        </div>
+
+        <div class="btnRow">
+          <button id="startBtn" class="primary">Start Match</button>
+          <button id="demoBtn" class="secondary">CPU vs CPU Demo</button>
+          <button id="menuHelpBtn" class="ghost">Help</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="helpOverlay" class="overlay hidden">
+    <div class="card">
+      <div class="tiny">Help</div>
+      <h2>How to play</h2>
+      <div class="helpGrid">
         <div class="section">
           <h2>Rules and controls</h2>
-          <div class="controls">
-            <div class="controlItem"><strong>Player 1</strong><br>W and S move • F or Space fires pulse</div>
-            <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move • / fires pulse</div>
-            <div class="controlItem"><strong>Pause</strong><br>P</div>
-            <div class="controlItem"><strong>Menu</strong><br>Escape</div>
-            <div class="controlItem"><strong>Mute</strong><br>M</div>
-            <div class="controlItem"><strong>Restart</strong><br>Use the menu button</div>
-            <div class="controlItem"><strong>Pulse cannon</strong><br>It auto charges. Blue costs 15 percent, pink costs 50 percent, and gold cashes out the full base bar. Cap Bank stretches the meter to 150 percent and Rapid Charge makes it refill faster.</div>
+          <div class="helpList">
+            <div class="controlItem"><strong>Player 1</strong><br>W and S move • F or Space fires a wave</div>
+            <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move • / fires a wave</div>
+            <div class="controlItem"><strong>Pause</strong><br>P or Escape pauses the match</div>
+            <div class="controlItem"><strong>Menu</strong><br>Return to setup from the pause menu</div>
+            <div class="controlItem"><strong>Mute</strong><br>M toggles sound</div>
+            <div class="controlItem"><strong>Wave costs</strong><br>Blue uses 15 percent charge • Pink uses 50 percent • Gold uses the full base bar</div>
+            <div class="controlItem"><strong>Wave roles</strong><br>Blue is flexible control, pink is defensive coverage, and gold is the high impact finisher</div>
           </div>
-          <div class="footerNote">
-            Catch floating powerups to stretch paddles, overcap your wave bar, turbo charge recharge speed, shrink rivals, split the ball, or bend time. Waves gain passive XP, bonus XP for goals, and extra XP for smacking your opponent. Long rallies can still crack open into multiball, just a little later. Best rally is saved in your browser.
-          </div>
+          <div class="helpNote">XP raises wave level over time. Powerups apply instantly, and some temporary buffs also change charge capacity or recharge speed.</div>
         </div>
 
         <div class="section">
-          <h2>Match setup</h2>
-          <div class="form">
-            <label>
-              Game Mode
-              <select id="modeSelect">
-                <option value="cpu">Player vs CPU</option>
-                <option value="pvp">Two Players</option>
-              </select>
-            </label>
-
-            <label>
-              Difficulty
-              <select id="difficultySelect">
-                <option value="chill">Chill</option>
-                <option value="spicy" selected>Spicy</option>
-                <option value="absurd">Ridiculous</option>
-              </select>
-            </label>
-
-            <label>
-              Score to Win
-              <input id="scoreLimitSelect" type="number" min="1" step="1" value="7" />
-            </label>
-
-            <label>
-              Arena Theme
-              <select id="themeSelect">
-                <option value="neon" selected>Neon Night</option>
-                <option value="ember">Ember Court</option>
-                <option value="mint">Mint Storm</option>
-              </select>
-            </label>
-
-            <label class="toggle">
-              <input id="powerupsToggle" type="checkbox" checked />
-              <span>Enable powerups and chaos</span>
-            </label>
-
-            <label class="toggle">
-              <input id="trailToggle" type="checkbox" checked />
-              <span>Enable trails and particles</span>
-            </label>
-          </div>
-
-          <div class="btnRow">
-            <button id="startBtn" class="primary">Start Match</button>
-            <button id="demoBtn" class="secondary">CPU vs CPU Demo</button>
-            <button id="howBtn" class="ghost">Show a random insult</button>
+          <h2>Powerups</h2>
+          <div class="powerList">
+            <div class="powerRow"><div class="iconBox">⇕</div><div><div class="title">Mega Paddle</div><div class="desc">Temporarily increases paddle height.</div></div></div>
+            <div class="powerRow"><div class="iconBox">⚡</div><div><div class="title">Overcharge</div><div class="desc">Instantly fills the wave bar to its current maximum.</div></div></div>
+            <div class="powerRow"><div class="iconBox">▰</div><div><div class="title">Cap Bank</div><div class="desc">Temporarily extends max charge to 150 percent.</div></div></div>
+            <div class="powerRow"><div class="iconBox">≫</div><div><div class="title">Rapid Charge</div><div class="desc">Temporarily makes the wave bar recharge much faster.</div></div></div>
+            <div class="powerRow"><div class="iconBox">◎</div><div><div class="title">Multiball</div><div class="desc">Adds another ball to the court.</div></div></div>
+            <div class="powerRow"><div class="iconBox">⟲</div><div><div class="title">XP Surge</div><div class="desc">Grants bonus XP to the collecting side.</div></div></div>
+            <div class="powerRow"><div class="iconBox">⇣</div><div><div class="title">Shrink Hex</div><div class="desc">Temporarily reduces the opponent paddle size.</div></div></div>
+            <div class="powerRow"><div class="iconBox">⌛</div><div><div class="title">Drag Field</div><div class="desc">Slows the opponent paddle for a short time.</div></div></div>
+            <div class="powerRow"><div class="iconBox">✶</div><div><div class="title">Aim Jam</div><div class="desc">Makes the opponent aim wobble.</div></div></div>
+            <div class="powerRow"><div class="iconBox">◌</div><div><div class="title">XP Drain</div><div class="desc">Removes XP and some charge from the opponent.</div></div></div>
+            <div class="powerRow"><div class="iconBox">✹</div><div><div class="title">XP Minion</div><div class="desc">A neutral pickup that gives XP when collected.</div></div></div>
           </div>
         </div>
       </div>
-
-      <div class="stats">
-        <div class="stat">
-          <div class="label">Best rally</div>
-          <div id="menuBestRally" class="value">0</div>
-        </div>
-        <div class="stat">
-          <div class="label">Last winner</div>
-          <div id="lastWinnerStat" class="value">None</div>
-        </div>
-        <div class="stat">
-          <div class="label">Energy level</div>
-          <div id="energyStat" class="value">Maximum nonsense</div>
-        </div>
+      <div class="btnRow" style="justify-content: center;">
+        <button id="closeHelpBtn" class="primary">Close Help</button>
       </div>
     </div>
   </div>
 
   <div id="pauseOverlay" class="overlay hidden">
-    <div class="card centerPanel">
+    <div class="card">
       <div class="tiny">Match paused</div>
-      <h2>Everybody hold your pixels.</h2>
-      <p>The ball has agreed to remain dramatically suspended until you resume.</p>
+      <h2>Pause menu</h2>
+      <div class="pauseGrid">
+        <div class="section">
+          <h2>Match info</h2>
+          <div class="miniStatGrid">
+            <div class="miniStat"><div class="label">Mode</div><div class="value" id="modeLabel">VS CPU</div></div>
+            <div class="miniStat"><div class="label">Difficulty</div><div class="value" id="difficultyLabel">Spicy</div></div>
+            <div class="miniStat"><div class="label">Rally</div><div class="value" id="rallyLabel">0</div></div>
+            <div class="miniStat"><div class="label">Best Rally</div><div class="value" id="bestRallyLabel">0</div></div>
+            <div class="miniStat"><div class="label">Score</div><div class="value" id="pauseScoreLine">0 : 0</div></div>
+            <div class="miniStat"><div class="label">Balls in Play</div><div class="value" id="pauseBallCount">1</div></div>
+            <div class="miniStat"><div class="label">Powerups</div><div class="value" id="pausePowerCount">0</div></div>
+            <div class="miniStat"><div class="label">Score Limit</div><div class="value" id="pauseScoreLimit">7</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <h2>Statuses</h2>
+          <div class="pauseStatusWrap">
+            <div class="pauseStatusRow"><div class="pauseStatusName">Left</div><div class="iconTray" id="leftStatusIcons"></div></div>
+            <div class="pauseStatusRow"><div class="pauseStatusName">Field</div><div class="iconTray" id="globalStatusIcons"></div></div>
+            <div class="pauseStatusRow"><div class="pauseStatusName">Right</div><div class="iconTray" id="rightStatusIcons"></div></div>
+          </div>
+        </div>
+      </div>
       <div class="btnRow" style="justify-content: center;">
         <button id="resumeBtn" class="primary">Resume</button>
+        <button id="pauseHelpBtn" class="secondary">Help</button>
         <button id="pauseMenuBtn" class="ghost">Back to Menu</button>
       </div>
     </div>
@@ -826,6 +981,7 @@
         statusPill: document.getElementById('statusPill'),
         message: document.getElementById('message'),
         menu: document.getElementById('menuOverlay'),
+        help: document.getElementById('helpOverlay'),
         pause: document.getElementById('pauseOverlay'),
         gameOver: document.getElementById('gameOverOverlay'),
         winnerTitle: document.getElementById('winnerTitle'),
@@ -836,6 +992,10 @@
         menuBestRally: document.getElementById('menuBestRally'),
         lastWinnerStat: document.getElementById('lastWinnerStat'),
         energyStat: document.getElementById('energyStat'),
+        pauseScoreLine: document.getElementById('pauseScoreLine'),
+        pauseBallCount: document.getElementById('pauseBallCount'),
+        pausePowerCount: document.getElementById('pausePowerCount'),
+        pauseScoreLimit: document.getElementById('pauseScoreLimit'),
         modeSelect: document.getElementById('modeSelect'),
         difficultySelect: document.getElementById('difficultySelect'),
         scoreLimitSelect: document.getElementById('scoreLimitSelect'),
@@ -1044,7 +1204,8 @@
         slowmoTimer: 0,
         comboFlash: 0,
         impacts: 0,
-        longRallyTriggered: false
+        longRallyTriggered: false,
+        helpReturnToPause: false
       };
 
       const world = {
@@ -1129,28 +1290,30 @@
         return '<span class="statusIcon ' + tone + '" title="' + title + '">' + symbol + '</span>';
       }
 
+      function chargeIconFor(paddle) {
+        if ((paddle.pulseCharge || 0) >= FULL_CHARGE_THRESHOLD) return { symbol: '☀', tone: 'push', title: 'Max charge' };
+        if ((paddle.pulseCharge || 0) >= SOLID_CHARGE_THRESHOLD) return { symbol: '◆', tone: 'solid', title: 'Solid charge' };
+        return { symbol: '~', tone: 'wave', title: 'Wave charge' };
+      }
+
+      function getPaddleEffectTokens(paddle) {
+        const icons = [];
+        if (paddle.overcapTimer > 0.05) icons.push({ symbol: '▰', tone: 'buff', title: 'Cap Bank active' });
+        if (paddle.chargeBoostTimer > 0.05) icons.push({ symbol: '≫', tone: 'buff', title: 'Rapid Charge active' });
+        if (paddle.h > paddle.baseH + 8) icons.push({ symbol: '⇕', tone: 'buff', title: 'Mega Paddle active' });
+        if (paddle.h < paddle.baseH - 8) icons.push({ symbol: '⇣', tone: 'debuff', title: 'Shrink Hex active' });
+        if (paddle.slowTimer > 0.05) icons.push({ symbol: '⌛', tone: 'debuff', title: 'Drag Field active' });
+        if (paddle.jamTimer > 0.05) icons.push({ symbol: '✶', tone: 'debuff', title: 'Aim Jam active' });
+        return icons.slice(0, 3);
+      }
+
       function renderStatusIcons() {
         const left = world.paddles.left;
         const right = world.paddles.right;
 
-        function chargeIconFor(paddle) {
-          if ((paddle.pulseCharge || 0) >= FULL_CHARGE_THRESHOLD) return makeStatusIcon('☀', 'push', 'Max charge');
-          if ((paddle.pulseCharge || 0) >= SOLID_CHARGE_THRESHOLD) return makeStatusIcon('◆', 'solid', 'Solid charge');
-          return makeStatusIcon('~', 'wave', 'Wave charge');
-        }
-
         function iconsForPaddle(paddle) {
-          const icons = [
-            chargeIconFor(paddle),
-            makeStatusIcon('L' + paddle.pulseLevel, 'neutral', 'Wave level ' + paddle.pulseLevel)
-          ];
-          if (paddle.overcapTimer > 0.05) icons.push(makeStatusIcon('▰', 'buff', 'Cap Bank active'));
-          if (paddle.chargeBoostTimer > 0.05) icons.push(makeStatusIcon('≫', 'buff', 'Rapid Charge active'));
-          if (paddle.h > paddle.baseH + 8) icons.push(makeStatusIcon('⇕', 'buff', 'Mega Paddle active'));
-          if (paddle.h < paddle.baseH - 8) icons.push(makeStatusIcon('⇣', 'debuff', 'Shrink Hex active'));
-          if (paddle.slowTimer > 0.05) icons.push(makeStatusIcon('⌛', 'debuff', 'Drag Field active'));
-          if (paddle.jamTimer > 0.05) icons.push(makeStatusIcon('✶', 'debuff', 'Aim Jam active'));
-          return icons.length ? icons.join('') : makeStatusIcon('·', 'neutral empty', 'No active effects');
+          const tokens = [chargeIconFor(paddle), { symbol: 'L' + paddle.pulseLevel, tone: 'neutral', title: 'Wave level ' + paddle.pulseLevel }, ...getPaddleEffectTokens(paddle)];
+          return tokens.map(token => makeStatusIcon(token.symbol, token.tone, token.title)).join('');
         }
 
         const globalIcons = [];
@@ -1158,13 +1321,13 @@
         if (state.slowmoTimer > 0.05) globalIcons.push(makeStatusIcon('⏳', 'neutral', 'Time distortion active'));
         if (world.powerups.length > 0) {
           const def = powerupDefs[world.powerups[0].type];
-          globalIcons.push(makeStatusIcon(def.kind === 'debuff' ? '!' : '+', def.kind, 'Powerup on field'));
+          globalIcons.push(makeStatusIcon(def.kind === 'debuff' ? '!' : '+', def.kind === 'minion' ? 'buff' : def.kind, 'Powerup on field'));
         }
         if (!globalIcons.length) globalIcons.push(makeStatusIcon('·', 'neutral empty', 'No global effects'));
 
-        ui.leftStatusIcons.innerHTML = iconsForPaddle(left);
-        ui.rightStatusIcons.innerHTML = iconsForPaddle(right);
-        ui.globalStatusIcons.innerHTML = globalIcons.join('');
+        if (ui.leftStatusIcons) ui.leftStatusIcons.innerHTML = iconsForPaddle(left);
+        if (ui.rightStatusIcons) ui.rightStatusIcons.innerHTML = iconsForPaddle(right);
+        if (ui.globalStatusIcons) ui.globalStatusIcons.innerHTML = globalIcons.join('');
       }
 
       function spawnFloatText(x, y, text, kind = 'buff') {
@@ -1671,7 +1834,6 @@ function maybeTriggerLongRallyMultiball() {
         clone.vy = (base.vy >= 0 ? -1 : 1) * Math.max(220, Math.abs(base.vy) * 0.92);
         clampBallSpeed(clone, BALL_SPEED_CAP * 0.96);
         world.balls.push(clone);
-        showMessage('Long rally mutates into multiball. Absolutely no committee approved this.', 1.7);
         updateStatus('Long rally chaos unlocked. Additional ball deployed.');
         playTone(980, 0.08, 'triangle', 0.04);
         emitParticles(W / 2, H / 2, 30, '#9fdcff', 360);
@@ -1717,17 +1879,19 @@ function maybeTriggerLongRallyMultiball() {
       }
 
       function showMessage(text, duration = 2.2) {
-        ui.message.textContent = text;
-        ui.message.classList.add('show');
-        messageTimer = duration;
+        messageTimer = 0;
+        if (ui.message) {
+          ui.message.textContent = '';
+          ui.message.classList.remove('show');
+        }
       }
 
       function hideMessage() {
-        ui.message.classList.remove('show');
+        if (ui.message) ui.message.classList.remove('show');
       }
 
       function updateStatus(text) {
-        ui.statusPill.textContent = text;
+        if (ui.statusPill) ui.statusPill.textContent = text;
       }
 
 function resetMatch() {
@@ -1808,6 +1972,8 @@ function startMatch({ demo = false } = {}) {
         ui.menu.classList.add('hidden');
         ui.pause.classList.add('hidden');
         ui.gameOver.classList.add('hidden');
+        if (ui.help) ui.help.classList.add('hidden');
+        state.helpReturnToPause = false;
         applyTheme(state.theme);
         resetMatch();
         updateStatus(demo ? 'Demo mode: two robots, one court.' : 'Match live. Rectangles are focused.');
@@ -1824,6 +1990,8 @@ function startMatch({ demo = false } = {}) {
         ui.menu.classList.remove('hidden');
         ui.pause.classList.add('hidden');
         ui.gameOver.classList.add('hidden');
+        if (ui.help) ui.help.classList.add('hidden');
+        state.helpReturnToPause = false;
         updateStatus('Ready to embarrass a rectangle.');
         updateMenuStats();
       }
@@ -1831,6 +1999,10 @@ function startMatch({ demo = false } = {}) {
       function pauseGame(toggle) {
         if (!state.running || state.gameOver) return;
         state.paused = typeof toggle === 'boolean' ? toggle : !state.paused;
+        if (!state.paused) {
+          if (ui.help) ui.help.classList.add('hidden');
+          state.helpReturnToPause = false;
+        }
         ui.pause.classList.toggle('hidden', !state.paused);
         if (state.paused) {
           updateStatus('Paused. The ball is thinking about its choices.');
@@ -1849,6 +2021,8 @@ function endMatch(leftWon) {
   ui.winnerTitle.textContent = name + ' Wins';
   ui.winnerSubtitle.textContent = wittyLines[(Math.random() * wittyLines.length) | 0];
   renderGameOverStats();
+  if (ui.help) ui.help.classList.add('hidden');
+  state.helpReturnToPause = false;
   ui.gameOver.classList.remove('hidden');
   updateMenuStats();
   updateStatus(name + ' won. The scoreboard has receipts.');
@@ -1857,9 +2031,9 @@ function endMatch(leftWon) {
 }
 
 function updateMenuStats() {
-  ui.menuBestRally.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
-  ui.lastWinnerStat.textContent = lastWinner;
-  ui.energyStat.textContent = 'Wave cap L' + MAX_WAVE_LEVEL;
+  if (ui.menuBestRally) ui.menuBestRally.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
+  if (ui.lastWinnerStat) ui.lastWinnerStat.textContent = lastWinner;
+  if (ui.energyStat) ui.energyStat.textContent = 'Wave cap L' + MAX_WAVE_LEVEL;
 }
 
 function updateUI() {
@@ -1867,10 +2041,14 @@ function updateUI() {
   ui.rightScore.textContent = state.rightScore;
   ui.leftName.textContent = state.demoMode ? 'CPU A' : 'PLAYER';
   ui.rightName.textContent = state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU');
-  ui.modeLabel.textContent = state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU');
-  ui.difficultyLabel.textContent = state.difficulty === 'chill' ? 'Chill' : state.difficulty === 'spicy' ? 'Spicy' : 'Ridiculous';
-  ui.rallyLabel.textContent = state.rally;
-  ui.bestRallyLabel.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
+  if (ui.modeLabel) ui.modeLabel.textContent = state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU');
+  if (ui.difficultyLabel) ui.difficultyLabel.textContent = state.difficulty === 'chill' ? 'Chill' : state.difficulty === 'spicy' ? 'Spicy' : 'Ridiculous';
+  if (ui.rallyLabel) ui.rallyLabel.textContent = state.rally;
+  if (ui.bestRallyLabel) ui.bestRallyLabel.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
+  if (ui.pauseScoreLine) ui.pauseScoreLine.textContent = state.leftScore + ' : ' + state.rightScore;
+  if (ui.pauseBallCount) ui.pauseBallCount.textContent = String(world.balls.length);
+  if (ui.pausePowerCount) ui.pausePowerCount.textContent = String(world.powerups.length);
+  if (ui.pauseScoreLimit) ui.pauseScoreLimit.textContent = String(state.scoreLimit);
   renderStatusIcons();
 }
 
@@ -1918,9 +2096,6 @@ function spawnPowerup() {
     life: type === 'minion' ? 12.5 : 11
   });
   const def = powerupDefs[type];
-  if (def.kind === 'debuff') showMessage('Debuff powerup on the field. Somebody is about to get inconvenienced.', 1.8);
-  else if (def.kind === 'minion') showMessage('XP minion spawned. Hit it before somebody else farms it.', 1.6);
-  else showMessage('Buff powerup on the field. Chase the shiny advantage.', 1.8);
   updateStatus('Field pickup spawned. ' + def.label + ' is live.');
   playTone(def.kind === 'minion' ? 860 : 780, 0.06, 'triangle', 0.03);
 }
@@ -1954,23 +2129,19 @@ function applyPowerup(type, scoredByLeft) {
     beneficiary.h = Math.min(210, beneficiary.h + 34);
     if (beneficiary.side === 'left') state.leftBoostTimer = 6.4; else state.rightBoostTimer = 6.4;
     state.powerDurationTimer = Math.max(state.powerDurationTimer, 6.4);
-    showMessage('Mega Paddle activated. More coverage, less panic.', 1.45);
   } else if (type === 'overcharge') {
     refreshPaddleChargeState(beneficiary);
     beneficiary.pulseCharge = getPaddleMaxCharge(beneficiary);
     beneficiary.cooldown = Math.min(beneficiary.cooldown, 0.02);
-    showMessage('Overcharge loaded. Your bar is instantly topped off.', 1.5);
   } else if (type === 'capacitor') {
     beneficiary.overcapTimer = Math.max(beneficiary.overcapTimer || 0, 8.5);
     beneficiary.maxCharge = OVERCAP_MAX_CHARGE;
     beneficiary.pulseCharge = Math.min(beneficiary.maxCharge, (beneficiary.pulseCharge || 0) + 0.35);
     state.powerDurationTimer = Math.max(state.powerDurationTimer, 8.5);
-    showMessage('Cap Bank online. The wave bar stretches to 150 percent.', 1.5);
   } else if (type === 'rapid') {
     beneficiary.chargeBoostTimer = Math.max(beneficiary.chargeBoostTimer || 0, 7.4);
     beneficiary.pulseCharge = Math.min(getPaddleMaxCharge(beneficiary), (beneficiary.pulseCharge || 0) + 0.16);
     state.powerDurationTimer = Math.max(state.powerDurationTimer, 7.4);
-    showMessage('Rapid Charge active. The bar now refills like it drank espresso.', 1.5);
   } else if (type === 'multi') {
     const clone = world.balls[0] || createBall(scoredByLeft ? 1 : -1);
     const extra = createBall(scoredByLeft ? 1 : -1, clone.x, clone.y);
@@ -1979,30 +2150,23 @@ function applyPowerup(type, scoredByLeft) {
     extra.trail = [];
     clampBallSpeed(extra, BALL_SPEED_CAP * 0.92);
     world.balls.push(extra);
-    showMessage('Multiball engaged. The court has lost containment.', 1.6);
   } else if (type === 'pulse') {
     adjustWaveXP(beneficiary, PULSE_POWERUP_XP);
-    showMessage('XP Surge acquired. Your waves just got meaner.', 1.45);
   } else if (type === 'minion') {
     adjustWaveXP(beneficiary, MINION_XP);
-    showMessage('XP Minion popped. Your wave tech just leveled up a little.', 1.35);
   } else if (type === 'shrink') {
     victim.h = Math.max(92, victim.h - 26);
     if (victim.side === 'left') state.leftBoostTimer = 5.8; else state.rightBoostTimer = 5.8;
     state.powerDurationTimer = Math.max(state.powerDurationTimer, 5.8);
-    showMessage('Shrink Hex landed. Somebody misplaced part of a paddle.', 1.45);
   } else if (type === 'slow') {
     victim.slowTimer = Math.max(victim.slowTimer || 0, 3.8);
     state.powerDurationTimer = Math.max(state.powerDurationTimer, 3.8);
-    showMessage('Drag Field landed. Their paddle now moves like it regrets everything.', 1.45);
   } else if (type === 'jam') {
     victim.jamTimer = Math.max(victim.jamTimer || 0, 3.1);
     state.powerDurationTimer = Math.max(state.powerDurationTimer, 3.1);
-    showMessage('Aim Jam landed. Their aimer now has trust issues.', 1.45);
   } else if (type === 'drain') {
     victim.pulseCharge = Math.max(0, (victim.pulseCharge || 0) - 0.34);
     adjustWaveXP(victim, -DEBUFF_XP_LOSS);
-    showMessage('XP Drain landed. Their wave program just got audited.', 1.45);
   }
 
   syncPaddleLevel(left);
@@ -2172,9 +2336,6 @@ function updateAI(paddle, dt, isLeft) {
           matchStats.longestRally = Math.max(matchStats.longestRally, state.rally);
           if (state.rally > state.bestRally) {
             storeBestRally(state.rally);
-          }
-          if (state.rally % 7 === 0) {
-            showMessage('Rally x' + state.rally + '. Nobody blink.', 1.1);
           }
           updateUI();
           playTone(180 + Math.min(700, state.rally * 14), 0.045, 'square', 0.04);
@@ -2437,7 +2598,7 @@ function updatePulses(dt) {
 
                 if (movingAway) {
                   const speed = Math.hypot(outVx, outVy) || 1;
-                  const targetSpeed = Math.min(BALL_SPEED_CAP * 0.96, Math.max(speed * (1.05 + sweetFactor * 0.08), 520 + pulse.level * 11 + sweetFactor * 54));
+                  const targetSpeed = Math.min(BALL_SPEED_CAP * 0.96, Math.max(speed * (1.05 + sweetFactor * 0.08), 640 + pulse.level * 10 + sweetFactor * 56));
                   const dirX = (outVx / speed) * (0.72 - sweetFactor * 0.05) + Math.cos(pulse.angle) * (0.28 + sweetFactor * 0.1);
                   const dirY = (outVy / speed) * (0.72 - sweetFactor * 0.05) + Math.sin(pulse.angle) * (0.28 + sweetFactor * 0.1);
                   const dirLen = Math.hypot(dirX, dirY) || 1;
@@ -2528,8 +2689,8 @@ function updateParticles(dt) {
         const right = world.paddles.right;
         adjustWaveXP(left, PASSIVE_XP_PER_SEC * dt, { silent: true });
         adjustWaveXP(right, PASSIVE_XP_PER_SEC * dt, { silent: true });
-        left.h += (left.baseH - left.h) * Math.min(1, dt * 1.8);
-        right.h += (right.baseH - right.h) * Math.min(1, dt * 1.8);
+        if (state.leftBoostTimer <= 0) left.h += (left.baseH - left.h) * Math.min(1, dt * 1.8);
+        if (state.rightBoostTimer <= 0) right.h += (right.baseH - right.h) * Math.min(1, dt * 1.8);
         left.y = Math.max(20, Math.min(H - 20 - left.h, left.y));
         right.y = Math.max(20, Math.min(H - 20 - right.h, right.y));
       }
@@ -2656,6 +2817,29 @@ function update(dt) {
         ctx.restore();
       }
 
+      function drawMiniStatusToken(x, y, token) {
+        const styles = {
+          buff: ['rgba(134,255,177,0.16)', 'rgba(134,255,177,0.38)', '#dcffe8'],
+          debuff: ['rgba(255,106,139,0.16)', 'rgba(255,106,139,0.38)', '#ffe3ea'],
+          neutral: ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.2)', '#f3f7ff']
+        };
+        const [bg, line, fg] = styles[token.tone] || styles.neutral;
+        ctx.save();
+        ctx.fillStyle = bg;
+        ctx.strokeStyle = line;
+        ctx.lineWidth = 1;
+        roundedRect(x, y, 18, 18, 6);
+        ctx.fill();
+        roundedRect(x, y, 18, 18, 6);
+        ctx.stroke();
+        ctx.fillStyle = fg;
+        ctx.font = '800 10px Inter, Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(token.symbol, x + 9, y + 9.5);
+        ctx.restore();
+      }
+
       function renderPulseMeters(paddle) {
         refreshPaddleChargeState(paddle);
         const maxCharge = getPaddleMaxCharge(paddle);
@@ -2670,6 +2854,7 @@ function update(dt) {
           ? (0.14 + 0.18 * (0.5 + 0.5 * Math.sin(performance.now() * 0.016 + paddle.chargeGlowPhase)))
           : 0;
         const fillWidth = charge <= 0 ? 0 : Math.max(8, barWidth * (charge / maxCharge));
+        const effectTokens = getPaddleEffectTokens(paddle).slice(0, 3);
 
         ctx.save();
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
@@ -2714,9 +2899,14 @@ function update(dt) {
         ctx.shadowBlur = 0;
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
         ctx.font = '800 11px Inter, Segoe UI, sans-serif';
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
-        ctx.fillText('L' + paddle.pulseLevel + (paddle.pulseLevel >= MAX_WAVE_LEVEL ? ' MAX' : ''), baseX + barWidth * 0.5, baseY - 2);
+        ctx.fillText('L' + paddle.pulseLevel + (paddle.pulseLevel >= MAX_WAVE_LEVEL ? ' MAX' : ''), baseX, baseY - 2);
+        let iconX = baseX + 28;
+        for (const token of effectTokens) {
+          drawMiniStatusToken(iconX, baseY - 20, token);
+          iconX += 22;
+        }
         ctx.restore();
       }
 
@@ -3030,11 +3220,36 @@ function renderPulses() {
       }
 
       function renderStatsOnCanvas() {
+        const t = themes[state.theme];
         ctx.save();
-        ctx.font = '700 24px Inter, Segoe UI, sans-serif';
-        ctx.fillStyle = 'rgba(255,255,255,0.08)';
         ctx.textAlign = 'center';
-        ctx.fillText(String(state.scoreLimit), W / 2, 68);
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+
+        ctx.font = '900 62px Inter, Segoe UI, sans-serif';
+        ctx.lineWidth = 8;
+
+        ctx.strokeStyle = 'rgba(2, 6, 12, 0.78)';
+        ctx.fillStyle = t.paddleLeft;
+        ctx.shadowColor = t.paddleLeft;
+        ctx.shadowBlur = 22;
+        ctx.strokeText(String(state.leftScore), W * 0.23, 72);
+        ctx.fillText(String(state.leftScore), W * 0.23, 72);
+
+        ctx.strokeStyle = 'rgba(2, 6, 12, 0.78)';
+        ctx.fillStyle = t.paddleRight;
+        ctx.shadowColor = t.paddleRight;
+        ctx.shadowBlur = 22;
+        ctx.strokeText(String(state.rightScore), W * 0.77, 72);
+        ctx.fillText(String(state.rightScore), W * 0.77, 72);
+
+        ctx.shadowBlur = 0;
+        ctx.font = '800 30px Inter, Segoe UI, sans-serif';
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = 'rgba(2, 6, 12, 0.72)';
+        ctx.fillStyle = t.power;
+        ctx.strokeText(String(state.scoreLimit), W / 2, 66);
+        ctx.fillText(String(state.scoreLimit), W / 2, 66);
         ctx.restore();
       }
 
@@ -3088,8 +3303,13 @@ function renderPulses() {
           pauseGame();
         } else if (key === 'r') {
         } else if (key === 'escape') {
+          e.preventDefault();
+          if (ui.help && !ui.help.classList.contains('hidden')) {
+            closeHelp();
+            return;
+          }
           if (state.menuOpen) return;
-          backToMenu();
+          pauseGame();
         }
       });
 
@@ -3122,15 +3342,29 @@ function renderPulses() {
         });
       }
 
+      function openHelp() {
+        state.helpReturnToPause = state.paused && ui.pause && !ui.pause.classList.contains('hidden');
+        if (state.helpReturnToPause && ui.pause) ui.pause.classList.add('hidden');
+        if (ui.help) ui.help.classList.remove('hidden');
+      }
+
+      function closeHelp() {
+        if (ui.help) ui.help.classList.add('hidden');
+        if (state.helpReturnToPause && state.paused && !state.gameOver && ui.pause) {
+          ui.pause.classList.remove('hidden');
+        }
+        state.helpReturnToPause = false;
+      }
+
       wireMenuButton('startBtn', () => startMatch({ demo: false }));
       wireMenuButton('demoBtn', () => startMatch({ demo: true }));
+      wireMenuButton('menuHelpBtn', openHelp);
+      wireMenuButton('pauseHelpBtn', openHelp);
+      wireMenuButton('closeHelpBtn', closeHelp);
       wireMenuButton('resumeBtn', () => pauseGame(false));
       wireMenuButton('pauseMenuBtn', backToMenu);
       wireMenuButton('rematchBtn', () => startMatch({ demo: state.demoMode }));
       wireMenuButton('gameOverMenuBtn', backToMenu);
-      wireMenuButton('howBtn', () => {
-        showMessage(wittyLines[(Math.random() * wittyLines.length) | 0], 2.2);
-      });
 
       ['change', 'input'].forEach(evt => {
         ui.themeSelect.addEventListener(evt, () => applyTheme(ui.themeSelect.value));
