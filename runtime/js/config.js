@@ -56,6 +56,36 @@
       jamWobbleSpeed: 0.04, // Aim wobble speed while jammed.
       jamWobbleAmplitude: 0.16 // Aim wobble strength while jammed.
     },
+    // Paddle movement and debuff feel.
+    paddleControl: {
+      jamMoveBase: 0.56, // Base movement multiplier while jammed.
+      jamMoveOscillationAmplitude: 0.08, // Extra wobble added to jammed movement speed.
+      jamMoveOscillationSpeed: 0.03, // Oscillation speed used for jammed movement wobble.
+      jamMovePhaseOffset: 2.2, // Right-side phase offset for jammed movement wobble.
+      slowMoveMultiplier: 0.62, // Movement multiplier while Drag Field is active.
+      velocitySmoothing: 18, // How quickly paddle velocity moves toward player/AI input.
+      sizeRecoveryRate: 1.8 // How quickly grow/shrink effects ease back toward base size.
+    },
+    // CPU aiming and firing heuristics.
+    ai: {
+      targetLeadMax: 0.85, // Maximum prediction lead based on target distance.
+      targetLeadReactionBase: 0.25, // Base factor applied to predicted ball travel.
+      jitterSpeed: 0.002, // Speed of the AI tracking jitter wave.
+      deadbandBase: 8, // Minimum no-move zone around the target centerline.
+      deadbandErrorScale: 0.08, // Extra deadband gained from AI error.
+      fireJamThresholdSeconds: 0.08, // Jam threshold below which the AI is allowed to fire.
+      fireWindowTowardMultiplier: 0.95, // Range multiplier when firing at balls moving toward the AI paddle.
+      fireWindowAwayMultiplier: 0.7, // Range multiplier when firing at balls moving away from the AI paddle.
+      pushAngleWindow: 0.24, // Allowed aim error for gold-wave shots.
+      solidAngleWindowMultiplier: 0.72, // Allowed aim error multiplier for pink-wave shots.
+      waveAngleWindowMultiplier: 0.8, // Allowed aim error multiplier for blue-wave shots.
+      pushFireChanceBase: 0.24, // Base per-check gold-wave fire chance.
+      pushFireChanceReactionScale: 0.45, // Extra gold-wave fire chance from AI reaction.
+      towardFireChanceBase: 0.52, // Base per-check fire chance for incoming balls on blue/pink shots.
+      towardFireChanceReactionScale: 0.8, // Extra incoming-ball fire chance from AI reaction.
+      awayFireChance: 0.18, // Per-check fire chance for balls moving away from the AI paddle.
+      fireCheckRate: 14 // Number of chance checks per second for AI firing.
+    },
     // Per-wave-type stats. These values feed directly into getPulseStats in js/app.js.
     waves: {
       blue: {
@@ -113,6 +143,121 @@
         color: '#ffd34d', // Primary render color.
         glow: '#ffe68c', // Glow color.
         fill: 'rgba(255, 211, 77, 0.22)' // Arc fill color.
+      }
+    },
+    // Blue-wave-only ball interaction tuning: sweet spot force, away boost, toward stun, and gold resistance.
+    blueWaveInteraction: {
+      velocityThreshold: 30, // Minimum horizontal speed used to classify a ball as moving toward or away from the paddle.
+      sweetSpotExponent: 1.55, // Higher values make the blue-wave center sweet spot narrower.
+      aimBlendBase: 0.16, // Base blend between "push away from contact point" and "push along aim angle".
+      aimBlendSweetScale: 0.38, // Extra aim blend gained from a strong center hit.
+      forceMultiplierBase: 0.7, // Baseline multiplier applied to blue-wave strength.
+      forceMultiplierSweetScale: 0.52, // Extra force gained from a strong center hit.
+      away: {
+        speedCapMultiplier: 0.96, // Ball speed cap used for away-moving blue hits.
+        speedScaleBase: 1.05, // Baseline outgoing speed multiplier on away-moving hits.
+        speedScaleSweetScale: 0.08, // Extra outgoing speed gained from a strong center hit.
+        baseSpeed: 640, // Minimum outgoing speed for away-moving hits.
+        speedPerLevel: 10, // Extra minimum speed gained per wave level.
+        speedSweetScale: 56, // Extra minimum speed gained from a strong center hit.
+        directionCarryBase: 0.72, // How much the ball keeps its current direction on away-moving hits.
+        directionCarrySweetScale: 0.05, // Amount of current-direction carry removed by a strong center hit.
+        aimInfluenceBase: 0.28, // How much the paddle aim influences away-moving hits.
+        aimInfluenceSweetScale: 0.1, // Extra aim influence gained from a strong center hit.
+        boostDurationBase: 0.42, // Base boost duration applied to away-moving hits.
+        boostDurationSweetScale: 0.18, // Extra boost duration from a strong center hit.
+        boostIntensityBase: 0.8, // Base boost intensity applied to away-moving hits.
+        boostIntensitySweetScale: 0.4, // Extra boost intensity from a strong center hit.
+        resistSweetThreshold: 0.72, // Sweet-spot threshold required to grant blue resistance against gold waves.
+        resistDurationBase: 1.2, // Base blue-resistance duration on strong away-moving hits.
+        resistDurationSweetScale: 0.35, // Extra blue-resistance duration from a strong center hit.
+        resistStrengthBase: 0.55, // Base blue-resistance strength on strong away-moving hits.
+        resistStrengthSweetScale: 0.22 // Extra blue-resistance strength from a strong center hit.
+      },
+      toward: {
+        stunDurationBase: 0.06, // Base stun duration on toward-moving blue hits.
+        stunDurationSweetScale: 0.07, // Extra stun duration from a strong center hit.
+        feedbackBoostMinDuration: 0.08, // Minimum visual boost marker duration applied during stun.
+        feedbackBoostDurationScale: 0.9, // Stun duration multiplier used to derive the visual boost marker duration.
+        feedbackBoostIntensity: 0.72 // Visual boost marker intensity applied during stun.
+      },
+      resistVsGold: {
+        influenceBase: 0.62, // Base fraction of a gold wave's effect that still gets through when blue resistance is active.
+        missingStrengthScale: 0.18, // Extra gold influence recovered when blue resistance strength is weak.
+        minInfluence: 0.56, // Lower clamp for gold influence while blue resistance is active.
+        maxInfluence: 0.8, // Upper clamp for gold influence while blue resistance is active.
+        defaultStrength: 0.55 // Fallback blue-resistance strength when a timer exists without an explicit stored strength.
+      }
+    },
+    // Pink-wave-only ball interaction tuning.
+    pinkWaveInteraction: {
+      ballHit: {
+        offsetRangeMin: 46, // Minimum vertical range used when normalizing a pink-wave hit offset.
+        offsetRangeRadiusScale: 0.5, // Portion of current pink radius used when normalizing hit offset.
+        speedCapMultiplier: 0.88, // Ball speed cap used for pink-wave hits.
+        baseSpeed: 500, // Minimum speed for pink-wave hits.
+        speedPerLevel: 10, // Extra minimum speed gained per wave level.
+        incomingSpeedScale: 0.95, // Multiplier on incoming ball speed for pink-wave hits.
+        incomingSpeedFlatBonus: 26, // Flat speed added after incoming-speed scaling.
+        angleOffsetScale: 0.42, // Vertical hit offset influence on outgoing angle.
+        aimInfluence: 0.08, // Paddle aim influence on outgoing pink-wave angle.
+        angleClamp: 0.6, // Clamp applied to pink-wave outgoing angle.
+        aimVerticalKick: 10 // Extra vertical velocity added from paddle aim.
+      }
+    },
+    // Gold-wave-only interaction tuning: center sweet spot, paddle disruption, and post-hit growth.
+    goldWaveInteraction: {
+      paddleHit: {
+        nudgeMax: 230, // Maximum vertical displacement force applied to a paddle struck by the gold wave.
+        velocityScale: 20, // Multiplier used when converting paddle nudge into paddle vertical velocity.
+        hitScale: 1.26, // Temporary paddle squash/stretch scale when the gold wave lands.
+        slowDurationSeconds: 1.85, // Slow duration applied to a paddle struck by the gold wave.
+        chargeCeilingOffset: 0.02 // Amount below pink-ready charge that a struck paddle gets clamped to.
+      },
+      ballHit: {
+        sweetSpotExponent: 1.7, // Higher values make the gold-wave center sweet spot narrower.
+        centerSweetThreshold: 0.74, // Sweet-spot threshold that triggers the strongest center-hit behavior.
+        center: {
+          speedCapMultiplier: 0.97, // Ball speed cap used for strong center hits.
+          incomingSpeedScale: 1.02, // Multiplier on incoming ball speed for strong center hits.
+          baseSpeed: 600, // Minimum speed for strong center hits.
+          speedPerLevel: 12, // Extra minimum speed gained per wave level on strong center hits.
+          speedSweetScale: 42, // Extra minimum speed gained from a stronger center hit.
+          angleOffsetScale: 0.1, // Vertical impact offset influence on the outgoing angle of a center hit.
+          boostDurationBase: 0.46, // Base boost duration applied to a strong center hit.
+          boostDurationInfluenceScale: 0.12, // Extra boost duration gained from reduced gold influence.
+          boostIntensity: 0.9 // Boost intensity applied to a strong center hit.
+        },
+        glancing: {
+          speedGateCapMultiplier: 0.92, // Incoming-speed threshold for using the glancing-hit branch instead of the nudge branch.
+          speedCapMultiplier: 0.91, // Ball speed cap used for glancing hits.
+          baseSpeed: 498, // Minimum speed for glancing hits.
+          speedPerLevel: 11, // Extra minimum speed gained per wave level on glancing hits.
+          incomingSpeedScale: 0.982, // Multiplier on incoming speed for glancing hits.
+          incomingSpeedFlatBonus: 8, // Flat speed added before sweet-spot scaling on glancing hits.
+          speedSweetScale: 18, // Extra minimum speed gained from a stronger center hit on glancing hits.
+          angleOffsetBase: 0.68, // Base vertical offset influence on glancing-hit angle.
+          angleOffsetSweetReduction: 0.16, // Amount of vertical offset influence removed by a stronger center hit.
+          aimInfluenceBase: 0.12, // Base aim-angle influence on glancing-hit angle.
+          aimInfluenceSweetScale: 0.14, // Extra aim-angle influence gained from a stronger center hit.
+          angleClamp: 0.9, // Clamp applied to the glancing-hit angle.
+          vyAimBase: 14, // Base vertical velocity added from paddle aim on glancing hits.
+          vyAimSweetScale: 12, // Extra vertical aim contribution gained from a stronger center hit.
+          vyOffsetBase: 18, // Base vertical velocity added from impact offset on glancing hits.
+          vyOffsetSweetReduction: 5 // Amount of impact-offset vertical contribution removed by a stronger center hit.
+        },
+        nudge: {
+          base: 20, // Base nudge force when the ball is already too fast for the glancing-hit branch.
+          perLevel: 2.6, // Extra nudge force gained per wave level.
+          sweetScale: 26, // Extra nudge force gained from a stronger center hit.
+          yScale: 0.8, // Fraction of nudge force converted into vertical velocity along the wave angle.
+          offsetScale: 12 // Extra vertical velocity contributed by impact offset.
+        },
+        growth: {
+          arcRadiusPerHit: 1.6, // Arc radius gained every time the gold wave hits a ball.
+          thicknessPerHit: 0.75, // Render thickness gained every time the gold wave hits a ball.
+          maxThickness: 150 // Maximum render thickness after repeated hits.
+        }
       }
     },
     // Long-rally multiball escalation.

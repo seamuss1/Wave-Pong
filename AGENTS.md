@@ -3,22 +3,27 @@
 ## Repo overview
 
 - This is a static HTML5 browser game.
-- `index.html` is the deployable entrypoint and must stay at the zip root for itch.io.
-- `wave_pong.html` exists only as a compatibility redirect to `index.html`.
+- Runtime browser files live under `runtime/`.
+- `runtime/index.html` is the local entrypoint in the repo.
+- For itch.io packaging, the contents of `runtime/` should be placed at the zip root.
+- `runtime/wave_pong.html` exists only as a compatibility redirect to `runtime/index.html`.
 
 ## File map
 
-- `index.html`: overlay markup and script/style includes.
-- `styles/main.css`: all page and HUD styling.
-- `js/config.js`: primary tuning surface for gameplay numbers and static definitions.
-- `js/app.js`: game loop, rendering, input, physics, UI wiring, and persistence.
+- `runtime/index.html`: overlay markup and script/style includes.
+- `runtime/styles/main.css`: all page and HUD styling.
+- `runtime/js/config.js`: primary tuning surface for gameplay numbers and static definitions.
+- `runtime/js/app.js`: game loop, rendering, input, physics, UI wiring, and persistence.
+- `tools/browser-smoke-test.js`: headless browser smoke test with process cleanup.
+- `tools/package.json`: tooling-only package manifest.
 - `readme.md`: player-facing documentation.
 
 ## Change rules
 
 - Preserve browser-only deployment. Do not add a bundler or server requirement unless explicitly requested.
 - Keep asset paths relative so the game works on itch.io and under static hosting.
-- When adjusting balance, edit `js/config.js` first instead of scattering literals through `js/app.js`.
+- Keep runtime files under `runtime/` and tooling under `tools/`.
+- When adjusting balance, edit `runtime/js/config.js` first instead of scattering literals through `runtime/js/app.js`.
 - Treat refactors as behavior-preserving unless the task explicitly asks for gameplay changes.
 
 ## Commit messages
@@ -30,6 +35,6 @@
 
 ## Packaging
 
-- The deployable zip should contain `index.html`, `wave_pong.html`, `js/`, and `styles/` at the archive root.
+- The deployable zip should contain the contents of `runtime/` at the archive root.
 - Recommended PowerShell command:
-  `Compress-Archive -Path index.html, wave_pong.html, js, styles -DestinationPath wave-pong-itchio.zip -Force`
+  `Compress-Archive -Path runtime\* -DestinationPath wave-pong-itchio.zip -Force`

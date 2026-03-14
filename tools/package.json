@@ -1,0 +1,9 @@
+{
+  "name": "wave-pong-tools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tooling for the Wave Pong repo",
+  "scripts": {
+    "smoke": "node browser-smoke-test.js"
+  }
+}

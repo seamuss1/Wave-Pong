@@ -1,6 +1,6 @@
 # Game Wave Pong
 
-Game Wave Pong is a fast, arcade-style browser Pong game with wave weapons, XP progression, multiball chaos, instant powerups, and head-to-head stats. It runs as a static browser game with `index.html` as the entrypoint, so it can be opened directly or uploaded to itch.io as an HTML5 game.
+Game Wave Pong is a fast, arcade-style browser Pong game with wave weapons, XP progression, multiball chaos, instant powerups, and head-to-head stats. It runs as a static browser game with the runtime kept under `runtime/`, so it can be opened locally or packaged for itch.io as an HTML5 game.
 
 ## What the game is
 
@@ -13,15 +13,21 @@ The result is part Pong, part arena control game.
 
 ## How to play
 
-Open `index.html` in a modern desktop browser.
+Open `runtime/index.html` in a modern desktop browser.
 
 ## Project layout
 
-- `index.html` contains the game UI markup and is the file itch.io should launch.
-- `styles/main.css` contains the presentation layer.
-- `js/app.js` contains the game loop, rendering, input, and gameplay systems.
-- `js/config.js` contains the tweakable gameplay numbers and static game definitions.
-- `wave_pong.html` is a legacy entry that redirects to `index.html`.
+- `runtime/index.html` contains the game UI markup and is the local browser entrypoint.
+- `runtime/styles/main.css` contains the presentation layer.
+- `runtime/js/app.js` contains the game loop, rendering, input, and gameplay systems.
+- `runtime/js/config.js` contains the tweakable gameplay numbers and static game definitions.
+- `runtime/wave_pong.html` is a legacy entry that redirects to `runtime/index.html`.
+- `tools/browser-smoke-test.js` contains the headless browser smoke test.
+- `tools/package.json` contains tooling-only Node metadata.
+
+## itch.io packaging
+
+itch.io expects the deployable files at the archive root. In this repo, that means zipping the contents of `runtime/`, not the `runtime/` folder itself.
 
 ### Controls
 
@@ -273,4 +279,4 @@ Prioritize positioning and pink defense first. Then use blue to tame the most da
 
 # Notes
 
-This README describes the current Game Wave Pong build and its intended gameplay loop. If you continue tuning the game, update this README alongside the code so the strategy and powerup sections stay accurate. Gameplay balance now lives in `js/config.js`.
+This README describes the current Game Wave Pong build and its intended gameplay loop. If you continue tuning the game, update this README alongside the code so the strategy and powerup sections stay accurate. Gameplay balance now lives in `runtime/js/config.js`.
