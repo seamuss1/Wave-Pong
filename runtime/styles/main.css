@@ -24,6 +24,7 @@
       height: 100%;
       overflow: hidden;
       font-family: Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color-scheme: dark;
       color: var(--text);
       background:
         radial-gradient(circle at top left, rgba(102, 227, 255, 0.16), transparent 32%),
@@ -167,6 +168,7 @@
       border-radius: 28px;
       box-shadow: 0 12px 50px rgba(0,0,0,0.35), var(--glow);
       padding: 24px;
+      color: var(--text);
     }
 
     .hero {
@@ -182,6 +184,8 @@
       font-size: clamp(34px, 5vw, 62px);
       line-height: 0.95;
       letter-spacing: 0.02em;
+      color: #f3f8ff;
+      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35);
     }
 
     .subtitle {
@@ -228,6 +232,7 @@
       margin: 0 0 12px 0;
       font-size: 18px;
       letter-spacing: 0.03em;
+      color: #eef5ff;
     }
 
     .controls {
@@ -256,7 +261,7 @@
       flex-direction: column;
       gap: 8px;
       font-size: 13px;
-      color: var(--muted);
+      color: #b8c9e2;
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
@@ -267,13 +272,14 @@
 
     select,
     input[type="number"] {
+      color-scheme: dark;
       appearance: none;
       width: 100%;
       padding: 12px 14px;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.05);
-      color: var(--text);
+      color: #eef6ff;
       outline: none;
     }
 
@@ -294,7 +300,11 @@
       background: rgba(255,255,255,0.05);
       text-transform: none;
       letter-spacing: normal;
-      color: var(--text);
+      color: #eef6ff;
+    }
+
+    .toggle span {
+      color: #eef6ff;
     }
 
     .toggle input {
@@ -320,6 +330,7 @@
       font-weight: 800;
       letter-spacing: 0.04em;
       transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+      color: var(--text);
     }
 
     button:hover {
@@ -601,10 +612,11 @@
     .menuHeader h1 {
       margin: 0;
       line-height: 1;
+      color: #f3f8ff;
     }
 
     .menuSubtle {
-      color: var(--muted);
+      color: #bfd0e8;
       font-size: 14px;
     }
 
@@ -649,16 +661,17 @@
       font-weight: 800;
       margin-bottom: 4px;
       letter-spacing: 0.03em;
+      color: #eef6ff;
     }
 
     .powerRow .desc {
-      color: var(--muted);
+      color: #b8c9e2;
       font-size: 13px;
       line-height: 1.45;
     }
 
     .helpNote {
-      color: var(--muted);
+      color: #b8c9e2;
       font-size: 13px;
       line-height: 1.5;
       margin-top: 10px;
