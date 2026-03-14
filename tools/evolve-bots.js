@@ -44,8 +44,10 @@ function parseArgs(argv) {
     scoreLimit: 5,
     maxTicks: 120 * 90,
     reportsDir: path.join(repoRoot, 'tools', 'reports'),
-    exportFile: path.join(repoRoot, 'runtime', 'js', 'bots.js'),
-    ratingsFile: path.join(repoRoot, 'tools', 'reports', 'review-ratings.json')
+    exportFile: path.join(repoRoot, 'tools', 'reports', 'exported-bots.js'),
+    ratingsFile: path.join(repoRoot, 'tools', 'reports', 'review-ratings.json'),
+    checkpointEvery: 1,
+    progressEveryMatches: 100
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -58,6 +60,8 @@ function parseArgs(argv) {
     else if (arg === '--reports-dir' && argv[i + 1]) args.reportsDir = path.resolve(argv[++i]);
     else if (arg === '--export-file' && argv[i + 1]) args.exportFile = path.resolve(argv[++i]);
     else if (arg === '--ratings-file' && argv[i + 1]) args.ratingsFile = path.resolve(argv[++i]);
+    else if (arg === '--checkpoint-every' && argv[i + 1]) args.checkpointEvery = Number(argv[++i]);
+    else if (arg === '--progress-every' && argv[i + 1]) args.progressEveryMatches = Number(argv[++i]);
     else throw new Error(`Unknown argument: ${arg}`);
   }
 
@@ -79,8 +83,30 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+function writeJson(filePath, value) {
+  fs.writeFileSync(filePath, JSON.stringify(value, null, 2), 'utf8');
+}
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+function formatPercent(value) {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function countRoundRobinMatches(botCount) {
+  return (botCount * (botCount - 1)) / 2;
 }
 
 function normalizeDecision(value) {
@@ -225,6 +251,24 @@ function createPromotionCandidate(bot, reviewSummary) {
     reviewBlocked: blockedByReview,
     promotionScore
   };
+}
+
+function summarizePromotionCandidates(populations, reviewRatings, limit = 12) {
+  return Object.values(populations)
+    .flat()
+    .map((bot) => createPromotionCandidate(bot, reviewRatings.byBot.get(bot.id)))
+    .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo)
+    .slice(0, limit)
+    .map((bot) => ({
+      id: bot.id,
+      name: bot.name,
+      archetype: bot.archetype,
+      generation: bot.generation,
+      elo: Math.round(bot.elo),
+      promotionScore: Math.round(bot.promotionScore),
+      reviewBlocked: !!bot.reviewBlocked,
+      reviewSummary: bot.reviewSummary
+    }));
 }
 
 function sampleNormal(random) {
@@ -444,6 +488,9 @@ function makeReplayBundle(match, leftBot, rightBot, seed) {
 function runGeneration(populations, generation, random, settings) {
   const allBots = Object.values(populations).flat();
   const replayBundles = [];
+  const totalMatches = countRoundRobinMatches(allBots.length);
+  const progressEveryMatches = Math.max(1, Math.floor(settings.progressEveryMatches || Math.max(25, totalMatches / 20)));
+  let processedMatches = 0;
 
   for (const bot of allBots) {
     bot.fitnessScore = 0;
@@ -467,6 +514,18 @@ function runGeneration(populations, generation, random, settings) {
 
       if (replayBundles.length < 8 || match.maxBallSpeed > config.balance.ball.speedCap * 1.15) {
         replayBundles.push(makeReplayBundle(match, leftBot, rightBot, seed));
+      }
+
+      processedMatches += 1;
+      if (
+        typeof settings.onProgress === 'function' &&
+        (processedMatches === totalMatches || processedMatches % progressEveryMatches === 0)
+      ) {
+        settings.onProgress({
+          generation,
+          processedMatches,
+          totalMatches
+        });
       }
     }
   }
@@ -495,7 +554,7 @@ function runGeneration(populations, generation, random, settings) {
     }
   }
 
-  return { nextPopulations, summary, replayBundles };
+  return { nextPopulations, summary, replayBundles, totalMatches };
 }
 
 function assignDifficultyBands(rankedBots) {
@@ -515,10 +574,21 @@ function writeBotsScript(filePath, bots) {
   fs.writeFileSync(filePath, script, 'utf8');
 }
 
+function writeGenerationCheckpoint(checkpointsDir, payload) {
+  ensureDir(checkpointsDir);
+  const completedGeneration = payload.generationCompleted + 1;
+  const generationFile = path.join(checkpointsDir, `generation-${String(completedGeneration).padStart(3, '0')}.json`);
+  const latestFile = path.join(checkpointsDir, 'latest-evolution-checkpoint.json');
+  writeJson(generationFile, payload);
+  writeJson(latestFile, payload);
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   ensureDir(args.reportsDir);
   ensureDir(path.join(args.reportsDir, 'replays'));
+  const checkpointsDir = path.join(args.reportsDir, 'checkpoints');
+  ensureDir(checkpointsDir);
   const humanRatings = loadHumanRatings(args.ratingsFile);
   const reviewRatings = aggregateHumanRatings(humanRatings);
 
@@ -527,16 +597,78 @@ function main() {
   let populations = createPopulation(inputSize, args.population, random);
   const generationReports = [];
   let finalReplayBundles = [];
+  const totalBots = Object.values(populations).flat().length;
+  const matchesPerGeneration = countRoundRobinMatches(totalBots);
+  const totalPlannedMatches = matchesPerGeneration * args.generations;
+  const overallStartedAt = Date.now();
+
+  console.log(`Training ${totalBots} bots across ${ARCHETYPES.length} archetypes for ${args.generations} generations.`);
+  console.log(`Each generation evaluates ${matchesPerGeneration} matches; total planned matches: ${totalPlannedMatches}.`);
+  console.log(`scoreLimit=${args.scoreLimit}, maxTicks=${args.maxTicks}, checkpointEvery=${args.checkpointEvery}, progressEvery=${args.progressEveryMatches}`);
 
   for (let generation = 0; generation < args.generations; generation += 1) {
-    const { nextPopulations, summary, replayBundles } = runGeneration(populations, generation, random, {
+    const generationLabel = `[Gen ${generation + 1}/${args.generations}]`;
+    const generationStartedAt = Date.now();
+    console.log(`${generationLabel} starting`);
+
+    const { nextPopulations, summary, replayBundles, totalMatches } = runGeneration(populations, generation, random, {
       scoreLimit: args.scoreLimit,
       maxTicks: args.maxTicks,
-      inputSize
+      inputSize,
+      progressEveryMatches: args.progressEveryMatches,
+      onProgress(progress) {
+        const elapsedMs = Date.now() - overallStartedAt;
+        const overallProcessedMatches = generation * matchesPerGeneration + progress.processedMatches;
+        const overallRatio = totalPlannedMatches > 0 ? overallProcessedMatches / totalPlannedMatches : 1;
+        const etaMs = overallProcessedMatches > 0
+          ? (elapsedMs / overallProcessedMatches) * (totalPlannedMatches - overallProcessedMatches)
+          : 0;
+        console.log(
+          `${generationLabel} ${progress.processedMatches}/${progress.totalMatches} matches (${formatPercent(progress.processedMatches / progress.totalMatches)})` +
+          ` | overall ${overallProcessedMatches}/${totalPlannedMatches} (${formatPercent(overallRatio)})` +
+          ` | elapsed ${formatDuration(elapsedMs)}` +
+          ` | eta ${formatDuration(etaMs)}`
+        );
+      }
     });
-    generationReports.push({ generation, summary });
+    const generationElapsedMs = Date.now() - generationStartedAt;
+    generationReports.push({
+      generation,
+      totalMatches,
+      elapsedMs: generationElapsedMs,
+      summary
+    });
     populations = nextPopulations;
     finalReplayBundles = replayBundles;
+
+    const topSummaryText = summary
+      .map((entry) => `${entry.archetype}:${entry.topBotId} elo=${Math.round(entry.topElo)}`)
+      .join(' | ');
+    console.log(`${generationLabel} completed in ${formatDuration(generationElapsedMs)} | ${topSummaryText}`);
+
+    if (args.checkpointEvery > 0 && ((generation + 1) % args.checkpointEvery === 0 || generation === args.generations - 1)) {
+      const elapsedMs = Date.now() - overallStartedAt;
+      const completedMatches = (generation + 1) * matchesPerGeneration;
+      const checkpoint = {
+        createdAt: new Date().toISOString(),
+        runtimeVersion,
+        seed: args.seed,
+        generationCompleted: generation,
+        generationsPlanned: args.generations,
+        populationPerArchetype: args.population,
+        scoreLimit: args.scoreLimit,
+        maxTicks: args.maxTicks,
+        progressEveryMatches: args.progressEveryMatches,
+        matchesPerGeneration,
+        totalPlannedMatches,
+        completedMatches,
+        elapsedMs,
+        generationReports,
+        topCandidates: summarizePromotionCandidates(populations, reviewRatings)
+      };
+      writeGenerationCheckpoint(checkpointsDir, checkpoint);
+      console.log(`${generationLabel} checkpoint written to ${checkpointsDir}`);
+    }
   }
 
   const promotionCandidates = Object.values(populations)
@@ -565,6 +697,7 @@ function main() {
   }));
 
   writeBotsScript(args.exportFile, rankedBots);
+  const totalElapsedMs = Date.now() - overallStartedAt;
 
   const report = {
     createdAt: new Date().toISOString(),
@@ -573,6 +706,9 @@ function main() {
     generations: args.generations,
     populationPerArchetype: args.population,
     inputSize,
+    matchesPerGeneration,
+    totalPlannedMatches,
+    elapsedMs: totalElapsedMs,
     ratingsFileUsed: args.ratingsFile,
     humanReviewSummary: reviewRatings.summary,
     generationReports,
@@ -599,13 +735,14 @@ function main() {
   };
 
   const reportPath = path.join(args.reportsDir, 'latest-evolution-report.json');
-  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf8');
+  writeJson(reportPath, report);
 
   finalReplayBundles.slice(0, 8).forEach((bundle) => {
     const outputPath = path.join(args.reportsDir, 'replays', `${bundle.replayId}.json`);
-    fs.writeFileSync(outputPath, JSON.stringify(bundle, null, 2), 'utf8');
+    writeJson(outputPath, bundle);
   });
 
+  console.log(`Training completed in ${formatDuration(totalElapsedMs)}.`);
   console.log(`Evolved ${rankedBots.length} bots and exported them to ${args.exportFile}`);
   console.log(`Report written to ${reportPath}`);
 }

@@ -41,6 +41,7 @@
 
 - Build the itch.io artifact first with `node tools/build-itch-html.js`.
 - Track the repo version in `version.json`.
+- Do not treat version bumps as packaging-only. If a task lands a substantial feature/change set, bump the repo version in the same branch even if packaging is not happening in that turn.
 - Use versioning rules:
   - increment the third number for minor rebuilds and small changes
   - increment the second number and reset the third for bigger feature/change sets

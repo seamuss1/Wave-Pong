@@ -170,9 +170,21 @@
   }
 
   function selectBotForDifficulty(bots, difficulty) {
-    const roster = (Array.isArray(bots) ? bots : []).filter((bot) => !bot.reviewBlocked);
-    const exact = roster.find((bot) => bot.difficultyBand === difficulty);
-    if (exact) return exact;
+    function activityScore(bot) {
+      const validation = bot && bot.runtimeValidation;
+      return validation ? (Number(validation.totalMovedTicks) || 0) + (Number(validation.totalGoals) || 0) * 100 : 0;
+    }
+
+    const roster = (Array.isArray(bots) ? bots : [])
+      .filter((bot) => !bot.reviewBlocked && !bot.runtimeDisabled)
+      .slice()
+      .sort((a, b) => {
+        const activityDelta = activityScore(b) - activityScore(a);
+        if (activityDelta !== 0) return activityDelta;
+        return (Number(b.elo) || 0) - (Number(a.elo) || 0);
+      });
+    const exact = roster.filter((bot) => bot.difficultyBand === difficulty);
+    if (exact.length) return exact[0];
     return roster[0] || null;
   }
 

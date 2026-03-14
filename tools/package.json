@@ -9,6 +9,7 @@
     "deploy:test": "powershell -ExecutionPolicy Bypass -File ./deploy-itch.ps1 -Destination test",
     "deploy:production": "powershell -ExecutionPolicy Bypass -File ./deploy-itch.ps1 -Destination production",
     "evolve": "node evolve-bots.js",
+    "publish:bots": "node publish-bots.js",
     "render:replay": "node render-replay.js",
     "review:replays": "node review-replays.js",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./browser-smoke-test.ps1",

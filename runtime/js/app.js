@@ -4,7 +4,7 @@
   const controllers = ns.Controllers;
   const config = ns.CONFIG;
   const runtimeVersion = ns.VERSION;
-  const botRoster = Array.isArray(ns.BOTS) ? ns.BOTS : [];
+  const botRoster = Array.isArray(ns.BOT_ROSTER) ? ns.BOT_ROSTER : [];
 
   if (!simCore) throw new Error('Wave Pong sim core missing. Load js/sim-core.js before js/app.js.');
   if (!controllers) throw new Error('Wave Pong controllers missing. Load js/controllers.js before js/app.js.');
