@@ -144,6 +144,20 @@ function Resolve-NodeExe {
   return $nodeCommand.Source
 }
 
+function Get-RepoVersion {
+  $versionFile = Join-Path $repoRoot 'version.json'
+  if (-not (Test-Path $versionFile)) {
+    throw "Expected version file at '$versionFile'."
+  }
+
+  $versionData = Get-Content $versionFile -Raw | ConvertFrom-Json
+  if (-not $versionData.version) {
+    throw "Expected 'version' in '$versionFile'."
+  }
+
+  return [string]$versionData.version
+}
+
 if (-not $SkipBuild) {
   $nodeExe = Resolve-NodeExe
   $builderPath = Join-Path $PSScriptRoot 'build-itch-html.js'
@@ -160,6 +174,10 @@ if (-not (Test-Path (Join-Path $resolvedBuildPath 'index.html'))) {
 }
 
 $resolvedButler = Resolve-ButlerExe -ExplicitPath $ButlerPath
+
+if (-not $UserVersion) {
+  $UserVersion = Get-RepoVersion
+}
 
 $arguments = @('push', $resolvedBuildPath, $Target)
 if ($UserVersion) {

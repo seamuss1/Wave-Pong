@@ -29,7 +29,7 @@ Open `runtime/index.html` in a modern desktop browser.
 
 ## itch.io packaging
 
-Versioning is tracked in `version.json`. Current version starts at `0.3.2`.
+Versioning is tracked in `version.json`. The current version is `0.3.3`.
 
 Version rules:
 
@@ -73,7 +73,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1
 That command:
 
 - rebuilds `itch-build/`
-- creates the single current deploy zip as `wave-pong-itchio-v0.3.2.zip`
+- creates the single current deploy zip as `wave-pong-itchio-v0.3.3.zip`
 - verifies the archived `index.html` matches `itch-build/index.html`
 
 ## Smoke testing
@@ -129,16 +129,14 @@ Example:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
-  -Destination test `
-  -UserVersion "2026.03.14"
+  -Destination test
 ```
 
 Production example:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
-  -Destination production `
-  -UserVersion "2026.03.14"
+  -Destination production
 ```
 
 The script:
@@ -147,6 +145,7 @@ The script:
 - defaults `BuildPath` to `itch-build/`
 - defaults `Destination` to `test`
 - automatically loads `.env` from the repo root before resolving credentials
+- defaults `UserVersion` to the current value in `version.json` when `-UserVersion` is not provided
 - reads `BUTLER_API_KEY` from `.env` or the current shell session
 - maps `test` to `rainman1337/wave-pong-test:html5`
 - maps `production` to `rainman1337/wave-pong:html5`
@@ -170,6 +169,16 @@ Convenient npm shortcuts from `tools/`:
 ```bash
 npm.cmd run deploy:test
 npm.cmd run deploy:production
+```
+
+If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.3.3`.
+
+You can still override it for a one-off deploy:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
+  -Destination test `
+  -UserVersion "0.3.3-hotfix1"
 ```
 
 ### First-time itch.io setup
