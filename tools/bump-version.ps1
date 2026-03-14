@@ -51,10 +51,15 @@ $updatedJson = [ordered]@{
 [System.IO.File]::WriteAllText($versionPath, $updatedJson + [Environment]::NewLine)
 [System.IO.File]::WriteAllText(
   $runtimeVersionPath,
-  "(function () {" + [Environment]::NewLine +
-  "  window.WavePong = window.WavePong || {};" + [Environment]::NewLine +
-  "  window.WavePong.VERSION = '" + $newVersion + "';" + [Environment]::NewLine +
-  "})();" + [Environment]::NewLine
+  "(function (root, version) {" + [Environment]::NewLine +
+  "  if (typeof module === 'object' && module.exports) {" + [Environment]::NewLine +
+  "    module.exports = version;" + [Environment]::NewLine +
+  "  }" + [Environment]::NewLine +
+  "  if (root) {" + [Environment]::NewLine +
+  "    root.WavePong = root.WavePong || {};" + [Environment]::NewLine +
+  "    root.WavePong.VERSION = version;" + [Environment]::NewLine +
+  "  }" + [Environment]::NewLine +
+  "})(typeof globalThis !== 'undefined' ? globalThis : this, '" + $newVersion + "');" + [Environment]::NewLine
 )
 
 if (-not (Test-Path $runtimeIndexPath)) {
