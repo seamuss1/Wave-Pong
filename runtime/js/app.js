@@ -73,6 +73,7 @@
       const matchFlowBalance = balance.matchFlow;
       const powerupBalance = balance.powerups;
       const paddleHitBalance = balance.paddleHit;
+      const ballBoostBalance = ballBalance.boost;
 
       const W = canvasBalance.width;
       const H = canvasBalance.height;
@@ -241,6 +242,8 @@
           lastHitSide: null,
           boostTimer: 0,
           boostIntensity: 0,
+          boostAcceleration: 0,
+          boostMaxSpeed: BALL_SPEED_CAP,
           boostColor: '#7bd2ff',
           stunTimer: 0,
           storedVx: 0,
@@ -413,9 +416,12 @@
       }
 
       function clampBallSpeed(ball, maxSpeed = BALL_SPEED_CAP) {
+        const effectiveMaxSpeed = (ball.boostTimer || 0) > 0
+          ? Math.max(maxSpeed, ball.boostMaxSpeed || maxSpeed)
+          : maxSpeed;
         const speed = Math.hypot(ball.vx, ball.vy);
-        if (speed <= maxSpeed || speed === 0) return;
-        const scaleFactor = maxSpeed / speed;
+        if (speed <= effectiveMaxSpeed || speed === 0) return;
+        const scaleFactor = effectiveMaxSpeed / speed;
         ball.vx *= scaleFactor;
         ball.vy *= scaleFactor;
       }
@@ -430,9 +436,11 @@
         return paddle.maxCharge;
       }
 
-      function setBallBoost(ball, duration, intensity, color) {
+      function setBallBoost(ball, duration, intensity, color, acceleration = 0, maxSpeed = BALL_SPEED_CAP) {
         ball.boostTimer = Math.max(ball.boostTimer || 0, duration);
         ball.boostIntensity = Math.max(ball.boostIntensity || 0, intensity);
+        ball.boostAcceleration = Math.max(ball.boostAcceleration || 0, acceleration);
+        ball.boostMaxSpeed = Math.max(ball.boostMaxSpeed || BALL_SPEED_CAP, maxSpeed);
         ball.boostColor = color;
       }
 
@@ -1355,6 +1363,10 @@ function updateBalls(dt) {
     ball.hueShift += dt * 4;
     ball.boostTimer = Math.max(0, (ball.boostTimer || 0) - dt);
     ball.boostIntensity = Math.max(0, (ball.boostIntensity || 0) - dt * 1.8);
+    if (ball.boostTimer <= 0) {
+      ball.boostAcceleration = 0;
+      ball.boostMaxSpeed = BALL_SPEED_CAP;
+    }
     ball.blueResistTimer = Math.max(0, (ball.blueResistTimer || 0) - dt);
     if (ball.blueResistTimer <= 0) ball.blueResistStrength = 0;
 
@@ -1370,6 +1382,22 @@ function updateBalls(dt) {
     }
 
     if (!hadStun || ball.stunTimer <= 0) {
+      const speed = Math.hypot(ball.vx, ball.vy);
+      if ((ball.boostTimer || 0) > 0 && (ball.boostAcceleration || 0) > 0 && speed > 0) {
+        const boostedSpeed = Math.min(ball.boostMaxSpeed || BALL_SPEED_CAP, speed + ball.boostAcceleration * dt);
+        if (boostedSpeed > speed) {
+          const boostScale = boostedSpeed / speed;
+          ball.vx *= boostScale;
+          ball.vy *= boostScale;
+        }
+      } else if (speed > BALL_SPEED_CAP && ballBoostBalance.overCapDecayPerSecond > 0) {
+        const settledSpeed = Math.max(BALL_SPEED_CAP, speed - ballBoostBalance.overCapDecayPerSecond * dt);
+        if (settledSpeed < speed) {
+          const settleScale = settledSpeed / speed;
+          ball.vx *= settleScale;
+          ball.vy *= settleScale;
+        }
+      }
       ball.x += ball.vx * dt * slowFactor;
       ball.y += ball.vy * dt * slowFactor;
     } else {
@@ -1563,13 +1591,16 @@ function updatePulses(dt) {
                 const targetAngle = pulse.angle + offset * goldWaveInteractionBalance.ballHit.center.angleOffsetScale;
                 const targetVx = Math.cos(targetAngle) * targetSpeed;
                 const targetVy = Math.sin(targetAngle) * targetSpeed;
+                const boostIntensity = goldWaveInteractionBalance.ballHit.center.boostIntensity;
                 ball.vx += (targetVx - ball.vx) * yellowInfluence;
                 ball.vy += (targetVy - ball.vy) * yellowInfluence;
                 setBallBoost(
                   ball,
                   goldWaveInteractionBalance.ballHit.center.boostDurationBase + yellowInfluence * goldWaveInteractionBalance.ballHit.center.boostDurationInfluenceScale,
-                  goldWaveInteractionBalance.ballHit.center.boostIntensity,
-                  waveBalance.gold.color
+                  boostIntensity,
+                  waveBalance.gold.color,
+                  Math.log2(1 + Math.max(0, boostIntensity)) * ballBoostBalance.accelerationPerLog2Unit,
+                  BALL_SPEED_CAP * goldWaveInteractionBalance.ballHit.center.boostMaxSpeedCapMultiplier
                 );
               } else if (incomingSpeed <= BALL_SPEED_CAP * goldWaveInteractionBalance.ballHit.glancing.speedGateCapMultiplier) {
                 const direction = pulse.side === 'left' ? 1 : -1;
@@ -1683,13 +1714,16 @@ function updatePulses(dt) {
                   const dirX = (outVx / speed) * (blueWaveInteractionBalance.away.directionCarryBase - sweetFactor * blueWaveInteractionBalance.away.directionCarrySweetScale) + Math.cos(pulse.angle) * (blueWaveInteractionBalance.away.aimInfluenceBase + sweetFactor * blueWaveInteractionBalance.away.aimInfluenceSweetScale);
                   const dirY = (outVy / speed) * (blueWaveInteractionBalance.away.directionCarryBase - sweetFactor * blueWaveInteractionBalance.away.directionCarrySweetScale) + Math.sin(pulse.angle) * (blueWaveInteractionBalance.away.aimInfluenceBase + sweetFactor * blueWaveInteractionBalance.away.aimInfluenceSweetScale);
                   const dirLen = Math.hypot(dirX, dirY) || 1;
+                  const boostIntensity = blueWaveInteractionBalance.away.boostIntensityBase + sweetFactor * blueWaveInteractionBalance.away.boostIntensitySweetScale;
                   outVx = dirX / dirLen * targetSpeed;
                   outVy = dirY / dirLen * targetSpeed;
                   setBallBoost(
                     ball,
                     blueWaveInteractionBalance.away.boostDurationBase + sweetFactor * blueWaveInteractionBalance.away.boostDurationSweetScale,
-                    blueWaveInteractionBalance.away.boostIntensityBase + sweetFactor * blueWaveInteractionBalance.away.boostIntensitySweetScale,
-                    waveBalance.blue.color
+                    boostIntensity,
+                    waveBalance.blue.color,
+                    Math.log2(1 + Math.max(0, boostIntensity)) * ballBoostBalance.accelerationPerLog2Unit,
+                    BALL_SPEED_CAP * blueWaveInteractionBalance.away.boostMaxSpeedCapMultiplier
                   );
                   if (sweetFactor > blueWaveInteractionBalance.away.resistSweetThreshold) {
                     ball.blueResistTimer = Math.max(ball.blueResistTimer || 0, blueWaveInteractionBalance.away.resistDurationBase + sweetFactor * blueWaveInteractionBalance.away.resistDurationSweetScale);

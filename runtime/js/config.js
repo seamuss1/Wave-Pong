@@ -19,6 +19,10 @@
     ball: {
       radius: 11, // Collision/render radius.
       speedCap: 920, // Global maximum ball speed clamp.
+      boost: {
+        overCapDecayPerSecond: 220, // How quickly an over-speed ball settles back down toward the normal cap after a temporary boost ends.
+        accelerationPerLog2Unit: 32 // Extra ball speed gained per second for each log2 unit of boost intensity while a boost timer is active.
+      },
       initialAngleBase: 0.70, // Minimum serve angle away from horizontal.
       initialAngleRange: 0.10 // Extra randomized serve angle range.
     },
@@ -154,20 +158,21 @@
       forceMultiplierBase: 0.7, // Baseline multiplier applied to blue-wave strength.
       forceMultiplierSweetScale: 0.52, // Extra force gained from a strong center hit.
       away: {
-        speedCapMultiplier: 0.96, // Ball speed cap used for away-moving blue hits.
-        speedScaleBase: 1.05, // Baseline outgoing speed multiplier on away-moving hits.
-        speedScaleSweetScale: 0.08, // Extra outgoing speed gained from a strong center hit.
-        baseSpeed: 640, // Minimum outgoing speed for away-moving hits.
-        speedPerLevel: 10, // Extra minimum speed gained per wave level.
-        speedSweetScale: 56, // Extra minimum speed gained from a strong center hit.
+        speedCapMultiplier: 1.06, // Ball speed cap used for away-moving blue hits before the temporary boost acceleration takes over.
+        speedScaleBase: 1.14, // Baseline outgoing speed multiplier on away-moving hits.
+        speedScaleSweetScale: 0.12, // Extra outgoing speed gained from a strong center hit.
+        baseSpeed: 700, // Minimum outgoing speed for away-moving hits.
+        speedPerLevel: 14, // Extra minimum speed gained per wave level.
+        speedSweetScale: 84, // Extra minimum speed gained from a strong center hit.
         directionCarryBase: 0.72, // How much the ball keeps its current direction on away-moving hits.
         directionCarrySweetScale: 0.05, // Amount of current-direction carry removed by a strong center hit.
         aimInfluenceBase: 0.28, // How much the paddle aim influences away-moving hits.
         aimInfluenceSweetScale: 0.1, // Extra aim influence gained from a strong center hit.
-        boostDurationBase: 1, // Base boost duration applied to away-moving hits.
-        boostDurationSweetScale: 0.18, // Extra boost duration from a strong center hit.
-        boostIntensityBase: 10, // Base visual boost intensity applied to away-moving hits.
-        boostIntensitySweetScale: 0.4, // Extra visual boost intensity from a strong center hit.
+        boostDurationBase: 0.95, // Base boost duration applied to away-moving hits.
+        boostDurationSweetScale: 0.24, // Extra boost duration from a strong center hit.
+        boostIntensityBase: 72, // Base boost intensity applied to away-moving hits. Drives both the visual streak strength and the temporary speed acceleration.
+        boostIntensitySweetScale: 18, // Extra boost intensity from a strong center hit.
+        boostMaxSpeedCapMultiplier: 1.32, // Maximum fraction of the global ball speed cap the blue boost is allowed to sustain while the boost timer is active.
         resistSweetThreshold: 0.72, // Sweet-spot threshold required to grant blue resistance against gold waves.
         resistDurationBase: 1.2, // Base blue-resistance duration on strong away-moving hits.
         resistDurationSweetScale: 0.35, // Extra blue-resistance duration from a strong center hit.
@@ -230,7 +235,8 @@
           angleOffsetScale: 0.1, // Vertical impact offset influence on the outgoing angle of a center hit.
           boostDurationBase: 0.46, // Base boost duration applied to a strong center hit.
           boostDurationInfluenceScale: 0.12, // Extra boost duration gained from reduced gold influence.
-          boostIntensity: 0.9 // Visual boost intensity applied to a strong center hit.
+          boostIntensity: 0.9, // Boost intensity applied to a strong center hit. Drives both the visual streak strength and the temporary speed acceleration.
+          boostMaxSpeedCapMultiplier: 1.08 // Maximum fraction of the global ball speed cap the gold center-hit boost is allowed to sustain while the boost timer is active.
         },
         glancing: {
           speedGateCapMultiplier: 0.92, // Incoming-speed threshold for using the glancing-hit branch instead of the nudge branch.
