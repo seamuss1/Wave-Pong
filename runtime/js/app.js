@@ -70,6 +70,7 @@
       const pinkWaveInteractionBalance = balance.pinkWaveInteraction;
       const goldWaveInteractionBalance = balance.goldWaveInteraction;
       const rallyBalance = balance.rally;
+      const matchFlowBalance = balance.matchFlow;
       const powerupBalance = balance.powerups;
       const paddleHitBalance = balance.paddleHit;
 
@@ -165,7 +166,6 @@
         trailsEnabled: defaults.trailsEnabled,
         theme: defaults.theme,
         bestRally: Number(history.bestRally || localStorage.getItem(BEST_RALLY_KEY) || 0),
-        activePowerLabel: 'None',
         powerSpawnTimer: powerupBalance.spawn.initialDelayBaseSeconds + powerupBalance.spawn.initialDelayRandomSeconds,
         powerDurationTimer: 0,
         lastPowerType: null,
@@ -179,7 +179,6 @@
         slowmoTimer: 0,
         comboFlash: 0,
         impacts: 0,
-        longRallyTriggered: false,
         nextLongRallySpawnAt: rallyBalance.initialSpawnAtSeconds,
         helpReturnToPause: false,
         lowPerfEffects: REDUCED_WAVE_FX
@@ -221,7 +220,6 @@
           overcapTimer: 0,
           chargeBoostTimer: 0,
           chargeGlowPhase: Math.random() * Math.PI * 2,
-          solidFlash: 0,
           slowTimer: 0
         };
       }
@@ -629,10 +627,18 @@ function pulseArcHitsPoint(px, py, pulse, radiusOverride = null) {
         };
       }
 
-      function getPulseRenderRadius(pulse) {
+function getPulseRenderRadius(pulse) {
         return pulse.mode === 'push'
           ? (pulse.arcRadius || 0)
           : Math.max(0, pulse.range * (1 - pulse.life / pulse.maxLife));
+      }
+
+      function getPulseRenderAlpha(pulse) {
+        const baseAlpha = clamp(pulse.life / pulse.maxLife, 0, 1);
+        if (pulse.mode !== 'solid') return baseAlpha;
+        const lingerMax = pulse.maxEndLingerTimer || 0;
+        if (lingerMax <= 0 || (pulse.endLingerTimer || 0) <= 0) return baseAlpha;
+        return Math.max(baseAlpha, (pulse.endLingerTimer / lingerMax) * pinkWaveInteractionBalance.endpointLinger.visualAlphaMultiplier);
       }
 
       function pulseArcIntersectsPulse(pushPulse, otherPulse) {
@@ -701,6 +707,7 @@ function pulseArcHitsPoint(px, py, pulse, radiusOverride = null) {
             cone: waveBalance.pink.coneBase + level * waveBalance.pink.conePerLevel,
             cooldown: waveBalance.pink.cooldown,
             life: waveBalance.pink.lifeBase + Math.min(waveBalance.pink.lifeBonusCap, waveBalance.pink.lifeBonusBase + extraCharge * waveBalance.pink.lifeChargeScale),
+            endLingerSeconds: pinkWaveInteractionBalance.endpointLinger.durationSeconds,
             waveThickness: thickness,
             renderThickness: thickness,
             color: waveBalance.pink.color,
@@ -765,7 +772,6 @@ function firePulse(paddle) {
       maxLife: stats.life,
       strength: stats.strength,
       level: stats.level,
-      charge: usedCharge,
       arcRadius: stats.arcRadius,
       cone: stats.cone,
       waveThickness: stats.waveThickness,
@@ -778,32 +784,32 @@ function firePulse(paddle) {
       trail: [],
       trailSpawnTimer: 0,
       diffraction: [],
-      diffractionBudget: state.lowPerfEffects ? 1 : 4,
       hitBallIds: new Set(),
       hitPaddleIds: new Set()
     });
     showMessage('Full charge force arc deployed. The whole bar just cashed out.', 1.02);
   } else {
-    world.pulses.push({
-      mode: stats.mode,
-      x: origin.x,
-      y: origin.y,
-      angle: paddle.aimAngle,
+      world.pulses.push({
+        mode: stats.mode,
+        x: origin.x,
+        y: origin.y,
+        angle: paddle.aimAngle,
       side: paddle.side,
       life: stats.life,
       maxLife: stats.life,
       range: stats.range,
       strength: stats.strength,
       cone: stats.cone,
-      waveThickness: stats.waveThickness,
-      renderThickness: stats.renderThickness,
-      level: stats.level,
-      radius: 0,
-      charge: usedCharge,
-      color: stats.color,
-      glow: stats.glow,
-      fill: stats.fill,
-      hitBallIds: new Set()
+        waveThickness: stats.waveThickness,
+        renderThickness: stats.renderThickness,
+        level: stats.level,
+        radius: 0,
+        endLingerTimer: stats.endLingerSeconds || 0,
+        maxEndLingerTimer: stats.endLingerSeconds || 0,
+        color: stats.color,
+        glow: stats.glow,
+        fill: stats.fill,
+        hitBallIds: new Set()
     });
   }
 
@@ -818,7 +824,6 @@ function maybeTriggerLongRallyMultiball() {
         const nextAt = state.nextLongRallySpawnAt || rallyBalance.initialSpawnAtSeconds;
         const rallyThreshold = rallyBalance.thresholdBase + Math.max(0, world.balls.length - 1) * rallyBalance.thresholdPerExtraBall;
         if (state.roundSeconds < nextAt && state.rally < rallyThreshold) return;
-        state.longRallyTriggered = true;
         state.nextLongRallySpawnAt = state.roundSeconds + rallyBalance.repeatDelayBaseSeconds + world.balls.length * rallyBalance.repeatDelayPerBallSeconds;
         const base = world.balls[(Math.random() * world.balls.length) | 0] || world.balls[0];
         const clone = createBall(base.vx >= 0 ? 1 : -1, W / 2, H / 2);
@@ -899,9 +904,7 @@ function resetMatch() {
   state.impacts = 0;
   state.powerSpawnTimer = powerupBalance.spawn.initialDelayBaseSeconds + Math.random() * powerupBalance.spawn.initialDelayRandomSeconds;
   state.powerDurationTimer = 0;
-  state.activePowerLabel = 'None';
   state.lastPowerType = null;
-  state.longRallyTriggered = false;
   state.nextLongRallySpawnAt = rallyBalance.initialSpawnAtSeconds;
   world.powerups.length = 0;
   world.particles.length = 0;
@@ -928,8 +931,6 @@ function resetMatch() {
   world.paddles.right.chargeBoostTimer = 0;
   world.paddles.left.pulseCharge = BASE_MAX_CHARGE;
   world.paddles.right.pulseCharge = BASE_MAX_CHARGE;
-  world.paddles.left.solidFlash = 0;
-  world.paddles.right.solidFlash = 0;
   world.paddles.left.slowTimer = 0;
   world.paddles.right.slowTimer = 0;
   spawnServe(state.serveDirection);
@@ -940,9 +941,7 @@ function spawnServe(direction) {
   state.serveDirection = direction;
   state.rally = 0;
   state.roundSeconds = 0;
-  state.longRallyTriggered = false;
   state.nextLongRallySpawnAt = rallyBalance.initialSpawnAtSeconds;
-  if (state.powerDurationTimer <= 0) state.activePowerLabel = 'None';
   createReplacementBall(direction);
   updateUI();
   showMessage('Fresh ball deployed. The court refused to calm down.', 0.95);
@@ -1115,7 +1114,6 @@ function applyPowerup(type, scoredByLeft) {
   const victim = scoredByLeft ? right : left;
   const def = powerupDefs[type] || powerupDefs.grow;
 
-  state.activePowerLabel = def.label + ' • Wave L' + beneficiary.pulseLevel;
   state.lastPowerType = type;
   state.powerDurationTimer = 0;
 
@@ -1175,6 +1173,7 @@ function applyPowerup(type, scoredByLeft) {
 function handleGoal(leftScored) {
         const scorer = leftScored ? world.paddles.left : world.paddles.right;
         const scorerName = leftScored ? ui.leftName.textContent : ui.rightName.textContent;
+        const shouldSpawnReplacementBall = matchFlowBalance.alwaysSpawnReplacementAfterGoal || world.balls.length === 0;
         if (leftScored) {
           state.leftScore += 1;
           state.serveDirection = -1;
@@ -1191,12 +1190,11 @@ function handleGoal(leftScored) {
 
         state.rally = 0;
         state.roundSeconds = 0;
-        state.longRallyTriggered = false;
         state.nextLongRallySpawnAt = rallyBalance.initialSpawnAtSeconds;
 
         updateUI();
         showMessage(scoreLines[(Math.random() * scoreLines.length) | 0], 1.25);
-        updateStatus(scorerName + ' scores. New ball deployed immediately.');
+        updateStatus(shouldSpawnReplacementBall ? scorerName + ' scores. New ball deployed immediately.' : scorerName + ' scores. Existing balls stay live.');
         playTone(leftScored ? 510 : 390, 0.09, 'square', 0.05);
         emitParticles(leftScored ? 110 : W - 110, H / 2, 30, leftScored ? themes[state.theme].paddleLeft : themes[state.theme].paddleRight, 370);
         screenShake = Math.max(screenShake, 10);
@@ -1206,7 +1204,9 @@ function handleGoal(leftScored) {
           return;
         }
 
-        spawnServe(state.serveDirection);
+        if (shouldSpawnReplacementBall) {
+          spawnServe(state.serveDirection);
+        }
       }
 
 function updatePaddle(paddle, upPressed, downPressed, dt) {
@@ -1225,7 +1225,6 @@ function updatePaddle(paddle, upPressed, downPressed, dt) {
         paddle.cooldown = Math.max(0, paddle.cooldown - dt);
         paddle.jamTimer = Math.max(0, paddle.jamTimer - dt);
         paddle.slowTimer = Math.max(0, paddle.slowTimer - dt);
-        paddle.solidFlash = Math.max(0, paddle.solidFlash - dt * 3.5);
         paddle.overcapTimer = Math.max(0, (paddle.overcapTimer || 0) - dt);
         paddle.chargeBoostTimer = Math.max(0, (paddle.chargeBoostTimer || 0) - dt);
         syncPaddleLevel(paddle);
@@ -1324,7 +1323,6 @@ function updateAI(paddle, dt, isLeft) {
               ball.vx = Math.cos(defensiveAngle) * defensiveSpeed * direction;
               ball.vy = Math.sin(defensiveAngle) * defensiveSpeed + paddle.vy * paddleHitBalance.defensiveCarryVyScale;
             }
-            paddle.solidFlash = 0.35;
             emitParticles(ball.x, ball.y, 20 + paddle.pulseLevel * 2, forceColor, 340);
             playTone(340 + paddle.pulseLevel * 38, 0.06, 'triangle', 0.05);
             screenShake = Math.max(screenShake, fullChargeHit ? 6 : 4);
@@ -1380,7 +1378,13 @@ function updateBalls(dt) {
     }
 
     if (state.trailsEnabled) {
-      ball.trail.push({ x: ball.x, y: ball.y, life: 0.35, boost: ball.boostTimer > 0 ? ball.boostColor : null });
+      ball.trail.push({
+        x: ball.x,
+        y: ball.y,
+        life: 0.35,
+        boost: ball.boostTimer > 0 ? ball.boostColor : null,
+        boostIntensity: ball.boostTimer > 0 ? (ball.boostIntensity || 0) : 0
+      });
       if (ball.trail.length > 16) ball.trail.shift();
       for (let t = ball.trail.length - 1; t >= 0; t--) {
         ball.trail[t].life -= dt;
@@ -1612,8 +1616,19 @@ function updatePulses(dt) {
             }
           } else {
             const prevRadius = pulse.radius || 0;
-            pulse.life -= dt;
-            pulse.radius = getPulseRenderRadius(pulse);
+            if (pulse.life > 0) {
+              const lifeBeforeUpdate = pulse.life;
+              pulse.life = Math.max(0, pulse.life - dt);
+              pulse.radius = pulse.life > 0 ? getPulseRenderRadius(pulse) : pulse.range;
+              if (pulse.life <= 0 && pulse.mode === 'solid' && (pulse.endLingerTimer || 0) > 0) {
+                pulse.endLingerTimer = Math.max(0, pulse.endLingerTimer - Math.max(0, dt - lifeBeforeUpdate));
+              }
+            } else if (pulse.mode === 'solid' && (pulse.endLingerTimer || 0) > 0) {
+              pulse.endLingerTimer = Math.max(0, pulse.endLingerTimer - dt);
+              pulse.radius = pulse.range;
+            } else {
+              pulse.radius = pulse.range;
+            }
             const radius = pulse.radius;
 
             for (const ball of world.balls) {
@@ -1703,7 +1718,7 @@ function updatePulses(dt) {
             }
           }
 
-          if (pulse.life <= 0) world.pulses.splice(i, 1);
+          if (pulse.life <= 0 && (pulse.endLingerTimer || 0) <= 0) world.pulses.splice(i, 1);
         }
       }
 
@@ -1752,7 +1767,6 @@ function updateParticles(dt) {
           if (state.powerDurationTimer <= 0) {
             world.paddles.left.h += (world.paddles.left.baseH - world.paddles.left.h);
             world.paddles.right.h += (world.paddles.right.baseH - world.paddles.right.h);
-            state.activePowerLabel = 'None';
             updateUI();
           }
         }
@@ -2079,7 +2093,7 @@ function renderPaddle(paddle) {
         renderPulseMeters(paddle);
       }
 
-function renderBalls() {
+      function renderBalls() {
 
         const t = themes[state.theme];
         for (const ball of world.balls) {
@@ -2087,55 +2101,59 @@ function renderBalls() {
           if (state.trailsEnabled) {
             for (let i = 0; i < ball.trail.length; i++) {
               const trail = ball.trail[i];
-              const alpha = Math.max(0, trail.life / 0.35) * (i / Math.max(1, ball.trail.length));
+              const trailBoostStrength = Math.log2(1 + Math.max(0, trail.boostIntensity || 0));
+              const alpha = clamp(Math.max(0, trail.life / 0.35) * (i / Math.max(1, ball.trail.length)) * (1 + trailBoostStrength * 0.14), 0, 1);
               ctx.save();
               ctx.globalAlpha = alpha * 0.55;
               ctx.fillStyle = trail.boost || hitColor;
               ctx.beginPath();
-              ctx.arc(trail.x, trail.y, ball.r * (0.35 + alpha * 0.5), 0, Math.PI * 2);
+              ctx.arc(trail.x, trail.y, ball.r * (0.35 + alpha * 0.5 + trailBoostStrength * 0.08), 0, Math.PI * 2);
               ctx.fill();
               ctx.restore();
             }
           }
           ctx.save();
+          const boostStrength = Math.log2(1 + Math.max(0, ball.boostIntensity || 0));
           const boostAlpha = clamp(ball.boostTimer || 0, 0, 0.55) / 0.55;
-          if (boostAlpha > 0) {
+          const boostOpacity = clamp(boostAlpha * (0.46 + boostStrength * 0.18), 0, 1);
+          if (boostOpacity > 0) {
             const speed = Math.hypot(ball.vx, ball.vy) || 1;
             const nx = ball.vx / speed;
             const ny = ball.vy / speed;
             const boostColor = ball.boostColor || '#7bd2ff';
             ctx.strokeStyle = boostColor;
             ctx.shadowColor = boostColor;
-            ctx.shadowBlur = 16 + boostAlpha * 12;
+            ctx.shadowBlur = 16 + boostOpacity * 12 + boostStrength * 4;
             ctx.lineCap = 'round';
             for (let lane = -1; lane <= 1; lane++) {
-              const sideX = -ny * lane * 4.5;
-              const sideY = nx * lane * 4.5;
-              ctx.globalAlpha = boostAlpha * (lane === 0 ? 0.5 : 0.28);
-              ctx.lineWidth = lane === 0 ? 4.4 : 2.3;
+              const sideOffset = 4.5 + boostStrength * 0.6;
+              const sideX = -ny * lane * sideOffset;
+              const sideY = nx * lane * sideOffset;
+              ctx.globalAlpha = boostOpacity * (lane === 0 ? 0.5 : 0.28);
+              ctx.lineWidth = (lane === 0 ? 4.4 : 2.3) + boostStrength * (lane === 0 ? 0.9 : 0.4);
               ctx.beginPath();
               ctx.moveTo(ball.x + sideX, ball.y + sideY);
-              ctx.lineTo(ball.x - nx * (20 + boostAlpha * 16) + sideX, ball.y - ny * (20 + boostAlpha * 16) + sideY);
+              ctx.lineTo(ball.x - nx * (20 + boostOpacity * 16 + boostStrength * 8) + sideX, ball.y - ny * (20 + boostOpacity * 16 + boostStrength * 8) + sideY);
               ctx.stroke();
             }
           }
 
           ctx.globalAlpha = 1;
-          ctx.shadowColor = boostAlpha > 0 ? (ball.boostColor || hitColor) : hitColor;
-          ctx.shadowBlur = 20 + ball.flash * 12 + boostAlpha * 10;
+          ctx.shadowColor = boostOpacity > 0 ? (ball.boostColor || hitColor) : hitColor;
+          ctx.shadowBlur = 20 + ball.flash * 12 + boostOpacity * 10 + boostStrength * 2;
           ctx.fillStyle = hitColor;
           ctx.beginPath();
           ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
           ctx.fill();
 
-          ctx.fillStyle = boostAlpha > 0 ? 'rgba(255,250,228,0.96)' : 'rgba(255,255,255,0.92)';
+          ctx.fillStyle = boostOpacity > 0 ? 'rgba(255,250,228,0.96)' : 'rgba(255,255,255,0.92)';
           ctx.beginPath();
           ctx.arc(ball.x, ball.y, ball.r * 0.52, 0, Math.PI * 2);
           ctx.fill();
 
           if (ball.lastHitSide) {
-            ctx.strokeStyle = boostAlpha > 0 ? (ball.boostColor || 'rgba(255,255,255,0.8)') : 'rgba(255,255,255,0.7)';
-            ctx.lineWidth = 1.6 + boostAlpha * 1.2;
+            ctx.strokeStyle = boostOpacity > 0 ? (ball.boostColor || 'rgba(255,255,255,0.8)') : 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 1.6 + boostOpacity * 1.2 + boostStrength * 0.2;
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.r - 1.2, 0, Math.PI * 2);
             ctx.stroke();
@@ -2177,7 +2195,7 @@ function renderParticles() {
 
 function renderPulses() {
         for (const pulse of world.pulses) {
-          const alpha = clamp(pulse.life / pulse.maxLife, 0, 1);
+          const alpha = getPulseRenderAlpha(pulse);
 
           if (pulse.mode === 'push') {
             const thickness = getPulseThickness(pulse);

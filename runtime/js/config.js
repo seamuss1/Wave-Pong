@@ -19,14 +19,14 @@
     ball: {
       radius: 11, // Collision/render radius.
       speedCap: 920, // Global maximum ball speed clamp.
-      initialAngleBase: 0.48, // Minimum serve angle away from horizontal.
-      initialAngleRange: 0.32 // Extra randomized serve angle range.
+      initialAngleBase: 0.70, // Minimum serve angle away from horizontal.
+      initialAngleRange: 0.10 // Extra randomized serve angle range.
     },
     // Shared wave resource costs and recharge behavior.
     charge: {
-      blueCost: 0.15, // Charge spent by the blue wave.
+      blueCost: 0.1, // Charge spent by the blue wave.
       pinkCost: 0.5, // Charge spent by the pink wave.
-      goldCost: 1, // Charge spent by the gold wave.
+      goldCost: 0.9, // Charge spent by the gold wave.
       baseMax: 1, // Normal maximum charge bar value.
       overcapMax: 1.5, // Temporary maximum when Cap Bank is active.
       rechargeBasePerSecond: 0.152, // Passive recharge before level scaling.
@@ -119,7 +119,7 @@
         coneBase: 0.86, // Base spread arc.
         conePerLevel: 0.018, // Extra spread per level.
         cooldown: 0.052, // Post-fire cooldown.
-        lifeBase: 0.29, // Minimum pulse lifetime.
+        lifeBase: 0.35, // Minimum pulse lifetime.
         lifeBonusBase: 0.04, // Starting bonus lifetime once pink is unlocked.
         lifeBonusCap: 0.08, // Maximum additional lifetime from charge.
         lifeChargeScale: 0.08, // Rate that extra charge adds lifetime.
@@ -164,10 +164,10 @@
         directionCarrySweetScale: 0.05, // Amount of current-direction carry removed by a strong center hit.
         aimInfluenceBase: 0.28, // How much the paddle aim influences away-moving hits.
         aimInfluenceSweetScale: 0.1, // Extra aim influence gained from a strong center hit.
-        boostDurationBase: 0.42, // Base boost duration applied to away-moving hits.
+        boostDurationBase: 1, // Base boost duration applied to away-moving hits.
         boostDurationSweetScale: 0.18, // Extra boost duration from a strong center hit.
-        boostIntensityBase: 0.8, // Base boost intensity applied to away-moving hits.
-        boostIntensitySweetScale: 0.4, // Extra boost intensity from a strong center hit.
+        boostIntensityBase: 10, // Base visual boost intensity applied to away-moving hits.
+        boostIntensitySweetScale: 0.4, // Extra visual boost intensity from a strong center hit.
         resistSweetThreshold: 0.72, // Sweet-spot threshold required to grant blue resistance against gold waves.
         resistDurationBase: 1.2, // Base blue-resistance duration on strong away-moving hits.
         resistDurationSweetScale: 0.35, // Extra blue-resistance duration from a strong center hit.
@@ -191,6 +191,10 @@
     },
     // Pink-wave-only ball interaction tuning.
     pinkWaveInteraction: {
+      endpointLinger: {
+        durationSeconds: 0.08, // Extra time a fully extended pink wave stays active at max range and can still deflect balls.
+        visualAlphaMultiplier: 0.42 // Opacity multiplier used while the pink wave is lingering at its endpoint.
+      },
       ballHit: {
         offsetRangeMin: 46, // Minimum vertical range used when normalizing a pink-wave hit offset.
         offsetRangeRadiusScale: 0.5, // Portion of current pink radius used when normalizing hit offset.
@@ -226,7 +230,7 @@
           angleOffsetScale: 0.1, // Vertical impact offset influence on the outgoing angle of a center hit.
           boostDurationBase: 0.46, // Base boost duration applied to a strong center hit.
           boostDurationInfluenceScale: 0.12, // Extra boost duration gained from reduced gold influence.
-          boostIntensity: 0.9 // Boost intensity applied to a strong center hit.
+          boostIntensity: 0.9 // Visual boost intensity applied to a strong center hit.
         },
         glancing: {
           speedGateCapMultiplier: 0.92, // Incoming-speed threshold for using the glancing-hit branch instead of the nudge branch.
@@ -262,16 +266,20 @@
     },
     // Long-rally multiball escalation.
     rally: {
-      initialSpawnAtSeconds: 13.2, // Earliest time/rally checkpoint for the first extra ball.
-      thresholdBase: 15, // Base rally length needed before extra-ball checks.
+      initialSpawnAtSeconds: 10, // Earliest time/rally checkpoint for the first extra ball.
+      thresholdBase: 5, // Base rally length needed before extra-ball checks.
       thresholdPerExtraBall: 6, // Extra rally requirement per current additional ball.
-      repeatDelayBaseSeconds: 8.4, // Delay before the next long-rally spawn check.
+      repeatDelayBaseSeconds: 6, // Delay before the next long-rally spawn check.
       repeatDelayPerBallSeconds: 1.8, // Additional delay per ball already on the field.
       stopAddingAtBallCount: 4, // Hard limit after which rally spawns stop.
       cloneVxScale: -0.9, // Horizontal velocity multiplier for spawned rally clones.
       cloneVyScale: 0.92, // Vertical velocity multiplier for spawned rally clones.
       cloneMinVy: 220, // Minimum vertical speed for spawned rally clones.
       cloneCapMultiplier: 0.96 // Speed cap multiplier applied to rally clones.
+    },
+    // Match flow toggles that change when new balls are introduced.
+    matchFlow: {
+      alwaysSpawnReplacementAfterGoal: false // When true, every goal immediately serves a fresh ball even if others are still active.
     },
     // Powerup spawn timing and per-effect values.
     powerups: {
