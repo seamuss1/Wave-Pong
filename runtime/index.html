@@ -86,7 +86,10 @@
   </div>
 
   <div id="helpOverlay" class="overlay hidden">
-    <div class="card">
+    <div class="card helpCard">
+      <div class="btnRow helpActions">
+        <button id="closeHelpBtn" class="primary">Close Help</button>
+      </div>
       <div class="tiny">Help</div>
       <h2>How to play</h2>
       <div class="helpGrid">
@@ -121,14 +124,16 @@
           </div>
         </div>
       </div>
-      <div class="btnRow" style="justify-content: center;">
-        <button id="closeHelpBtn" class="primary">Close Help</button>
-      </div>
     </div>
   </div>
 
   <div id="pauseOverlay" class="overlay hidden">
-    <div class="card">
+    <div class="card pauseCard">
+      <div class="btnRow pauseActions">
+        <button id="resumeBtn" class="primary">Resume</button>
+        <button id="pauseHelpBtn" class="secondary">Help</button>
+        <button id="pauseMenuBtn" class="ghost">Back to Menu</button>
+      </div>
       <div class="tiny">Match paused</div>
       <h2>Pause menu</h2>
       <div class="pauseGrid">
@@ -153,11 +158,6 @@
             <div class="pauseStatusRow"><div class="pauseStatusName">Right</div><div class="iconTray" id="rightStatusIcons"></div></div>
           </div>
         </div>
-      </div>
-      <div class="btnRow" style="justify-content: center;">
-        <button id="resumeBtn" class="primary">Resume</button>
-        <button id="pauseHelpBtn" class="secondary">Help</button>
-        <button id="pauseMenuBtn" class="ghost">Back to Menu</button>
       </div>
     </div>
   </div>

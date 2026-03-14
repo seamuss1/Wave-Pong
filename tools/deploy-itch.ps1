@@ -19,13 +19,56 @@ if (-not $BuildPath) {
   $BuildPath = Join-Path $repoRoot 'itch-build'
 }
 
+function Import-DotEnvFile {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  if (-not (Test-Path $Path)) {
+    return
+  }
+
+  foreach ($line in Get-Content $Path) {
+    $trimmed = $line.Trim()
+    if (-not $trimmed -or $trimmed.StartsWith('#')) {
+      continue
+    }
+
+    $separatorIndex = $trimmed.IndexOf('=')
+    if ($separatorIndex -lt 1) {
+      continue
+    }
+
+    $name = $trimmed.Substring(0, $separatorIndex).Trim()
+    $value = $trimmed.Substring($separatorIndex + 1).Trim()
+
+    if (
+      ($value.StartsWith('"') -and $value.EndsWith('"')) -or
+      ($value.StartsWith("'") -and $value.EndsWith("'"))
+    ) {
+      $value = $value.Substring(1, $value.Length - 2)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($name)) {
+      [System.Environment]::SetEnvironmentVariable($name, $value, 'Process')
+    }
+  }
+}
+
+Import-DotEnvFile -Path (Join-Path $repoRoot '.env')
+
+if (-not $ButlerPath -and $env:BUTLER_PATH) {
+  $ButlerPath = $env:BUTLER_PATH
+}
+
 if (-not $Target) {
   switch ($Destination) {
     'test' {
-      $Target = 'rainman1337/wave-pong-test:html5'
+      $Target = if ($env:ITCH_TARGET_TEST) { $env:ITCH_TARGET_TEST } else { 'rainman1337/wave-pong-test:html5' }
     }
     'production' {
-      $Target = 'rainman1337/wave-pong:html5'
+      $Target = if ($env:ITCH_TARGET_PRODUCTION) { $env:ITCH_TARGET_PRODUCTION } else { 'rainman1337/wave-pong:html5' }
     }
     default {
       throw "Unsupported destination '$Destination'."
@@ -44,6 +87,17 @@ function Resolve-ButlerExe {
     }
 
     return (Resolve-Path $ExplicitPath).Path
+  }
+
+  $commonStandalonePaths = @(
+    'C:\Program Files\butler-windows-amd64\butler.exe',
+    'C:\Program Files (x86)\butler-windows-amd64\butler.exe'
+  )
+
+  foreach ($candidate in $commonStandalonePaths) {
+    if (Test-Path $candidate) {
+      return (Resolve-Path $candidate).Path
+    }
   }
 
   $butlerCommand = Get-Command butler.exe -ErrorAction SilentlyContinue
@@ -120,7 +174,7 @@ if ($UserVersion) {
 }
 
 if (-not $env:BUTLER_API_KEY) {
-  Write-Host "BUTLER_API_KEY is not set. That is fine if this machine is already authenticated with 'butler login'."
+  Write-Host "BUTLER_API_KEY is not set in the shell or .env. That is fine if this machine is already authenticated with 'butler login'."
 }
 
 & $resolvedButler @arguments

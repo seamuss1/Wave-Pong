@@ -333,6 +333,26 @@
       gap: 12px;
     }
 
+    .helpCard,
+    .pauseCard {
+      display: grid;
+      gap: 14px;
+    }
+
+    .helpActions,
+    .pauseActions,
+    .gameOverActions {
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      justify-content: center;
+      margin: -6px 0 0 0;
+      padding: 4px 0 10px 0;
+      background: linear-gradient(180deg, rgba(8, 14, 24, 0.98) 0%, rgba(8, 14, 24, 0.82) 68%, rgba(8, 14, 24, 0) 100%);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
     button {
       position: relative;
       z-index: 60;
@@ -814,6 +834,59 @@
 
       .card {
         padding: 18px;
+      }
+    }
+
+    @media (max-height: 560px) {
+      .overlay {
+        padding: 8px;
+      }
+
+      .card {
+        width: min(920px, calc(100vw - 16px));
+        max-height: calc(100vh - 16px);
+        padding: 18px;
+      }
+
+      .menuCard,
+      .helpCard,
+      .pauseCard,
+      .gameOverPanel {
+        gap: 12px;
+      }
+
+      .btnRow {
+        margin-top: 12px;
+        gap: 10px;
+      }
+
+      .gameOverScoreLine {
+        margin: 6px 0 12px 0;
+      }
+
+      .pauseGrid,
+      .helpGrid,
+      .gameOverStatsGrid {
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .section {
+        padding: 14px;
+      }
+
+      .powerRow,
+      .miniStat,
+      .pauseStatusRow,
+      .compareRow,
+      .controlItem {
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+
+      .miniStat .value,
+      .stat .value {
+        font-size: 16px;
       }
     }
 

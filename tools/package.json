@@ -6,6 +6,8 @@
   "scripts": {
     "build:itch": "node build-itch-html.js",
     "build:zip": "powershell -ExecutionPolicy Bypass -File ./build-itch-zip.ps1",
+    "deploy:test": "powershell -ExecutionPolicy Bypass -File ./deploy-itch.ps1 -Destination test",
+    "deploy:production": "powershell -ExecutionPolicy Bypass -File ./deploy-itch.ps1 -Destination production",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./browser-smoke-test.ps1",
     "smoke:node": "node browser-smoke-test.js"
   }

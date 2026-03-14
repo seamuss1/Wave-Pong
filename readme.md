@@ -17,6 +17,7 @@ Open `runtime/index.html` in a modern desktop browser.
 
 ## Project layout
 
+- `version.json` contains the current release/build version.
 - `runtime/index.html` contains the game UI markup and is the local browser entrypoint.
 - `runtime/styles/main.css` contains the presentation layer.
 - `runtime/js/app.js` contains the game loop, rendering, input, and gameplay systems.
@@ -27,6 +28,14 @@ Open `runtime/index.html` in a modern desktop browser.
 - `tools/package.json` contains tooling-only Node metadata.
 
 ## itch.io packaging
+
+Versioning is tracked in `version.json`. Current version starts at `0.3.2`.
+
+Version rules:
+
+- increment the third number for minor rebuilds and small changes
+- increment the second number and reset the third for bigger change sets
+- increment the first number for a major release or redesign
 
 For itch.io uploads, build the self-contained artifact first:
 
@@ -47,7 +56,8 @@ powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1
 That command:
 
 - rebuilds `itch-build/`
-- recreates `wave-pong-itchio.zip`
+- creates a versioned zip like `wave-pong-itchio-v0.3.2.zip`
+- refreshes `wave-pong-itchio.zip` as the latest alias
 - verifies the archived `index.html` matches `itch-build/index.html`
 
 ## Smoke testing
@@ -97,6 +107,8 @@ If you leave the workflow `userversion` input blank, it falls back to `<branch-o
 
 Helper script: `tools/deploy-itch.ps1`
 
+The helper automatically loads a repo-root `.env` file for local credentials and overrides.
+
 Example:
 
 ```powershell
@@ -118,12 +130,31 @@ The script:
 - builds `itch-build/` by default before pushing
 - defaults `BuildPath` to `itch-build/`
 - defaults `Destination` to `test`
+- automatically loads `.env` from the repo root before resolving credentials
+- reads `BUTLER_API_KEY` from `.env` or the current shell session
 - maps `test` to `rainman1337/wave-pong-test:html5`
 - maps `production` to `rainman1337/wave-pong:html5`
+- can override those targets with `ITCH_TARGET_TEST` and `ITCH_TARGET_PRODUCTION` in `.env`
+- can read `BUTLER_PATH` from `.env` if butler is not on `PATH`
 - still accepts an explicit `-Target` override if you need a one-off push elsewhere
 - looks for `butler.exe` on `PATH`
 - falls back to the itch app's bundled butler install on Windows
 - accepts local `butler login` credentials or a `BUTLER_API_KEY` environment variable
+
+Example `.env`:
+
+```dotenv
+BUTLER_API_KEY=replace_with_your_butler_api_key
+ITCH_TARGET_TEST=rainman1337/wave-pong-test:html5
+ITCH_TARGET_PRODUCTION=rainman1337/wave-pong:html5
+```
+
+Convenient npm shortcuts from `tools/`:
+
+```bash
+npm.cmd run deploy:test
+npm.cmd run deploy:production
+```
 
 ### First-time itch.io setup
 

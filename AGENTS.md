@@ -39,7 +39,13 @@
 ## Packaging
 
 - Build the itch.io artifact first with `node tools/build-itch-html.js`.
+- Track the repo version in `version.json`.
+- Use versioning rules:
+  - increment the third number for minor rebuilds and small changes
+  - increment the second number and reset the third for bigger feature/change sets
+  - increment the first number for major releases or redesigns
 - The deployable zip should contain the contents of `itch-build/` at the archive root.
+- The packaging script should emit a versioned archive named like `wave-pong-itchio-v0.3.2.zip` and refresh `wave-pong-itchio.zip` as the latest alias.
 - Prefer `powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1` so the zip is rebuilt and verified against `itch-build/index.html`.
 - Recommended PowerShell command:
   `powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1`

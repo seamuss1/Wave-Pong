@@ -7,8 +7,36 @@ param(
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $buildPath = Join-Path $repoRoot 'itch-build'
+function Get-RepoVersion {
+  $versionFile = Join-Path $repoRoot 'version.json'
+  if (-not (Test-Path $versionFile)) {
+    throw "Expected version file at '$versionFile'."
+  }
+
+  $rawVersion = Get-Content $versionFile -Raw | ConvertFrom-Json
+  if (-not $rawVersion.version) {
+    throw "Expected 'version' in '$versionFile'."
+  }
+
+  return [string]$rawVersion.version
+}
+
+function Get-VersionedZipPath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Version
+  )
+
+  return (Join-Path $repoRoot ("wave-pong-itchio-v{0}.zip" -f $Version))
+}
+
+function Get-LatestZipPath {
+  return (Join-Path $repoRoot 'wave-pong-itchio.zip')
+}
+
+$version = Get-RepoVersion
 if (-not $ZipPath) {
-  $ZipPath = Join-Path $repoRoot 'wave-pong-itchio.zip'
+  $ZipPath = Get-VersionedZipPath -Version $version
 }
 
 function Resolve-NodeExe {
@@ -80,6 +108,7 @@ if (-not $SkipBuild) {
 
 $resolvedBuildPath = (Resolve-Path $buildPath).Path
 $resolvedZipPath = [System.IO.Path]::GetFullPath($ZipPath)
+$resolvedLatestZipPath = [System.IO.Path]::GetFullPath((Get-LatestZipPath))
 
 foreach ($requiredFile in @('index.html', 'wave_pong.html')) {
   $requiredPath = Join-Path $resolvedBuildPath $requiredFile
@@ -94,6 +123,10 @@ if (Test-Path $resolvedZipPath) {
 
 Compress-Archive -Path (Join-Path $resolvedBuildPath '*') -DestinationPath $resolvedZipPath -Force
 
+if ($resolvedLatestZipPath -ne $resolvedZipPath) {
+  Copy-Item $resolvedZipPath $resolvedLatestZipPath -Force
+}
+
 $expectedHash = Get-FileSha256 -Path (Join-Path $resolvedBuildPath 'index.html')
 $archivedHash = Get-ZipEntrySha256 -ArchivePath $resolvedZipPath -EntryName 'index.html'
 
@@ -101,5 +134,9 @@ if ($expectedHash -ne $archivedHash) {
   throw ("Packaged index.html hash mismatch. build={0} zip={1}" -f $expectedHash, $archivedHash)
 }
 
+Write-Host "Version: $version"
 Write-Host "Verified itch.io zip: $resolvedZipPath"
+if ($resolvedLatestZipPath -ne $resolvedZipPath) {
+  Write-Host "Updated latest zip alias: $resolvedLatestZipPath"
+}
 Write-Host "index.html SHA256: $expectedHash"
