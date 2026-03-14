@@ -104,6 +104,8 @@ function parseArgs(argv) {
     ratingsFile: path.join(repoRoot, 'tools', 'reports', 'review-ratings.json'),
     rosterFile: path.join(repoRoot, 'runtime', 'js', 'bot-roster.js'),
     rosterMode: 'none',
+    focusBotId: null,
+    selfPlay: false,
     updateAllRoster: false,
     publishRuntime: false,
     checkpointEvery: 1,
@@ -122,6 +124,8 @@ function parseArgs(argv) {
     else if (arg === '--ratings-file' && argv[i + 1]) args.ratingsFile = path.resolve(argv[++i]);
     else if (arg === '--roster-file' && argv[i + 1]) args.rosterFile = path.resolve(argv[++i]);
     else if (arg === '--roster-mode' && argv[i + 1]) args.rosterMode = String(argv[++i]).toLowerCase();
+    else if (arg === '--focus-bot-id' && argv[i + 1]) args.focusBotId = String(argv[++i]);
+    else if (arg === '--self-play') args.selfPlay = true;
     else if (arg === '--update-all-roster') args.updateAllRoster = true;
     else if (arg === '--publish-runtime') args.publishRuntime = true;
     else if (arg === '--checkpoint-every' && argv[i + 1]) args.checkpointEvery = Number(argv[++i]);
@@ -133,6 +137,10 @@ function parseArgs(argv) {
     throw new Error(`Unsupported --roster-mode value: ${args.rosterMode}`);
   }
   if (args.updateAllRoster) args.rosterMode = 'mutable';
+  if (args.focusBotId && args.rosterMode === 'none') args.rosterMode = 'mutable';
+  if (args.selfPlay && args.focusBotId && args.population < 2) {
+    throw new Error('--self-play with --focus-bot-id requires --population 2 or higher so the bot has descendants to spar against.');
+  }
 
   return args;
 }
@@ -173,6 +181,12 @@ function formatDuration(ms) {
   if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
   if (minutes > 0) return `${minutes}m ${seconds}s`;
   return `${seconds}s`;
+}
+
+function formatCommandArg(value) {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:\\=-]+$/.test(text)) return text;
+  return `"${text.replace(/"/g, '\\"')}"`;
 }
 
 function formatPercent(value) {
@@ -491,9 +505,13 @@ function loadRosterBots(filePath) {
   return rawBots.filter((bot) => bot && bot.network && bot.archetype).map(normalizeRosterSeed);
 }
 
-function createPopulation(inputSize, populationSize, random, rosterSeeds = []) {
+function createPopulation(inputSize, populationSize, random, rosterSeeds = [], options = {}) {
   const populations = {};
   const seedsByArchetype = new Map();
+  const focusBotId = options.focusBotId || null;
+  const focusedSeed = focusBotId
+    ? rosterSeeds.find((bot) => bot.id === focusBotId || bot.sourceBotId === focusBotId) || null
+    : null;
   for (const archetype of ARCHETYPES) {
     seedsByArchetype.set(archetype.id, []);
   }
@@ -502,6 +520,10 @@ function createPopulation(inputSize, populationSize, random, rosterSeeds = []) {
     seedsByArchetype.get(seedBot.archetype).push(clone(seedBot));
   }
   for (const archetype of ARCHETYPES) {
+    if (focusedSeed && archetype.id !== focusedSeed.archetype) {
+      populations[archetype.id] = [];
+      continue;
+    }
     const seeded = seedsByArchetype.get(archetype.id) || [];
     populations[archetype.id] = seeded.map((bot) => ({
       ...clone(bot),
@@ -510,7 +532,9 @@ function createPopulation(inputSize, populationSize, random, rosterSeeds = []) {
     }));
     const targetSize = Math.max(populationSize, populations[archetype.id].length);
     while (populations[archetype.id].length < targetSize) {
-      populations[archetype.id].push(createGenome(archetype, 0, inputSize, random));
+      populations[archetype.id].push(focusedSeed && archetype.id === focusedSeed.archetype
+        ? createGenome(archetype, 0, inputSize, random, focusedSeed)
+        : createGenome(archetype, 0, inputSize, random));
     }
   }
   return populations;
@@ -793,6 +817,9 @@ function assignDifficultyBands(rankedBots) {
 }
 
 function summarizeRosterConfig(args, rosterSeedBots, staticRosterBots) {
+  if (args.focusBotId) {
+    return `focused bot=${args.focusBotId}, selfPlay=${args.selfPlay}, mutable seeds=${rosterSeedBots.length}, static opponents=${staticRosterBots.length}`;
+  }
   if (args.rosterMode === 'mutable') {
     return `mutable roster seeds=${rosterSeedBots.length}${args.updateAllRoster ? ' (update-all enabled)' : ''}`;
   }
@@ -800,6 +827,22 @@ function summarizeRosterConfig(args, rosterSeedBots, staticRosterBots) {
     return `static roster opponents=${staticRosterBots.length}`;
   }
   return 'no roster participation';
+}
+
+function buildFocusedBotExport(promotionCandidates, focusSeedBot) {
+  if (!focusSeedBot) return [];
+  const bestCandidate = promotionCandidates
+    .filter((bot) => (bot.sourceBotId || bot.id) === focusSeedBot.id)
+    .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo)[0] || focusSeedBot;
+  return [{
+    ...bestCandidate,
+    id: focusSeedBot.id,
+    name: focusSeedBot.name,
+    personality: focusSeedBot.personality,
+    sourceBotId: focusSeedBot.id,
+    difficultyBand: focusSeedBot.difficultyBand || bestCandidate.difficultyBand || null,
+    metadata: focusSeedBot.metadata ? clone(focusSeedBot.metadata) : null
+  }];
 }
 
 function buildUpdateAllRosterExport(promotionCandidates, rosterSeedBots) {
@@ -851,18 +894,35 @@ function main() {
   ensureDir(checkpointsDir);
   const humanRatings = loadHumanRatings(args.ratingsFile);
   const reviewRatings = aggregateHumanRatings(humanRatings);
+  const invokedCommand = ['node', 'tools/evolve-bots.js', ...process.argv.slice(2)].map(formatCommandArg).join(' ');
   const rosterBots = loadRosterBots(args.rosterFile);
   if (args.updateAllRoster && !rosterBots.length) {
     throw new Error(`--update-all-roster requires a non-empty roster file: ${args.rosterFile}`);
   }
-  const mutableRosterSeeds = args.rosterMode === 'mutable' ? rosterBots : [];
-  const staticRosterBots = args.rosterMode === 'static'
-    ? rosterBots.map((bot) => ({ ...clone(bot), isStaticRosterBot: true }))
-    : [];
+  const focusSeedBot = args.focusBotId
+    ? rosterBots.find((bot) => bot.id === args.focusBotId || bot.sourceBotId === args.focusBotId) || null
+    : null;
+  if (args.focusBotId && !focusSeedBot) {
+    throw new Error(`Focused bot not found in roster: ${args.focusBotId}`);
+  }
+  const mutableRosterSeeds = args.focusBotId
+    ? (focusSeedBot ? [focusSeedBot] : [])
+    : (args.rosterMode === 'mutable' ? rosterBots : []);
+  const staticRosterBots = args.focusBotId
+    ? (args.selfPlay
+      ? []
+      : rosterBots
+        .filter((bot) => bot.id !== focusSeedBot.id)
+        .map((bot) => ({ ...clone(bot), isStaticRosterBot: true })))
+    : (args.rosterMode === 'static'
+      ? rosterBots.map((bot) => ({ ...clone(bot), isStaticRosterBot: true }))
+      : []);
 
   const inputSize = getObservationSize();
   const random = createSeededRandom(args.seed);
-  let populations = createPopulation(inputSize, args.population, random, mutableRosterSeeds);
+  let populations = createPopulation(inputSize, args.population, random, mutableRosterSeeds, {
+    focusBotId: focusSeedBot ? focusSeedBot.id : null
+  });
   const generationReports = [];
   let finalReplayBundles = [];
   const totalBots = Object.values(populations).flat().length;
@@ -956,10 +1016,12 @@ function main() {
     .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo);
 
   const exportPool = promotionCandidates.filter((bot) => !bot.reviewBlocked);
-  const selectedForExport = args.updateAllRoster
+  const selectedForExport = args.focusBotId
+    ? buildFocusedBotExport(exportPool.length ? exportPool : promotionCandidates, focusSeedBot)
+    : args.updateAllRoster
     ? buildUpdateAllRosterExport(exportPool.length ? exportPool : promotionCandidates, mutableRosterSeeds)
     : (exportPool.length ? exportPool : promotionCandidates).slice(0, 12);
-  const exportBots = args.updateAllRoster ? selectedForExport : assignDifficultyBands(selectedForExport);
+  const exportBots = (args.updateAllRoster || args.focusBotId) ? selectedForExport : assignDifficultyBands(selectedForExport);
   const rankedBots = exportBots.map((bot) => ({
     id: bot.id,
     name: bot.name,
@@ -991,6 +1053,8 @@ function main() {
     generations: args.generations,
     populationPerArchetype: args.population,
     rosterMode: args.rosterMode,
+    focusBotId: args.focusBotId,
+    selfPlay: args.selfPlay,
     updateAllRoster: args.updateAllRoster,
     rosterFileUsed: args.rosterFile,
     rosterSeedCount: mutableRosterSeeds.length,
@@ -1038,8 +1102,11 @@ function main() {
   });
 
   console.log(`Training completed in ${formatDuration(totalElapsedMs)}.`);
+  console.log(`Elapsed: ${totalElapsedMs} ms | ${(totalElapsedMs / 1000).toFixed(3)} s | ${(totalElapsedMs / 3600000).toFixed(4)} h`);
   console.log(`Evolved ${rankedBots.length} bots and exported them to ${args.exportFile}`);
   console.log(`Report written to ${reportPath}`);
+  console.log('Copy/paste to rerun:');
+  console.log(invokedCommand);
   if (args.publishRuntime) {
     autoPublishRuntimeBots(args.exportFile, args.reportsDir);
   }
