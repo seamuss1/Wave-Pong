@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const childProcess = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '..');
 const config = require(path.join(repoRoot, 'runtime/js/config.js'));
@@ -36,6 +37,61 @@ const ARCHETYPES = [
   }
 ];
 
+const ROLE_TRAINING_PROFILES = {
+  strategist: {
+    id: 'strategist',
+    label: 'Strategist',
+    personality: 'Uses blue wave timing to shape rallies, control ball routes, and keep the court predictable.',
+    fitness: {
+      win: 100,
+      goalDiff: 20,
+      longestRally: 1.8,
+      againstGoals: -20,
+      blueShots: 0.9,
+      blueBallHits: 1.8,
+      blueTowardHits: 2.6,
+      blueAwayHits: 1.9,
+      blueResistGrants: 2.2,
+      nonBlueShots: -0.7,
+      goldShots: -0.25
+    }
+  },
+  defensive_specialist: {
+    id: 'defensive_specialist',
+    label: 'Defensive Specialist',
+    personality: 'Prioritizes pink wave survival windows, stabilizes losing rallies, and buys time to recover position.',
+    fitness: {
+      win: 100,
+      goalDiff: 16,
+      longestRally: 2.1,
+      againstGoals: -26,
+      pinkShots: 1.2,
+      pinkBallHits: 1.4,
+      pinkThreatHits: 2.8,
+      pinkEmergencyHits: 3.4,
+      nonPinkShots: -0.65,
+      goldShots: -0.4
+    }
+  },
+  sniper: {
+    id: 'sniper',
+    label: 'Sniper',
+    personality: 'Uses gold waves to line up pickups, create punish windows, and convert brief openings into scoring pressure.',
+    fitness: {
+      win: 100,
+      goalDiff: 22,
+      againstGoals: -16,
+      shots: 0.5,
+      goldShots: 1.1,
+      goldBallHits: 1.2,
+      goldCenterHits: 2.2,
+      goldPaddleHits: 3.8,
+      goldWavePowerups: 3.4,
+      nonGoldShots: -0.55
+    }
+  }
+};
+
 function parseArgs(argv) {
   const args = {
     generations: 3,
@@ -46,6 +102,10 @@ function parseArgs(argv) {
     reportsDir: path.join(repoRoot, 'tools', 'reports'),
     exportFile: path.join(repoRoot, 'tools', 'reports', 'exported-bots.js'),
     ratingsFile: path.join(repoRoot, 'tools', 'reports', 'review-ratings.json'),
+    rosterFile: path.join(repoRoot, 'runtime', 'js', 'bot-roster.js'),
+    rosterMode: 'none',
+    updateAllRoster: false,
+    publishRuntime: false,
     checkpointEvery: 1,
     progressEveryMatches: 100
   };
@@ -60,10 +120,19 @@ function parseArgs(argv) {
     else if (arg === '--reports-dir' && argv[i + 1]) args.reportsDir = path.resolve(argv[++i]);
     else if (arg === '--export-file' && argv[i + 1]) args.exportFile = path.resolve(argv[++i]);
     else if (arg === '--ratings-file' && argv[i + 1]) args.ratingsFile = path.resolve(argv[++i]);
+    else if (arg === '--roster-file' && argv[i + 1]) args.rosterFile = path.resolve(argv[++i]);
+    else if (arg === '--roster-mode' && argv[i + 1]) args.rosterMode = String(argv[++i]).toLowerCase();
+    else if (arg === '--update-all-roster') args.updateAllRoster = true;
+    else if (arg === '--publish-runtime') args.publishRuntime = true;
     else if (arg === '--checkpoint-every' && argv[i + 1]) args.checkpointEvery = Number(argv[++i]);
     else if (arg === '--progress-every' && argv[i + 1]) args.progressEveryMatches = Number(argv[++i]);
     else throw new Error(`Unknown argument: ${arg}`);
   }
+
+  if (!['none', 'static', 'mutable'].includes(args.rosterMode)) {
+    throw new Error(`Unsupported --roster-mode value: ${args.rosterMode}`);
+  }
+  if (args.updateAllRoster) args.rosterMode = 'mutable';
 
   return args;
 }
@@ -81,6 +150,11 @@ function createSeededRandom(seed) {
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
+}
+
+function loadModule(filePath) {
+  delete require.cache[require.resolve(filePath)];
+  return require(filePath);
 }
 
 function writeJson(filePath, value) {
@@ -107,6 +181,10 @@ function formatPercent(value) {
 
 function countRoundRobinMatches(botCount) {
   return (botCount * (botCount - 1)) / 2;
+}
+
+function countTrainingMatches(mutableCount, staticCount) {
+  return countRoundRobinMatches(mutableCount) + (mutableCount * staticCount);
 }
 
 function normalizeDecision(value) {
@@ -186,6 +264,22 @@ function createReviewAccumulator(botId) {
       exploitRisk: 0
     }
   };
+}
+
+function normalizeRoleKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function getTrainingProfile(bot) {
+  const roleName = normalizeRoleKey(bot && bot.metadata && bot.metadata.roleName);
+  if (roleName && ROLE_TRAINING_PROFILES[roleName]) return ROLE_TRAINING_PROFILES[roleName];
+  const nameKey = normalizeRoleKey(bot && bot.name);
+  if (nameKey && ROLE_TRAINING_PROFILES[nameKey]) return ROLE_TRAINING_PROFILES[nameKey];
+  return ARCHETYPES.find((entry) => entry.id === (bot && bot.archetype)) || ARCHETYPES[0];
 }
 
 function averageOrNull(total, count) {
@@ -313,6 +407,10 @@ function cloneNetwork(network) {
   return JSON.parse(JSON.stringify(network));
 }
 
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 function mutateNetwork(network, random) {
   const next = cloneNetwork(network);
   for (const layer of next.layers) {
@@ -335,12 +433,15 @@ function createGenome(archetype, generation, inputSize, random, parent = null) {
   const network = parent ? mutateNetwork(parent.network, random) : createRandomNetwork(inputSize, random);
   return {
     id: baseId,
-    name: `${archetype.label} ${baseId.slice(-4)}`,
+    name: parent && parent.name ? parent.name : `${archetype.label} ${baseId.slice(-4)}`,
     schemaVersion: 1,
     archetype: archetype.id,
-    personality: archetype.personality,
+    personality: parent && parent.personality ? parent.personality : archetype.personality,
     generation,
     lineageId: parent ? parent.lineageId : baseId,
+    sourceBotId: parent ? (parent.sourceBotId || null) : null,
+    metadata: parent && parent.metadata ? clone(parent.metadata) : null,
+    trainingHours: Number(parent && parent.trainingHours) || 0,
     elo: 1000,
     fitnessScore: 0,
     matches: 0,
@@ -348,18 +449,67 @@ function createGenome(archetype, generation, inputSize, random, parent = null) {
       source: parent ? parent.id : null,
       kind: parent ? 'clone-mutate' : 'seed'
     },
-    controllerParams: {
+    controllerParams: parent && parent.controllerParams ? clone(parent.controllerParams) : {
       fireThreshold: archetype.id === 'aggressive' ? 0.54 : archetype.id === 'defensive' ? 0.66 : 0.6
     },
     network
   };
 }
 
-function createPopulation(inputSize, populationSize, random) {
+function normalizeRosterSeed(bot) {
+  const archetype = ARCHETYPES.find((entry) => entry.id === bot.archetype) || ARCHETYPES[0];
+  return {
+    id: bot.id,
+    name: bot.name || `${archetype.label} ${String(bot.id || '').slice(-4)}`,
+    schemaVersion: 1,
+    archetype: archetype.id,
+    personality: bot.personality || archetype.personality,
+    generation: Number(bot.generation) || 0,
+    lineageId: bot.lineageId || bot.id,
+    sourceBotId: bot.sourceBotId || bot.id,
+    metadata: clone(bot.metadata || null),
+    trainingHours: Number(bot.trainingHours) || Number(bot.metadata && bot.metadata.trainingHours) || 0,
+    difficultyBand: bot.difficultyBand || null,
+    elo: Number(bot.elo) || 1000,
+    fitnessScore: 0,
+    matches: 0,
+    mutationProfile: bot.mutationProfile || {
+      source: bot.id,
+      kind: 'roster-seed'
+    },
+    controllerParams: clone(bot.controllerParams || {
+      fireThreshold: archetype.id === 'aggressive' ? 0.54 : archetype.id === 'defensive' ? 0.66 : 0.6
+    }),
+    network: cloneNetwork(bot.network)
+  };
+}
+
+function loadRosterBots(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return [];
+  const rosterValue = loadModule(filePath);
+  const rawBots = Array.isArray(rosterValue) ? rosterValue : [];
+  return rawBots.filter((bot) => bot && bot.network && bot.archetype).map(normalizeRosterSeed);
+}
+
+function createPopulation(inputSize, populationSize, random, rosterSeeds = []) {
   const populations = {};
+  const seedsByArchetype = new Map();
   for (const archetype of ARCHETYPES) {
-    populations[archetype.id] = [];
-    for (let i = 0; i < populationSize; i += 1) {
+    seedsByArchetype.set(archetype.id, []);
+  }
+  for (const seedBot of rosterSeeds) {
+    if (!seedsByArchetype.has(seedBot.archetype)) seedsByArchetype.set(seedBot.archetype, []);
+    seedsByArchetype.get(seedBot.archetype).push(clone(seedBot));
+  }
+  for (const archetype of ARCHETYPES) {
+    const seeded = seedsByArchetype.get(archetype.id) || [];
+    populations[archetype.id] = seeded.map((bot) => ({
+      ...clone(bot),
+      fitnessScore: 0,
+      matches: 0
+    }));
+    const targetSize = Math.max(populationSize, populations[archetype.id].length);
+    while (populations[archetype.id].length < targetSize) {
       populations[archetype.id].push(createGenome(archetype, 0, inputSize, random));
     }
   }
@@ -378,15 +528,19 @@ function updateElo(left, right, result) {
   right.elo += k * (result.right - expectedRight);
 }
 
+function updateEloAgainstFixed(bot, opponentElo, score) {
+  const k = 24;
+  const expected = 1 / (1 + Math.pow(10, (opponentElo - bot.elo) / 400));
+  bot.elo += k * (score - expected);
+}
+
 function scoreMetrics(weights, metrics) {
-  return (
-    metrics.win * weights.win +
-    metrics.goalDiff * weights.goalDiff +
-    metrics.longestRally * weights.rally +
-    metrics.shots * weights.shots +
-    metrics.powerups * weights.powerups +
-    metrics.againstGoals * weights.againstGoals
-  );
+  let total = 0;
+  for (const [key, weight] of Object.entries(weights || {})) {
+    const value = Number(metrics[key]);
+    total += (Number.isFinite(value) ? value : 0) * weight;
+  }
+  return total;
 }
 
 function evaluateMatch(leftBot, rightBot, seed, settings) {
@@ -416,6 +570,8 @@ function evaluateMatch(leftBot, rightBot, seed, settings) {
 
   const leftWon = runtime.state.leftScore > runtime.state.rightScore;
   const rightWon = runtime.state.rightScore > runtime.state.leftScore;
+  const leftRoleMetrics = runtime.matchStats.leftRoleMetrics || {};
+  const rightRoleMetrics = runtime.matchStats.rightRoleMetrics || {};
   const result = {
     left: leftWon ? 1 : rightWon ? 0 : 0.5,
     right: rightWon ? 1 : leftWon ? 0 : 0.5
@@ -424,19 +580,59 @@ function evaluateMatch(leftBot, rightBot, seed, settings) {
   const leftMetrics = {
     win: result.left,
     goalDiff: runtime.state.leftScore - runtime.state.rightScore,
+    rally: runtime.matchStats.longestRally || runtime.state.bestRally || 0,
     longestRally: runtime.matchStats.longestRally || runtime.state.bestRally || 0,
     shots: runtime.matchStats.leftShots,
     powerups: runtime.matchStats.leftPowerups,
-    againstGoals: runtime.state.rightScore
+    againstGoals: runtime.state.rightScore,
+    blueShots: leftRoleMetrics.blueShots || 0,
+    pinkShots: leftRoleMetrics.pinkShots || 0,
+    goldShots: leftRoleMetrics.goldShots || 0,
+    nonBlueShots: (leftRoleMetrics.pinkShots || 0) + (leftRoleMetrics.goldShots || 0),
+    nonPinkShots: (leftRoleMetrics.blueShots || 0) + (leftRoleMetrics.goldShots || 0),
+    nonGoldShots: (leftRoleMetrics.blueShots || 0) + (leftRoleMetrics.pinkShots || 0),
+    blueBallHits: leftRoleMetrics.blueBallHits || 0,
+    pinkBallHits: leftRoleMetrics.pinkBallHits || 0,
+    goldBallHits: leftRoleMetrics.goldBallHits || 0,
+    blueTowardHits: leftRoleMetrics.blueTowardHits || 0,
+    blueAwayHits: leftRoleMetrics.blueAwayHits || 0,
+    blueResistGrants: leftRoleMetrics.blueResistGrants || 0,
+    pinkThreatHits: leftRoleMetrics.pinkThreatHits || 0,
+    pinkEmergencyHits: leftRoleMetrics.pinkEmergencyHits || 0,
+    blueWavePowerups: leftRoleMetrics.blueWavePowerups || 0,
+    pinkWavePowerups: leftRoleMetrics.pinkWavePowerups || 0,
+    goldWavePowerups: leftRoleMetrics.goldWavePowerups || 0,
+    goldPaddleHits: leftRoleMetrics.goldPaddleHits || 0,
+    goldCenterHits: leftRoleMetrics.goldCenterHits || 0
   };
 
   const rightMetrics = {
     win: result.right,
     goalDiff: runtime.state.rightScore - runtime.state.leftScore,
+    rally: runtime.matchStats.longestRally || runtime.state.bestRally || 0,
     longestRally: runtime.matchStats.longestRally || runtime.state.bestRally || 0,
     shots: runtime.matchStats.rightShots,
     powerups: runtime.matchStats.rightPowerups,
-    againstGoals: runtime.state.leftScore
+    againstGoals: runtime.state.leftScore,
+    blueShots: rightRoleMetrics.blueShots || 0,
+    pinkShots: rightRoleMetrics.pinkShots || 0,
+    goldShots: rightRoleMetrics.goldShots || 0,
+    nonBlueShots: (rightRoleMetrics.pinkShots || 0) + (rightRoleMetrics.goldShots || 0),
+    nonPinkShots: (rightRoleMetrics.blueShots || 0) + (rightRoleMetrics.goldShots || 0),
+    nonGoldShots: (rightRoleMetrics.blueShots || 0) + (rightRoleMetrics.pinkShots || 0),
+    blueBallHits: rightRoleMetrics.blueBallHits || 0,
+    pinkBallHits: rightRoleMetrics.pinkBallHits || 0,
+    goldBallHits: rightRoleMetrics.goldBallHits || 0,
+    blueTowardHits: rightRoleMetrics.blueTowardHits || 0,
+    blueAwayHits: rightRoleMetrics.blueAwayHits || 0,
+    blueResistGrants: rightRoleMetrics.blueResistGrants || 0,
+    pinkThreatHits: rightRoleMetrics.pinkThreatHits || 0,
+    pinkEmergencyHits: rightRoleMetrics.pinkEmergencyHits || 0,
+    blueWavePowerups: rightRoleMetrics.blueWavePowerups || 0,
+    pinkWavePowerups: rightRoleMetrics.pinkWavePowerups || 0,
+    goldWavePowerups: rightRoleMetrics.goldWavePowerups || 0,
+    goldPaddleHits: rightRoleMetrics.goldPaddleHits || 0,
+    goldCenterHits: rightRoleMetrics.goldCenterHits || 0
   };
 
   return {
@@ -480,19 +676,29 @@ function makeReplayBundle(match, leftBot, rightBot, seed) {
       leftPowerups: match.runtime.matchStats.leftPowerups,
       rightPowerups: match.runtime.matchStats.rightPowerups,
       longestRally: match.runtime.matchStats.longestRally || 0,
-      maxBallSpeed: match.maxBallSpeed
+      maxBallSpeed: match.maxBallSpeed,
+      leftRoleMetrics: match.runtime.matchStats.leftRoleMetrics || null,
+      rightRoleMetrics: match.runtime.matchStats.rightRoleMetrics || null
     }
   };
 }
 
 function runGeneration(populations, generation, random, settings) {
-  const allBots = Object.values(populations).flat();
+  const mutableBots = Object.values(populations).flat();
+  const staticBots = Array.isArray(settings.staticBots) ? settings.staticBots : [];
+  const allBots = mutableBots.concat(staticBots);
   const replayBundles = [];
-  const totalMatches = countRoundRobinMatches(allBots.length);
+  const totalMatches = allBots.reduce((sum, _, i) => {
+    let rowCount = 0;
+    for (let j = i + 1; j < allBots.length; j += 1) {
+      if (!(allBots[i].isStaticRosterBot && allBots[j].isStaticRosterBot)) rowCount += 1;
+    }
+    return sum + rowCount;
+  }, 0);
   const progressEveryMatches = Math.max(1, Math.floor(settings.progressEveryMatches || Math.max(25, totalMatches / 20)));
   let processedMatches = 0;
 
-  for (const bot of allBots) {
+  for (const bot of mutableBots) {
     bot.fitnessScore = 0;
     bot.matches = 0;
   }
@@ -501,16 +707,30 @@ function runGeneration(populations, generation, random, settings) {
     for (let j = i + 1; j < allBots.length; j += 1) {
       const leftBot = allBots[i];
       const rightBot = allBots[j];
+      const leftIsStatic = !!leftBot.isStaticRosterBot;
+      const rightIsStatic = !!rightBot.isStaticRosterBot;
+      if (leftIsStatic && rightIsStatic) continue;
       const seed = Math.floor(random() * 1e9);
       const match = evaluateMatch(leftBot, rightBot, seed, settings);
-      const leftArchetype = ARCHETYPES.find((entry) => entry.id === leftBot.archetype);
-      const rightArchetype = ARCHETYPES.find((entry) => entry.id === rightBot.archetype);
+      const leftProfile = getTrainingProfile(leftBot);
+      const rightProfile = getTrainingProfile(rightBot);
 
-      leftBot.fitnessScore += scoreMetrics(leftArchetype.fitness, match.leftMetrics);
-      rightBot.fitnessScore += scoreMetrics(rightArchetype.fitness, match.rightMetrics);
-      leftBot.matches += 1;
-      rightBot.matches += 1;
-      updateElo(leftBot, rightBot, match.result);
+      if (!leftIsStatic) {
+        leftBot.fitnessScore += scoreMetrics(leftProfile.fitness, match.leftMetrics);
+        leftBot.matches += 1;
+      }
+      if (!rightIsStatic) {
+        rightBot.fitnessScore += scoreMetrics(rightProfile.fitness, match.rightMetrics);
+        rightBot.matches += 1;
+      }
+
+      if (!leftIsStatic && !rightIsStatic) {
+        updateElo(leftBot, rightBot, match.result);
+      } else if (!leftIsStatic) {
+        updateEloAgainstFixed(leftBot, Number(rightBot.elo) || 1000, match.result.left);
+      } else if (!rightIsStatic) {
+        updateEloAgainstFixed(rightBot, Number(leftBot.elo) || 1000, match.result.right);
+      }
 
       if (replayBundles.length < 8 || match.maxBallSpeed > config.balance.ball.speedCap * 1.15) {
         replayBundles.push(makeReplayBundle(match, leftBot, rightBot, seed));
@@ -536,6 +756,10 @@ function runGeneration(populations, generation, random, settings) {
     const ranked = populations[archetype.id]
       .slice()
       .sort((a, b) => (b.fitnessScore / Math.max(1, b.matches)) - (a.fitnessScore / Math.max(1, a.matches)));
+    if (!ranked.length) {
+      nextPopulations[archetype.id] = [];
+      continue;
+    }
     summary.push({
       archetype: archetype.id,
       topBotId: ranked[0].id,
@@ -568,6 +792,42 @@ function assignDifficultyBands(rankedBots) {
   });
 }
 
+function summarizeRosterConfig(args, rosterSeedBots, staticRosterBots) {
+  if (args.rosterMode === 'mutable') {
+    return `mutable roster seeds=${rosterSeedBots.length}${args.updateAllRoster ? ' (update-all enabled)' : ''}`;
+  }
+  if (args.rosterMode === 'static') {
+    return `static roster opponents=${staticRosterBots.length}`;
+  }
+  return 'no roster participation';
+}
+
+function buildUpdateAllRosterExport(promotionCandidates, rosterSeedBots) {
+  return rosterSeedBots.map((seedBot) => {
+    const bestCandidate = promotionCandidates
+      .filter((bot) => (bot.sourceBotId || bot.id) === seedBot.id)
+      .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo)[0] || seedBot;
+    return {
+      ...bestCandidate,
+      id: seedBot.id,
+      name: seedBot.name,
+      personality: seedBot.personality,
+      sourceBotId: seedBot.id,
+      difficultyBand: seedBot.difficultyBand || bestCandidate.difficultyBand || null,
+      metadata: seedBot.metadata ? clone(seedBot.metadata) : null
+    };
+  }).sort((a, b) => (Number(b.elo) || 0) - (Number(a.elo) || 0));
+}
+
+function autoPublishRuntimeBots(exportFile, reportsDir) {
+  const publishScript = path.join(repoRoot, 'tools', 'publish-bots.js');
+  const publishReport = path.join(reportsDir, 'published-bots-report.json');
+  childProcess.execFileSync(process.execPath, [publishScript, '--source', exportFile, '--report', publishReport], {
+    cwd: repoRoot,
+    stdio: 'inherit'
+  });
+}
+
 function writeBotsScript(filePath, bots) {
   const payload = JSON.stringify(bots, null, 2);
   const script = `(function (root) {\n  const bots = ${payload};\n  if (typeof module === 'object' && module.exports) {\n    module.exports = bots;\n  }\n  if (root) {\n    root.WavePong = root.WavePong || {};\n    root.WavePong.BOTS = bots;\n  }\n})(typeof globalThis !== 'undefined' ? globalThis : this);\n`;
@@ -591,20 +851,31 @@ function main() {
   ensureDir(checkpointsDir);
   const humanRatings = loadHumanRatings(args.ratingsFile);
   const reviewRatings = aggregateHumanRatings(humanRatings);
+  const rosterBots = loadRosterBots(args.rosterFile);
+  if (args.updateAllRoster && !rosterBots.length) {
+    throw new Error(`--update-all-roster requires a non-empty roster file: ${args.rosterFile}`);
+  }
+  const mutableRosterSeeds = args.rosterMode === 'mutable' ? rosterBots : [];
+  const staticRosterBots = args.rosterMode === 'static'
+    ? rosterBots.map((bot) => ({ ...clone(bot), isStaticRosterBot: true }))
+    : [];
 
   const inputSize = getObservationSize();
   const random = createSeededRandom(args.seed);
-  let populations = createPopulation(inputSize, args.population, random);
+  let populations = createPopulation(inputSize, args.population, random, mutableRosterSeeds);
   const generationReports = [];
   let finalReplayBundles = [];
   const totalBots = Object.values(populations).flat().length;
-  const matchesPerGeneration = countRoundRobinMatches(totalBots);
+  const matchesPerGeneration = countTrainingMatches(totalBots, staticRosterBots.length);
   const totalPlannedMatches = matchesPerGeneration * args.generations;
   const overallStartedAt = Date.now();
 
   console.log(`Training ${totalBots} bots across ${ARCHETYPES.length} archetypes for ${args.generations} generations.`);
   console.log(`Each generation evaluates ${matchesPerGeneration} matches; total planned matches: ${totalPlannedMatches}.`);
-  console.log(`scoreLimit=${args.scoreLimit}, maxTicks=${args.maxTicks}, checkpointEvery=${args.checkpointEvery}, progressEvery=${args.progressEveryMatches}`);
+  console.log(
+    `scoreLimit=${args.scoreLimit}, maxTicks=${args.maxTicks}, checkpointEvery=${args.checkpointEvery}, progressEvery=${args.progressEveryMatches}` +
+    `, roster=${summarizeRosterConfig(args, mutableRosterSeeds, staticRosterBots)}, publishRuntime=${args.publishRuntime}`
+  );
 
   for (let generation = 0; generation < args.generations; generation += 1) {
     const generationLabel = `[Gen ${generation + 1}/${args.generations}]`;
@@ -615,6 +886,7 @@ function main() {
       scoreLimit: args.scoreLimit,
       maxTicks: args.maxTicks,
       inputSize,
+      staticBots: staticRosterBots,
       progressEveryMatches: args.progressEveryMatches,
       onProgress(progress) {
         const elapsedMs = Date.now() - overallStartedAt;
@@ -637,6 +909,12 @@ function main() {
       totalMatches,
       elapsedMs: generationElapsedMs,
       summary
+    });
+    const generationTrainingHours = generationElapsedMs / 3600000;
+    Object.values(nextPopulations).forEach((bots) => {
+      bots.forEach((bot) => {
+        bot.trainingHours = (Number(bot.trainingHours) || 0) + generationTrainingHours;
+      });
     });
     populations = nextPopulations;
     finalReplayBundles = replayBundles;
@@ -663,6 +941,7 @@ function main() {
         totalPlannedMatches,
         completedMatches,
         elapsedMs,
+        trainingHoursAddedThisGeneration: generationTrainingHours,
         generationReports,
         topCandidates: summarizePromotionCandidates(populations, reviewRatings)
       };
@@ -677,8 +956,11 @@ function main() {
     .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo);
 
   const exportPool = promotionCandidates.filter((bot) => !bot.reviewBlocked);
-  const selectedForExport = (exportPool.length ? exportPool : promotionCandidates).slice(0, 12);
-  const rankedBots = assignDifficultyBands(selectedForExport).map((bot) => ({
+  const selectedForExport = args.updateAllRoster
+    ? buildUpdateAllRosterExport(exportPool.length ? exportPool : promotionCandidates, mutableRosterSeeds)
+    : (exportPool.length ? exportPool : promotionCandidates).slice(0, 12);
+  const exportBots = args.updateAllRoster ? selectedForExport : assignDifficultyBands(selectedForExport);
+  const rankedBots = exportBots.map((bot) => ({
     id: bot.id,
     name: bot.name,
     schemaVersion: 1,
@@ -686,9 +968,12 @@ function main() {
     personality: bot.personality,
     generation: bot.generation,
     lineageId: bot.lineageId,
+    sourceBotId: bot.sourceBotId || null,
     difficultyBand: bot.difficultyBand,
     elo: Math.round(bot.elo),
     promotionScore: Math.round(bot.promotionScore),
+    metadata: bot.metadata ? clone(bot.metadata) : null,
+    trainingHours: Number((Number(bot.trainingHours) || 0).toFixed(3)),
     controllerParams: bot.controllerParams,
     mutationProfile: bot.mutationProfile,
     network: bot.network,
@@ -705,10 +990,17 @@ function main() {
     seed: args.seed,
     generations: args.generations,
     populationPerArchetype: args.population,
+    rosterMode: args.rosterMode,
+    updateAllRoster: args.updateAllRoster,
+    rosterFileUsed: args.rosterFile,
+    rosterSeedCount: mutableRosterSeeds.length,
+    staticRosterCount: staticRosterBots.length,
+    publishRuntime: args.publishRuntime,
     inputSize,
     matchesPerGeneration,
     totalPlannedMatches,
     elapsedMs: totalElapsedMs,
+    elapsedTrainingHours: Number((totalElapsedMs / 3600000).toFixed(3)),
     ratingsFileUsed: args.ratingsFile,
     humanReviewSummary: reviewRatings.summary,
     generationReports,
@@ -720,15 +1012,18 @@ function main() {
         archetype: bot.archetype,
         elo: Math.round(bot.elo),
         promotionScore: Math.round(bot.promotionScore),
+        trainingHours: Number((Number(bot.trainingHours) || 0).toFixed(3)),
         reviewSummary: bot.reviewSummary
       })),
     exportedBots: rankedBots.map((bot) => ({
       id: bot.id,
       name: bot.name,
+      roleName: bot.metadata && bot.metadata.roleName ? bot.metadata.roleName : null,
       archetype: bot.archetype,
       difficultyBand: bot.difficultyBand,
       elo: bot.elo,
       promotionScore: bot.promotionScore,
+      trainingHours: bot.trainingHours,
       reviewBlocked: bot.reviewBlocked,
       reviewSummary: bot.reviewSummary
     }))
@@ -745,6 +1040,9 @@ function main() {
   console.log(`Training completed in ${formatDuration(totalElapsedMs)}.`);
   console.log(`Evolved ${rankedBots.length} bots and exported them to ${args.exportFile}`);
   console.log(`Report written to ${reportPath}`);
+  if (args.publishRuntime) {
+    autoPublishRuntimeBots(args.exportFile, args.reportsDir);
+  }
 }
 
 main();

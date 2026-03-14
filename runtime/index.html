@@ -29,7 +29,7 @@
       <div class="menuHeader">
         <div class="menuHeaderTop">
           <h1>Wave Pong</h1>
-          <div id="menuVersion" class="menuVersion">v0.4.0</div>
+          <div id="menuVersion" class="menuVersion">v0.5.0</div>
         </div>
         <div class="menuSubtle">Set up the match here, then open Help for controls, rules, and powerups.</div>
       </div>
@@ -46,11 +46,12 @@
           </label>
 
           <label>
-            Difficulty
+            <span class="labelWithAction">
+              <span>Bot Select</span>
+              <button id="menuBotInfoBtn" type="button" class="infoIconButton" aria-label="Show selected bot details">i</button>
+            </span>
             <select id="difficultySelect">
-              <option value="chill">Chill</option>
-              <option value="spicy" selected>Spicy</option>
-              <option value="absurd">Ridiculous</option>
+              <option value="">Loading roster...</option>
             </select>
           </label>
 
@@ -99,12 +100,12 @@
         <div class="section">
           <h2>Rules and controls</h2>
           <div class="helpList">
-            <div class="controlItem"><strong>Player 1</strong><br>W and S move â€¢ F or Space fires a wave</div>
-            <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move â€¢ / fires a wave</div>
+            <div class="controlItem"><strong>Player 1</strong><br>W and S move Ã¢â‚¬Â¢ F or Space fires a wave</div>
+            <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move Ã¢â‚¬Â¢ / fires a wave</div>
             <div class="controlItem"><strong>Pause</strong><br>P or Escape pauses the match</div>
             <div class="controlItem"><strong>Menu</strong><br>Return to setup from the pause menu</div>
             <div class="controlItem"><strong>Mute</strong><br>M toggles sound</div>
-            <div class="controlItem"><strong>Wave costs</strong><br>Blue uses 15 percent charge â€¢ Pink uses 50 percent â€¢ Gold uses the full base bar</div>
+            <div class="controlItem"><strong>Wave costs</strong><br>Blue uses 15 percent charge Ã¢â‚¬Â¢ Pink uses 50 percent Ã¢â‚¬Â¢ Gold uses the full base bar</div>
             <div class="controlItem"><strong>Wave roles</strong><br>Blue is flexible control, pink is defensive coverage, and gold is the high impact finisher</div>
           </div>
           <div class="helpNote">XP raises wave level over time. Powerups apply instantly, and some temporary buffs also change charge capacity or recharge speed.</div>
@@ -113,17 +114,17 @@
         <div class="section">
           <h2>Powerups</h2>
           <div class="powerList">
-            <div class="powerRow"><div class="iconBox">â‡•</div><div><div class="title">Mega Paddle</div><div class="desc">Temporarily increases paddle height.</div></div></div>
-            <div class="powerRow"><div class="iconBox">âš¡</div><div><div class="title">Overcharge</div><div class="desc">Instantly fills the wave bar to its current maximum.</div></div></div>
-            <div class="powerRow"><div class="iconBox">â–°</div><div><div class="title">Cap Bank</div><div class="desc">Temporarily extends max charge to 150 percent.</div></div></div>
-            <div class="powerRow"><div class="iconBox">â‰«</div><div><div class="title">Rapid Charge</div><div class="desc">Temporarily makes the wave bar recharge much faster.</div></div></div>
-            <div class="powerRow"><div class="iconBox">â—Ž</div><div><div class="title">Multiball</div><div class="desc">Adds another ball to the court.</div></div></div>
-            <div class="powerRow"><div class="iconBox">âŸ²</div><div><div class="title">XP Surge</div><div class="desc">Grants bonus XP to the collecting side.</div></div></div>
-            <div class="powerRow"><div class="iconBox">â‡£</div><div><div class="title">Shrink Hex</div><div class="desc">Temporarily reduces the opponent paddle size.</div></div></div>
-            <div class="powerRow"><div class="iconBox">âŒ›</div><div><div class="title">Drag Field</div><div class="desc">Slows the opponent paddle for a short time.</div></div></div>
-            <div class="powerRow"><div class="iconBox">âœ¶</div><div><div class="title">Aim Jam</div><div class="desc">Makes the opponent aim wobble.</div></div></div>
-            <div class="powerRow"><div class="iconBox">â—Œ</div><div><div class="title">XP Drain</div><div class="desc">Removes XP and some charge from the opponent.</div></div></div>
-            <div class="powerRow"><div class="iconBox">âœ¹</div><div><div class="title">XP Minion</div><div class="desc">A neutral pickup that gives XP when collected.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢â€¡â€¢</div><div><div class="title">Mega Paddle</div><div class="desc">Temporarily increases paddle height.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢Å¡Â¡</div><div><div class="title">Overcharge</div><div class="desc">Instantly fills the wave bar to its current maximum.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢â€“Â°</div><div><div class="title">Cap Bank</div><div class="desc">Temporarily extends max charge to 150 percent.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢â€°Â«</div><div><div class="title">Rapid Charge</div><div class="desc">Temporarily makes the wave bar recharge much faster.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢â€”Å½</div><div><div class="title">Multiball</div><div class="desc">Adds another ball to the court.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢Å¸Â²</div><div><div class="title">XP Surge</div><div class="desc">Grants bonus XP to the collecting side.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢â€¡Â£</div><div><div class="title">Shrink Hex</div><div class="desc">Temporarily reduces the opponent paddle size.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢Å’â€º</div><div><div class="title">Drag Field</div><div class="desc">Slows the opponent paddle for a short time.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢Å“Â¶</div><div><div class="title">Aim Jam</div><div class="desc">Makes the opponent aim wobble.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢â€”Å’</div><div><div class="title">XP Drain</div><div class="desc">Removes XP and some charge from the opponent.</div></div></div>
+            <div class="powerRow"><div class="iconBox">Ã¢Å“Â¹</div><div><div class="title">XP Minion</div><div class="desc">A neutral pickup that gives XP when collected.</div></div></div>
           </div>
         </div>
       </div>
@@ -134,6 +135,7 @@
     <div class="card pauseCard">
       <div class="btnRow pauseActions">
         <button id="resumeBtn" class="primary">Resume</button>
+        <button id="pauseBotInfoBtn" class="secondary">Bot Info</button>
         <button id="pauseHelpBtn" class="secondary">Help</button>
         <button id="pauseMenuBtn" class="ghost">Back to Menu</button>
       </div>
@@ -144,7 +146,7 @@
           <h2>Match info</h2>
           <div class="miniStatGrid">
             <div class="miniStat"><div class="label">Mode</div><div class="value" id="modeLabel">VS CPU</div></div>
-            <div class="miniStat"><div class="label">Difficulty</div><div class="value" id="difficultyLabel">Spicy</div></div>
+            <div class="miniStat"><div class="label">Bot</div><div class="value" id="difficultyLabel">Loading roster...</div></div>
             <div class="miniStat"><div class="label">Rally</div><div class="value" id="rallyLabel">0</div></div>
             <div class="miniStat"><div class="label">Best Rally</div><div class="value" id="bestRallyLabel">0</div></div>
             <div class="miniStat"><div class="label">Score</div><div class="value" id="pauseScoreLine">0 : 0</div></div>
@@ -184,6 +186,23 @@
           <h2 style="font-size: 18px; margin-bottom: 10px;">History</h2>
           <div id="gameOverHistoryStats" class="compareGrid"></div>
         </div>
+      </div>
+    </div>
+  </div>
+  <div id="botInfoOverlay" class="overlay hidden">
+    <div class="card botInfoCard">
+      <div class="btnRow helpActions">
+        <button id="closeBotInfoBtn" class="primary">Close</button>
+      </div>
+      <div class="tiny">Bot dossier</div>
+      <h2 id="botInfoTitle">Roster bot</h2>
+      <p id="botInfoSubtitle" class="menuSubtle">Metadata for the currently selected bot.</p>
+      <div class="section">
+        <div class="botInfoGrid" id="botInfoGrid"></div>
+      </div>
+      <div class="section">
+        <h2>Notes</h2>
+        <p id="botInfoNotes" class="helpNote">No additional notes for this bot yet.</p>
       </div>
     </div>
   </div>

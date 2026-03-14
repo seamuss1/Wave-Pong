@@ -328,8 +328,35 @@
           rightWaveHits: 0,
           leftPowerups: 0,
           rightPowerups: 0,
+          leftRoleMetrics: createRoleMetrics(),
+          rightRoleMetrics: createRoleMetrics(),
           longestRally: 0
         };
+      }
+
+      function createRoleMetrics() {
+        return {
+          blueShots: 0,
+          pinkShots: 0,
+          goldShots: 0,
+          blueBallHits: 0,
+          pinkBallHits: 0,
+          goldBallHits: 0,
+          blueTowardHits: 0,
+          blueAwayHits: 0,
+          blueResistGrants: 0,
+          pinkThreatHits: 0,
+          pinkEmergencyHits: 0,
+          blueWavePowerups: 0,
+          pinkWavePowerups: 0,
+          goldWavePowerups: 0,
+          goldPaddleHits: 0,
+          goldCenterHits: 0
+        };
+      }
+
+      function getRoleMetricsForSide(side) {
+        return side === 'left' ? matchStats.leftRoleMetrics : matchStats.rightRoleMetrics;
       }
       history = loadHistory();
       lastWinner = history.lastWinner || 'None';
@@ -894,6 +921,7 @@ function getPulseRenderRadius(pulse) {
           return {
             level,
             charge,
+            waveType: 'gold',
             mode: 'push',
             chargeCost: GOLD_WAVE_COST,
             range: W,
@@ -917,6 +945,7 @@ function getPulseRenderRadius(pulse) {
           return {
             level,
             charge,
+            waveType: 'pink',
             mode: 'solid',
             chargeCost: PINK_WAVE_COST,
             range: waveBalance.pink.rangeBase + level * waveBalance.pink.rangePerLevel + extraCharge * waveBalance.pink.rangeChargeScale,
@@ -938,6 +967,7 @@ function getPulseRenderRadius(pulse) {
         return {
           level,
           charge,
+          waveType: 'blue',
           mode: 'wave',
           chargeCost: BLUE_WAVE_COST,
           range: waveBalance.blue.rangeBase + usableCharge * waveBalance.blue.rangeChargeScale + level * waveBalance.blue.rangePerLevel,
@@ -975,8 +1005,13 @@ function firePulse(paddle) {
 
   if (paddle.side === 'left') matchStats.leftShots += 1;
   else matchStats.rightShots += 1;
+  const roleMetrics = getRoleMetricsForSide(paddle.side);
+  if (stats.waveType === 'blue') roleMetrics.blueShots += 1;
+  else if (stats.waveType === 'pink') roleMetrics.pinkShots += 1;
+  else if (stats.waveType === 'gold') roleMetrics.goldShots += 1;
   emitRuntimeEvent('pulse-fired', {
     side: paddle.side,
+    waveType: stats.waveType,
     mode: stats.mode,
     level: stats.level,
     chargeCost: stats.chargeCost
@@ -993,6 +1028,7 @@ function firePulse(paddle) {
       side: paddle.side,
       life: stats.life,
       maxLife: stats.life,
+      waveType: stats.waveType,
       strength: stats.strength,
       level: stats.level,
       arcRadius: stats.arcRadius,
@@ -1014,6 +1050,7 @@ function firePulse(paddle) {
   } else {
       world.pulses.push({
         mode: stats.mode,
+        waveType: stats.waveType,
         x: origin.x,
         y: origin.y,
         angle: paddle.aimAngle,
@@ -1209,7 +1246,7 @@ function startMatch({
 } = {}) {
         initAudio();
         state.mode = mode || (ui.modeSelect ? ui.modeSelect.value : defaults.mode);
-        state.difficulty = difficulty || (ui.difficultySelect ? ui.difficultySelect.value : defaults.difficulty);
+        state.difficulty = difficulty || 'spicy';
         state.scoreLimit = sanitizeScoreLimit(scoreLimit != null ? scoreLimit : (ui.scoreLimitSelect ? ui.scoreLimitSelect.value : defaults.scoreLimit));
         if (ui.scoreLimitSelect) ui.scoreLimitSelect.value = state.scoreLimit;
         state.powerupsEnabled = powerupsEnabled != null ? !!powerupsEnabled : (ui.powerupsToggle ? ui.powerupsToggle.checked : defaults.powerupsEnabled);
@@ -1317,12 +1354,15 @@ function updateMenuStats() {
 }
 
 function updateUI() {
+  const selectedBotOption = ui.difficultySelect && ui.difficultySelect.selectedIndex >= 0
+    ? ui.difficultySelect.options[ui.difficultySelect.selectedIndex]
+    : null;
   if (ui.leftScore) ui.leftScore.textContent = state.leftScore;
   if (ui.rightScore) ui.rightScore.textContent = state.rightScore;
   if (ui.leftName) ui.leftName.textContent = state.demoMode ? 'CPU A' : 'PLAYER';
   if (ui.rightName) ui.rightName.textContent = state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU');
   if (ui.modeLabel) ui.modeLabel.textContent = state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU');
-  if (ui.difficultyLabel) ui.difficultyLabel.textContent = state.difficulty === 'chill' ? 'Chill' : state.difficulty === 'spicy' ? 'Spicy' : 'Ridiculous';
+  if (ui.difficultyLabel) ui.difficultyLabel.textContent = selectedBotOption ? selectedBotOption.textContent : state.difficulty;
   if (ui.rallyLabel) ui.rallyLabel.textContent = state.rally;
   if (ui.bestRallyLabel) ui.bestRallyLabel.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
   if (ui.pauseScoreLine) ui.pauseScoreLine.textContent = state.leftScore + ' : ' + state.rightScore;
@@ -1383,12 +1423,18 @@ function spawnPowerup() {
 }
 
 
-function collectPowerup(item, pickedByLeft, source = 'ball') {
+function collectPowerup(item, pickedByLeft, source = 'ball', waveType = null) {
   state.lastPowerType = null;
   const def = powerupDefs[item.type] || powerupDefs.grow;
   emitRuntimeEvent('powerup-collected', { type: item.type, pickedByLeft, source });
   if (pickedByLeft) matchStats.leftPowerups += 1;
   else matchStats.rightPowerups += 1;
+  if (source === 'wave' && waveType) {
+    const roleMetrics = getRoleMetricsForSide(pickedByLeft ? 'left' : 'right');
+    if (waveType === 'blue') roleMetrics.blueWavePowerups += 1;
+    else if (waveType === 'pink') roleMetrics.pinkWavePowerups += 1;
+    else if (waveType === 'gold') roleMetrics.goldWavePowerups += 1;
+  }
   applyPowerup(item.type, pickedByLeft);
   spawnFloatText(item.x, item.y, def.label, def.kind === 'minion' ? 'buff' : def.kind);
   const owner = pickedByLeft ? 'LEFT' : 'RIGHT';
@@ -2013,6 +2059,7 @@ function updatePulses(dt) {
               opponent.pulseCharge = Math.min(opponent.pulseCharge || 0, SOLID_CHARGE_THRESHOLD - goldWaveInteractionBalance.paddleHit.chargeCeilingOffset);
               adjustWaveXP(owner, OPPONENT_HIT_XP);
               adjustWaveXP(opponent, -YELLOW_HIT_XP_LOSS);
+              getRoleMetricsForSide(pulse.side).goldPaddleHits += 1;
               emitParticles(cx, cy, 30, pulse.color, 340);
               playTone(520, 0.05, 'triangle', 0.04);
             }
@@ -2031,7 +2078,7 @@ function updatePulses(dt) {
               const item = world.powerups[p];
               if (!pulseArcHitsPoint(item.x, item.y, pulse)) continue;
               world.powerups.splice(p, 1);
-              collectPowerup(item, pulse.side === 'left', 'wave');
+              collectPowerup(item, pulse.side === 'left', 'wave', pulse.waveType || null);
             }
 
             for (const ball of world.balls) {
@@ -2106,6 +2153,11 @@ function updatePulses(dt) {
               pulse.arcRadius += goldWaveInteractionBalance.ballHit.growth.arcRadiusPerHit;
               pulse.renderThickness = Math.min(goldWaveInteractionBalance.ballHit.growth.maxThickness, getPulseThickness(pulse) + goldWaveInteractionBalance.ballHit.growth.thicknessPerHit);
               pulse.waveThickness = pulse.renderThickness;
+              const goldRoleMetrics = getRoleMetricsForSide(pulse.side);
+              goldRoleMetrics.goldBallHits += 1;
+              if (sweetFactor > goldWaveInteractionBalance.ballHit.centerSweetThreshold) {
+                goldRoleMetrics.goldCenterHits += 1;
+              }
 
               if (pulse.side === 'left') matchStats.leftWaveHits += 1;
               else matchStats.rightWaveHits += 1;
@@ -2140,6 +2192,9 @@ function updatePulses(dt) {
               pulse.hitBallIds.add(ball.id);
 
               if (pulse.mode === 'solid') {
+                const movingToward = isBallMovingTowardPaddle(ball, pulse.side);
+                const ownerPaddle = pulse.side === 'left' ? world.paddles.left : world.paddles.right;
+                const emergencyDistance = Math.abs(ball.x - (ownerPaddle.x + ownerPaddle.w / 2));
                 const direction = pulse.side === 'left' ? 1 : -1;
                 const offset = clamp((ball.y - pulse.y) / Math.max(pinkWaveInteractionBalance.ballHit.offsetRangeMin, radius * pinkWaveInteractionBalance.ballHit.offsetRangeRadiusScale), -1, 1);
                 const speed = Math.min(
@@ -2156,6 +2211,10 @@ function updatePulses(dt) {
                 );
                 ball.vx = Math.cos(angle) * speed * direction;
                 ball.vy = Math.sin(angle) * speed + Math.sin(pulse.angle) * pinkWaveInteractionBalance.ballHit.aimVerticalKick;
+                const pinkRoleMetrics = getRoleMetricsForSide(pulse.side);
+                pinkRoleMetrics.pinkBallHits += 1;
+                if (movingToward) pinkRoleMetrics.pinkThreatHits += 1;
+                if (movingToward && emergencyDistance <= W * 0.18) pinkRoleMetrics.pinkEmergencyHits += 1;
               } else {
                 const dx = ball.x - pulse.x;
                 const dy = ball.y - pulse.y;
@@ -2173,8 +2232,11 @@ function updatePulses(dt) {
                 const force = pulse.strength * (blueWaveInteractionBalance.forceMultiplierBase + sweetFactor * blueWaveInteractionBalance.forceMultiplierSweetScale);
                 let outVx = ball.vx + (awayX * (1 - aimBlend) + Math.cos(pulse.angle) * aimBlend) * force;
                 let outVy = ball.vy + (awayY * (1 - aimBlend) + Math.sin(pulse.angle) * aimBlend) * force;
+                const blueRoleMetrics = getRoleMetricsForSide(pulse.side);
+                blueRoleMetrics.blueBallHits += 1;
 
                 if (movingAway) {
+                  blueRoleMetrics.blueAwayHits += 1;
                   const speed = Math.hypot(outVx, outVy) || 1;
                   const targetSpeed = Math.min(
                     BALL_SPEED_CAP * blueWaveInteractionBalance.away.speedCapMultiplier,
@@ -2200,10 +2262,12 @@ function updatePulses(dt) {
                   if (sweetFactor > blueWaveInteractionBalance.away.resistSweetThreshold) {
                     ball.blueResistTimer = Math.max(ball.blueResistTimer || 0, blueWaveInteractionBalance.away.resistDurationBase + sweetFactor * blueWaveInteractionBalance.away.resistDurationSweetScale);
                     ball.blueResistStrength = Math.max(ball.blueResistStrength || 0, blueWaveInteractionBalance.away.resistStrengthBase + sweetFactor * blueWaveInteractionBalance.away.resistStrengthSweetScale);
+                    blueRoleMetrics.blueResistGrants += 1;
                   }
                 }
 
                 if (movingToward) {
+                  blueRoleMetrics.blueTowardHits += 1;
                   const stunDuration = blueWaveInteractionBalance.toward.stunDurationBase + sweetFactor * blueWaveInteractionBalance.toward.stunDurationSweetScale;
                   applyBallStun(ball, stunDuration, outVx, outVy, waveBalance.blue.color);
                 } else {
@@ -3134,7 +3198,7 @@ function renderOverlayFX() {
 
         ['change', 'input'].forEach((eventName) => {
           listen(ui.themeSelect, eventName, () => applyTheme(ui.themeSelect.value));
-          listen(ui.difficultySelect, eventName, () => updateStatus('Difficulty set to ' + ui.difficultySelect.options[ui.difficultySelect.selectedIndex].text + '.'));
+          listen(ui.difficultySelect, eventName, () => updateStatus('Bot selected: ' + ui.difficultySelect.options[ui.difficultySelect.selectedIndex].text + '.'));
           listen(ui.scoreLimitSelect, eventName, () => {
             const value = sanitizeScoreLimit(ui.scoreLimitSelect.value);
             if (String(value) !== ui.scoreLimitSelect.value) ui.scoreLimitSelect.value = value;

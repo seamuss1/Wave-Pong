@@ -2,3 +2,12 @@
 tools/node_modules/
 itch-build/
 .env
+tools/reports/_tmp-*
+tools/reports/checkpoints/
+tools/reports/clips/
+tools/reports/replays/
+tools/reports/exported-bots.js
+tools/reports/latest-evolution-report.json
+tools/reports/pruned-bot-roster-report.json
+tools/reports/published-bots-report.json
+tools/reports/review-manifest.json

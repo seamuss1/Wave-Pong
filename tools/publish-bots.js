@@ -84,6 +84,10 @@ function inferStyleTags(bot) {
   return tags;
 }
 
+function uniqueStrings(values) {
+  return Array.from(new Set((values || []).filter((value) => typeof value === 'string' && value.trim()))); 
+}
+
 function eloTier(elo) {
   const value = Number(elo) || 0;
   if (value >= 1040) return 'elite';
@@ -123,33 +127,39 @@ function evaluateRuntimeActivity(bot, seed) {
 }
 
 function normalizePublishedBot(bot, sourceLabel) {
+  const trainingHours = Number(bot.trainingHours) || 0;
+  const existingMetadata = bot.metadata && typeof bot.metadata === 'object' ? clone(bot.metadata) : {};
   const samples = bot.runtimeValidation && Array.isArray(bot.runtimeValidation.samples)
     ? bot.runtimeValidation.samples
     : [123, 987654321].map((seed) => evaluateRuntimeActivity(bot, seed));
   const totalMovedTicks = samples.reduce((sum, sample) => sum + (sample.movedTicks || 0), 0);
   const totalGoals = samples.reduce((sum, sample) => sum + (sample.leftScore || 0) + (sample.rightScore || 0), 0);
   const runtimeDisabled = totalMovedTicks === 0 && totalGoals === 0;
+  const inferredStyleTags = inferStyleTags({
+    ...bot,
+    runtimeValidation: {
+      totalMovedTicks,
+      totalGoals,
+      samples
+    }
+  });
   const metadata = {
+    ...existingMetadata,
     rosterStatus: 'published',
     rosterVersion: 1,
     source: sourceLabel,
     publishedAt: new Date().toISOString(),
     lineageRoot: bot.lineageId || bot.id,
     sourceBotId: bot.sourceBotId || null,
-    styleTags: inferStyleTags({
-      ...bot,
-      runtimeValidation: {
-        totalMovedTicks,
-        totalGoals,
-        samples
-      }
-    }),
+    trainingHours: Number(trainingHours.toFixed(3)),
+    styleTags: uniqueStrings([...(existingMetadata.styleTags || []), ...inferredStyleTags]),
     eloTier: eloTier(bot.elo),
-    reviewState: bot.reviewBlocked ? 'blocked' : 'active'
+    reviewState: existingMetadata.reviewState || (bot.reviewBlocked ? 'blocked' : 'active')
   };
 
   return {
     ...clone(bot),
+    trainingHours: Number(trainingHours.toFixed(3)),
     runtimeDisabled,
     runtimeValidation: {
       totalMovedTicks,
@@ -262,6 +272,7 @@ function main() {
       archetype: bot.archetype,
       difficultyBand: bot.difficultyBand,
       elo: bot.elo,
+      trainingHours: bot.trainingHours,
       lineageId: bot.lineageId,
       metadata: bot.metadata
     }))
