@@ -14,7 +14,10 @@ function parseArgs(argv) {
     destination: path.join(repoRoot, 'runtime', 'js', 'bot-roster.js'),
     report: path.join(repoRoot, 'tools', 'reports', 'published-bots-report.json'),
     replaceId: null,
-    forceAdd: false
+    forceAdd: false,
+    promotionSeeds: 4,
+    promotionScoreLimit: 5,
+    promotionMaxTicks: 120 * 30
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -24,6 +27,9 @@ function parseArgs(argv) {
     else if (arg === '--report' && argv[i + 1]) args.report = path.resolve(argv[++i]);
     else if (arg === '--replace-id' && argv[i + 1]) args.replaceId = String(argv[++i]);
     else if (arg === '--force-add') args.forceAdd = true;
+    else if (arg === '--promotion-seeds' && argv[i + 1]) args.promotionSeeds = Number(argv[++i]);
+    else if (arg === '--promotion-score-limit' && argv[i + 1]) args.promotionScoreLimit = Number(argv[++i]);
+    else if (arg === '--promotion-max-ticks' && argv[i + 1]) args.promotionMaxTicks = Number(argv[++i]);
     else throw new Error(`Unknown argument: ${arg}`);
   }
 
@@ -203,6 +209,116 @@ function normalizeSourceBots(source, sourceLabel) {
   return rawBots.filter(Boolean).map((bot) => normalizePublishedBot(bot, sourceLabel));
 }
 
+function evaluateHeadToHeadMatch(leftBot, rightBot, seed, options) {
+  const runtime = simCore.createSimulation({ config, seed });
+  runtime.setControllers({
+    left: controllers.createNeuralController(leftBot),
+    right: controllers.createNeuralController(rightBot)
+  });
+  runtime.startMatch({
+    demo: true,
+    skipCountdown: true,
+    difficulty: 'spicy',
+    scoreLimit: options.promotionScoreLimit,
+    powerupsEnabled: true,
+    trailsEnabled: false,
+    theme: 'neon'
+  });
+
+  while (!runtime.state.gameOver && runtime.state.tick < options.promotionMaxTicks) {
+    runtime.stepSimulation(1);
+  }
+
+  return {
+    leftScore: runtime.state.leftScore,
+    rightScore: runtime.state.rightScore,
+    leftWon: runtime.state.leftScore > runtime.state.rightScore,
+    rightWon: runtime.state.rightScore > runtime.state.leftScore
+  };
+}
+
+function createPromotionSeeds(seedCount) {
+  const seeds = [];
+  for (let i = 0; i < seedCount; i += 1) {
+    seeds.push(1337 + (i * 7919));
+  }
+  return seeds;
+}
+
+function summarizePromotionSeries(candidate, existing, options) {
+  const seedCount = Math.max(1, Math.floor(options.promotionSeeds || 1));
+  const seeds = createPromotionSeeds(seedCount);
+  const summary = {
+    candidateId: candidate.id,
+    existingId: existing.id,
+    seeds,
+    matchesPlayed: 0,
+    candidateMatchPoints: 0,
+    existingMatchPoints: 0,
+    candidateWins: 0,
+    existingWins: 0,
+    draws: 0,
+    candidateGoals: 0,
+    existingGoals: 0,
+    gameResults: []
+  };
+
+  for (const seed of seeds) {
+    const leftGame = evaluateHeadToHeadMatch(candidate, existing, seed, options);
+    summary.matchesPlayed += 1;
+    summary.candidateGoals += leftGame.leftScore;
+    summary.existingGoals += leftGame.rightScore;
+    if (leftGame.leftWon) {
+      summary.candidateWins += 1;
+      summary.candidateMatchPoints += 1;
+    } else if (leftGame.rightWon) {
+      summary.existingWins += 1;
+      summary.existingMatchPoints += 1;
+    } else {
+      summary.draws += 1;
+      summary.candidateMatchPoints += 0.5;
+      summary.existingMatchPoints += 0.5;
+    }
+    summary.gameResults.push({
+      seed,
+      candidateSide: 'left',
+      candidateScore: leftGame.leftScore,
+      existingScore: leftGame.rightScore
+    });
+
+    const rightGame = evaluateHeadToHeadMatch(existing, candidate, seed, options);
+    summary.matchesPlayed += 1;
+    summary.candidateGoals += rightGame.rightScore;
+    summary.existingGoals += rightGame.leftScore;
+    if (rightGame.rightWon) {
+      summary.candidateWins += 1;
+      summary.candidateMatchPoints += 1;
+    } else if (rightGame.leftWon) {
+      summary.existingWins += 1;
+      summary.existingMatchPoints += 1;
+    } else {
+      summary.draws += 1;
+      summary.candidateMatchPoints += 0.5;
+      summary.existingMatchPoints += 0.5;
+    }
+    summary.gameResults.push({
+      seed,
+      candidateSide: 'right',
+      candidateScore: rightGame.rightScore,
+      existingScore: rightGame.leftScore
+    });
+  }
+
+  summary.goalDiff = summary.candidateGoals - summary.existingGoals;
+  summary.candidateBeatsRoster =
+    summary.candidateMatchPoints > summary.existingMatchPoints ||
+    (
+      summary.candidateMatchPoints === summary.existingMatchPoints &&
+      summary.goalDiff > 0
+    );
+  return summary;
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!fs.existsSync(args.source)) {
@@ -228,11 +344,32 @@ function main() {
 
     if (replaceIndex >= 0) {
       const existing = nextRoster[replaceIndex];
+      const promotionSeries = summarizePromotionSeries(candidate, existing, args);
       candidate.metadata.replacesBotId = existing.id;
+      candidate.metadata.promotionSeries = {
+        seeds: promotionSeries.seeds,
+        matchesPlayed: promotionSeries.matchesPlayed,
+        candidateMatchPoints: promotionSeries.candidateMatchPoints,
+        existingMatchPoints: promotionSeries.existingMatchPoints,
+        candidateWins: promotionSeries.candidateWins,
+        existingWins: promotionSeries.existingWins,
+        draws: promotionSeries.draws,
+        goalDiff: promotionSeries.goalDiff
+      };
+      if (!promotionSeries.candidateBeatsRoster) {
+        skippedBots.push({
+          candidateId: candidate.id,
+          reason: 'failed_promotion_gate',
+          existingBotId: existing.id,
+          promotionSeries
+        });
+        continue;
+      }
       nextRoster[replaceIndex] = candidate;
       replacedBots.push({
         candidateId: candidate.id,
-        replacedBotId: existing.id
+        replacedBotId: existing.id,
+        promotionSeries
       });
       continue;
     }
