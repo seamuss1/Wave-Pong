@@ -9,6 +9,9 @@
     "deploy:test": "powershell -ExecutionPolicy Bypass -File ./deploy-itch.ps1 -Destination test",
     "deploy:production": "powershell -ExecutionPolicy Bypass -File ./deploy-itch.ps1 -Destination production",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./browser-smoke-test.ps1",
-    "smoke:node": "node browser-smoke-test.js"
+    "smoke:node": "node browser-smoke-test.js",
+    "version:patch": "powershell -ExecutionPolicy Bypass -File ./bump-version.ps1 -Level patch",
+    "version:minor": "powershell -ExecutionPolicy Bypass -File ./bump-version.ps1 -Level minor",
+    "version:major": "powershell -ExecutionPolicy Bypass -File ./bump-version.ps1 -Level major"
   }
 }

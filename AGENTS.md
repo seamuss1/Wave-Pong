@@ -44,8 +44,10 @@
   - increment the third number for minor rebuilds and small changes
   - increment the second number and reset the third for bigger feature/change sets
   - increment the first number for major releases or redesigns
+- Do not auto-increment the version during packaging. Bump `version.json` explicitly before packaging, using a patch/minor/major decision.
 - The deployable zip should contain the contents of `itch-build/` at the archive root.
-- The packaging script should emit a versioned archive named like `wave-pong-itchio-v0.3.2.zip` and refresh `wave-pong-itchio.zip` as the latest alias.
+- Keep only the most recent deploy zip in the repo, and keep the version number in the filename, for example `wave-pong-itchio-v0.3.2.zip`.
+- The packaging script should refresh that single current versioned zip and include the current version metadata from `version.json` inside the packaged build.
 - Prefer `powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1` so the zip is rebuilt and verified against `itch-build/index.html`.
 - Recommended PowerShell command:
   `powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1`

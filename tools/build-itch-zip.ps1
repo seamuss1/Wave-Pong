@@ -21,7 +21,7 @@ function Get-RepoVersion {
   return [string]$rawVersion.version
 }
 
-function Get-VersionedZipPath {
+function Get-LatestZipPath {
   param(
     [Parameter(Mandatory = $true)]
     [string]$Version
@@ -30,13 +30,9 @@ function Get-VersionedZipPath {
   return (Join-Path $repoRoot ("wave-pong-itchio-v{0}.zip" -f $Version))
 }
 
-function Get-LatestZipPath {
-  return (Join-Path $repoRoot 'wave-pong-itchio.zip')
-}
-
 $version = Get-RepoVersion
 if (-not $ZipPath) {
-  $ZipPath = Get-VersionedZipPath -Version $version
+  $ZipPath = Get-LatestZipPath -Version $version
 }
 
 function Resolve-NodeExe {
@@ -108,9 +104,8 @@ if (-not $SkipBuild) {
 
 $resolvedBuildPath = (Resolve-Path $buildPath).Path
 $resolvedZipPath = [System.IO.Path]::GetFullPath($ZipPath)
-$resolvedLatestZipPath = [System.IO.Path]::GetFullPath((Get-LatestZipPath))
 
-foreach ($requiredFile in @('index.html', 'wave_pong.html')) {
+foreach ($requiredFile in @('index.html', 'wave_pong.html', 'version.json')) {
   $requiredPath = Join-Path $resolvedBuildPath $requiredFile
   if (-not (Test-Path $requiredPath)) {
     throw "Expected '$requiredPath' before packaging the itch.io zip."
@@ -123,10 +118,6 @@ if (Test-Path $resolvedZipPath) {
 
 Compress-Archive -Path (Join-Path $resolvedBuildPath '*') -DestinationPath $resolvedZipPath -Force
 
-if ($resolvedLatestZipPath -ne $resolvedZipPath) {
-  Copy-Item $resolvedZipPath $resolvedLatestZipPath -Force
-}
-
 $expectedHash = Get-FileSha256 -Path (Join-Path $resolvedBuildPath 'index.html')
 $archivedHash = Get-ZipEntrySha256 -ArchivePath $resolvedZipPath -EntryName 'index.html'
 
@@ -136,7 +127,4 @@ if ($expectedHash -ne $archivedHash) {
 
 Write-Host "Version: $version"
 Write-Host "Verified itch.io zip: $resolvedZipPath"
-if ($resolvedLatestZipPath -ne $resolvedZipPath) {
-  Write-Host "Updated latest zip alias: $resolvedLatestZipPath"
-}
 Write-Host "index.html SHA256: $expectedHash"

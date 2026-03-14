@@ -37,6 +37,23 @@ Version rules:
 - increment the second number and reset the third for bigger change sets
 - increment the first number for a major release or redesign
 
+Rebuilds do not auto-increment the version. Bump the version explicitly first, then package the build.
+
+Version bump commands from `tools/`:
+
+```bash
+npm.cmd run version:patch
+npm.cmd run version:minor
+npm.cmd run version:major
+```
+
+Recommended release flow:
+
+1. run the appropriate version bump command
+2. run `npm.cmd run smoke`
+3. run `powershell -ExecutionPolicy Bypass -File ..\tools\build-itch-zip.ps1`
+4. deploy with the local butler helper
+
 For itch.io uploads, build the self-contained artifact first:
 
 ```bash
@@ -56,8 +73,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1
 That command:
 
 - rebuilds `itch-build/`
-- creates a versioned zip like `wave-pong-itchio-v0.3.2.zip`
-- refreshes `wave-pong-itchio.zip` as the latest alias
+- creates the single current deploy zip as `wave-pong-itchio-v0.3.2.zip`
 - verifies the archived `index.html` matches `itch-build/index.html`
 
 ## Smoke testing

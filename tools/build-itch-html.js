@@ -40,12 +40,14 @@ const cssPath = path.join(runtimeDir, 'styles', 'main.css');
 const configPath = path.join(runtimeDir, 'js', 'config.js');
 const appPath = path.join(runtimeDir, 'js', 'app.js');
 const legacyPath = path.join(runtimeDir, 'wave_pong.html');
+const versionPath = path.join(repoRoot, 'version.json');
 
 let html = read(htmlPath);
 const css = read(cssPath);
 const configJs = read(configPath);
 const appJs = read(appPath);
 const legacyHtml = read(legacyPath);
+const versionJson = read(versionPath);
 
 html = replaceExact(
   html,
@@ -63,12 +65,13 @@ html = replacePattern(
 
 write(path.join(outputDir, 'index.html'), html);
 write(path.join(outputDir, 'wave_pong.html'), legacyHtml);
+write(path.join(outputDir, 'version.json'), versionJson);
 
 console.log(
   JSON.stringify(
     {
       outputDir,
-      files: ['index.html', 'wave_pong.html']
+      files: ['index.html', 'wave_pong.html', 'version.json']
     },
     null,
     2
