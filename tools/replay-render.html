@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wave Pong Replay Renderer</title>
+  <link rel="stylesheet" href="../runtime/styles/main.css" />
+</head>
+<body>
+  <canvas id="gameCanvas" tabindex="0" aria-label="Replay renderer canvas"></canvas>
+  <script src="../runtime/js/version.js"></script>
+  <script src="../runtime/js/config.js"></script>
+  <script src="../runtime/js/controllers.js"></script>
+  <script src="../runtime/js/sim-core.js"></script>
+  <script>
+    (function () {
+      const ns = window.WavePong || {};
+      const simCore = ns.SimCore;
+      const config = ns.CONFIG;
+      const runtimeVersion = ns.VERSION;
+
+      async function blobToBase64(blob) {
+        const buffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += 1) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      }
+
+      async function renderBundle(bundle, options = {}) {
+        const fps = options.fps || 60;
+        const runtime = simCore.createRuntime({
+          document,
+          window,
+          config,
+          runtimeVersion
+        });
+        const width = Number.isFinite(options.width) ? Math.max(640, Math.floor(options.width)) : 1920;
+        const height = Number.isFinite(options.height) ? Math.max(360, Math.floor(options.height)) : 1080;
+        if (typeof window.resizeTo === 'function') {
+          try {
+            window.resizeTo(width, height);
+          } catch (error) {
+            // Headless browsers may ignore window resizing.
+          }
+        }
+        runtime.startMatch({
+          ...bundle.matchOptions,
+          skipCountdown: true,
+          leftController: null,
+          rightController: null
+        });
+        for (const action of bundle.replay.actions || []) {
+          runtime.queueInput(action.side, action.tick, action.action);
+        }
+        runtime.resize();
+        runtime.render();
+
+        const stream = runtime.canvas.captureStream(fps);
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+        const chunks = [];
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size) chunks.push(event.data);
+        };
+
+        const ticksPerFrame = Math.max(1, Math.round(runtime.fixedTickRate / fps));
+        const finished = new Promise((resolve) => {
+          recorder.onstop = async () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            resolve({
+              mimeType: blob.type,
+              base64: await blobToBase64(blob)
+            });
+          };
+        });
+
+        recorder.start();
+        while (runtime.state.tick < bundle.durationTicks) {
+          runtime.stepSimulation(ticksPerFrame);
+          runtime.render();
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        recorder.stop();
+        return finished;
+      }
+
+      window.WavePongReplayRenderer = {
+        renderBundle
+      };
+    })();
+  </script>
+</body>
+</html>

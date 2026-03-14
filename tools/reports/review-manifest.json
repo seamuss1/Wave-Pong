@@ -1,0 +1,964 @@
+[
+  {
+    "replayId": "defensive-0-31sl2w-vs-aggressive-0-7t5tme-623177637",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-7t5tme-623177637.json",
+    "replayFileName": "defensive-0-31sl2w-vs-aggressive-0-7t5tme-623177637.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-7t5tme-623177637.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-7t5tme-623177637.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-aggressive-0-7t5tme-623177637.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-7t5tme-623177637.webm",
+    "clipExists": false,
+    "seed": 623177637,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "aggressive-0-7t5tme"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 1,
+        "rightScore": 2,
+        "tick": 451,
+        "maxBallSpeed": 690.0000000000001,
+        "hash": "44bee3fc",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 1,
+        "rightScore": 2,
+        "tick": 453,
+        "maxBallSpeed": 690,
+        "hash": "b709e575",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-aggressive-0-9aaccq-372421497",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-9aaccq-372421497.json",
+    "replayFileName": "defensive-0-31sl2w-vs-aggressive-0-9aaccq-372421497.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-9aaccq-372421497.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-9aaccq-372421497.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-aggressive-0-9aaccq-372421497.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-9aaccq-372421497.webm",
+    "clipExists": false,
+    "seed": 372421497,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "aggressive-0-9aaccq"
+    ],
+    "heuristicFlags": [
+      "speed_spike"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 3,
+        "rightScore": 2,
+        "tick": 1974,
+        "maxBallSpeed": 1087.3457599600972,
+        "hash": "a1223704",
+        "leftShots": 0,
+        "rightShots": 28
+      },
+      "delayed": {
+        "leftScore": 3,
+        "rightScore": 2,
+        "tick": 1198,
+        "maxBallSpeed": 1160.642326556718,
+        "hash": "65991c98",
+        "leftShots": 0,
+        "rightShots": 18
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-aggressive-0-9aaccq-586993847",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-9aaccq-586993847.json",
+    "replayFileName": "defensive-0-31sl2w-vs-aggressive-0-9aaccq-586993847.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-9aaccq-586993847.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-9aaccq-586993847.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-aggressive-0-9aaccq-586993847.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-9aaccq-586993847.webm",
+    "clipExists": false,
+    "seed": 586993847,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "aggressive-0-9aaccq"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 3,
+        "rightScore": 0,
+        "tick": 1021,
+        "maxBallSpeed": 716.6936000000001,
+        "hash": "4be5036d",
+        "leftShots": 0,
+        "rightShots": 15
+      },
+      "delayed": {
+        "leftScore": 2,
+        "rightScore": 3,
+        "tick": 1171,
+        "maxBallSpeed": 1103.0069166493772,
+        "hash": "f1b8e79c",
+        "leftShots": 0,
+        "rightShots": 17
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-aggressive-0-atrina-459825712",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-atrina-459825712.json",
+    "replayFileName": "defensive-0-31sl2w-vs-aggressive-0-atrina-459825712.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-atrina-459825712.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-atrina-459825712.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-aggressive-0-atrina-459825712.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-atrina-459825712.webm",
+    "clipExists": false,
+    "seed": 459825712,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "aggressive-0-atrina"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 3,
+        "rightScore": 1,
+        "tick": 895,
+        "maxBallSpeed": 716.6936000000002,
+        "hash": "ed0fecc8",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 3,
+        "rightScore": 2,
+        "tick": 959,
+        "maxBallSpeed": 716.6935999968832,
+        "hash": "d11eb2fc",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-aggressive-0-b2w9pf-865018576",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-b2w9pf-865018576.json",
+    "replayFileName": "defensive-0-31sl2w-vs-aggressive-0-b2w9pf-865018576.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-b2w9pf-865018576.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-b2w9pf-865018576.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-aggressive-0-b2w9pf-865018576.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-b2w9pf-865018576.webm",
+    "clipExists": false,
+    "seed": 865018576,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "aggressive-0-b2w9pf"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 3,
+        "rightScore": 2,
+        "tick": 784,
+        "maxBallSpeed": 690.0000000000001,
+        "hash": "e1b4d4f5",
+        "leftShots": 0,
+        "rightShots": 12
+      },
+      "delayed": {
+        "leftScore": 2,
+        "rightScore": 3,
+        "tick": 779,
+        "maxBallSpeed": 690.0000000000001,
+        "hash": "8489bca4",
+        "leftShots": 0,
+        "rightShots": 12
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-aggressive-0-b2w9pf-927454762",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-b2w9pf-927454762.json",
+    "replayFileName": "defensive-0-31sl2w-vs-aggressive-0-b2w9pf-927454762.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-b2w9pf-927454762.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-b2w9pf-927454762.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-aggressive-0-b2w9pf-927454762.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-b2w9pf-927454762.webm",
+    "clipExists": false,
+    "seed": 927454762,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "aggressive-0-b2w9pf"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 2,
+        "rightScore": 1,
+        "tick": 487,
+        "maxBallSpeed": 690,
+        "hash": "50b03fa1",
+        "leftShots": 0,
+        "rightShots": 6
+      },
+      "delayed": {
+        "leftScore": 2,
+        "rightScore": 1,
+        "tick": 472,
+        "maxBallSpeed": 690,
+        "hash": "e1cbe843",
+        "leftShots": 0,
+        "rightShots": 8
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-aggressive-0-fx20h9-777772447",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-fx20h9-777772447.json",
+    "replayFileName": "defensive-0-31sl2w-vs-aggressive-0-fx20h9-777772447.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-aggressive-0-fx20h9-777772447.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-fx20h9-777772447.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-aggressive-0-fx20h9-777772447.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-aggressive-0-fx20h9-777772447.webm",
+    "clipExists": false,
+    "seed": 777772447,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "aggressive-0-fx20h9"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 1,
+        "rightScore": 2,
+        "tick": 1022,
+        "maxBallSpeed": 743.5858003839588,
+        "hash": "2ca7409b",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 3,
+        "rightScore": 2,
+        "tick": 782,
+        "maxBallSpeed": 690.0000000000001,
+        "hash": "79684b62",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-aggressive-1-brp9rn-99370186",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-aggressive-1-brp9rn-99370186.json",
+    "replayFileName": "defensive-0-31sl2w-vs-aggressive-1-brp9rn-99370186.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-aggressive-1-brp9rn-99370186.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-aggressive-1-brp9rn-99370186.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-aggressive-1-brp9rn-99370186.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-aggressive-1-brp9rn-99370186.webm",
+    "clipExists": false,
+    "seed": 99370186,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "aggressive-1-brp9rn"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 1,
+        "rightScore": 3,
+        "tick": 1170,
+        "maxBallSpeed": 716.6936000000002,
+        "hash": "da276d82",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 2,
+        "rightScore": 3,
+        "tick": 1008,
+        "maxBallSpeed": 716.6936,
+        "hash": "7150042b",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-aggressive-1-g2njx4-418203818",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-aggressive-1-g2njx4-418203818.json",
+    "replayFileName": "defensive-0-31sl2w-vs-aggressive-1-g2njx4-418203818.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-aggressive-1-g2njx4-418203818.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-aggressive-1-g2njx4-418203818.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-aggressive-1-g2njx4-418203818.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-aggressive-1-g2njx4-418203818.webm",
+    "clipExists": false,
+    "seed": 418203818,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "aggressive-1-g2njx4"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 3,
+        "rightScore": 1,
+        "tick": 1192,
+        "maxBallSpeed": 716.6936000000001,
+        "hash": "bc106dae",
+        "leftShots": 0,
+        "rightShots": 3
+      },
+      "delayed": {
+        "leftScore": 3,
+        "rightScore": 1,
+        "tick": 904,
+        "maxBallSpeed": 716.6936000000001,
+        "hash": "19cc0445",
+        "leftShots": 0,
+        "rightShots": 1
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-control-0-8zo0a9-960230134",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-control-0-8zo0a9-960230134.json",
+    "replayFileName": "defensive-0-31sl2w-vs-control-0-8zo0a9-960230134.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-control-0-8zo0a9-960230134.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-control-0-8zo0a9-960230134.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-control-0-8zo0a9-960230134.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-control-0-8zo0a9-960230134.webm",
+    "clipExists": false,
+    "seed": 960230134,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "control-0-8zo0a9"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 2,
+        "rightScore": 2,
+        "tick": 1284,
+        "maxBallSpeed": 743.585800384,
+        "hash": "825d5d2f",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 3,
+        "rightScore": 2,
+        "tick": 1044,
+        "maxBallSpeed": 716.6936000000001,
+        "hash": "a5dfd8eb",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-control-0-94ckep-870495581",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-control-0-94ckep-870495581.json",
+    "replayFileName": "defensive-0-31sl2w-vs-control-0-94ckep-870495581.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-control-0-94ckep-870495581.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-control-0-94ckep-870495581.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-control-0-94ckep-870495581.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-control-0-94ckep-870495581.webm",
+    "clipExists": false,
+    "seed": 870495581,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "control-0-94ckep"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 2,
+        "rightScore": 2,
+        "tick": 1021,
+        "maxBallSpeed": 716.6936000000003,
+        "hash": "88459e9c",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 2,
+        "rightScore": 3,
+        "tick": 781,
+        "maxBallSpeed": 690,
+        "hash": "6408846b",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-control-0-94ckep-930700245",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-control-0-94ckep-930700245.json",
+    "replayFileName": "defensive-0-31sl2w-vs-control-0-94ckep-930700245.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-control-0-94ckep-930700245.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-control-0-94ckep-930700245.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-control-0-94ckep-930700245.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-control-0-94ckep-930700245.webm",
+    "clipExists": false,
+    "seed": 930700245,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "control-0-94ckep"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 0,
+        "rightScore": 0,
+        "tick": 1133,
+        "maxBallSpeed": 797.971923644674,
+        "hash": "718fbe7d",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 3,
+        "rightScore": 1,
+        "tick": 893,
+        "maxBallSpeed": 716.6936000000001,
+        "hash": "161c08da",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-control-0-9aaccq-859250979",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-control-0-9aaccq-859250979.json",
+    "replayFileName": "defensive-0-31sl2w-vs-control-0-9aaccq-859250979.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-control-0-9aaccq-859250979.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-control-0-9aaccq-859250979.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-control-0-9aaccq-859250979.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-control-0-9aaccq-859250979.webm",
+    "clipExists": false,
+    "seed": 859250979,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "control-0-9aaccq"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 1,
+        "rightScore": 1,
+        "tick": 701,
+        "maxBallSpeed": 716.6936000000001,
+        "hash": "a9d4632f",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 2,
+        "rightScore": 1,
+        "tick": 461,
+        "maxBallSpeed": 690,
+        "hash": "1f0efb05",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-control-0-atrina-324788929",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-control-0-atrina-324788929.json",
+    "replayFileName": "defensive-0-31sl2w-vs-control-0-atrina-324788929.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-control-0-atrina-324788929.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-control-0-atrina-324788929.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-control-0-atrina-324788929.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-control-0-atrina-324788929.webm",
+    "clipExists": false,
+    "seed": 324788929,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "control-0-atrina"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 2,
+        "rightScore": 1,
+        "tick": 476,
+        "maxBallSpeed": 690,
+        "hash": "897dc6a6",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 1,
+        "rightScore": 2,
+        "tick": 468,
+        "maxBallSpeed": 690.0000000000001,
+        "hash": "efccbc6e",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-control-0-fx20h9-868422374",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-control-0-fx20h9-868422374.json",
+    "replayFileName": "defensive-0-31sl2w-vs-control-0-fx20h9-868422374.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-control-0-fx20h9-868422374.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-control-0-fx20h9-868422374.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-control-0-fx20h9-868422374.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-control-0-fx20h9-868422374.webm",
+    "clipExists": false,
+    "seed": 868422374,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "control-0-fx20h9"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 3,
+        "rightScore": 2,
+        "tick": 1322,
+        "maxBallSpeed": 743.585800384,
+        "hash": "e8bd09c8",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 1,
+        "rightScore": 3,
+        "tick": 807,
+        "maxBallSpeed": 716.6935979219452,
+        "hash": "c559f0bb",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-defensive-0-7t5tme-21773016",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-defensive-0-7t5tme-21773016.json",
+    "replayFileName": "defensive-0-31sl2w-vs-defensive-0-7t5tme-21773016.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-defensive-0-7t5tme-21773016.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-defensive-0-7t5tme-21773016.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-defensive-0-7t5tme-21773016.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-defensive-0-7t5tme-21773016.webm",
+    "clipExists": false,
+    "seed": 21773016,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "defensive-0-7t5tme"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 1,
+        "rightScore": 3,
+        "tick": 1444,
+        "maxBallSpeed": 743.5858003840002,
+        "hash": "a1eb8baf",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 2,
+        "rightScore": 3,
+        "tick": 2083,
+        "maxBallSpeed": 797.971923644674,
+        "hash": "b2f1f3d3",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-defensive-0-7t5tme-511282679",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-defensive-0-7t5tme-511282679.json",
+    "replayFileName": "defensive-0-31sl2w-vs-defensive-0-7t5tme-511282679.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-defensive-0-7t5tme-511282679.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-defensive-0-7t5tme-511282679.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-defensive-0-7t5tme-511282679.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-defensive-0-7t5tme-511282679.webm",
+    "clipExists": false,
+    "seed": 511282679,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "defensive-0-7t5tme"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 2,
+        "rightScore": 3,
+        "tick": 1583,
+        "maxBallSpeed": 770.678078738857,
+        "hash": "63b4e2b9",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 2,
+        "rightScore": 3,
+        "tick": 2126,
+        "maxBallSpeed": 770.6780787388569,
+        "hash": "81ccc98d",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-defensive-0-9qp1e0-551500369",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-defensive-0-9qp1e0-551500369.json",
+    "replayFileName": "defensive-0-31sl2w-vs-defensive-0-9qp1e0-551500369.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-defensive-0-9qp1e0-551500369.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-defensive-0-9qp1e0-551500369.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-defensive-0-9qp1e0-551500369.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-defensive-0-9qp1e0-551500369.webm",
+    "clipExists": false,
+    "seed": 551500369,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "defensive-0-9qp1e0"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 2,
+        "rightScore": 1,
+        "tick": 471,
+        "maxBallSpeed": 690,
+        "hash": "500d987a",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 1,
+        "rightScore": 2,
+        "tick": 460,
+        "maxBallSpeed": 690.0000000000001,
+        "hash": "3e79b015",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-defensive-0-9qp1e0-883334017",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-defensive-0-9qp1e0-883334017.json",
+    "replayFileName": "defensive-0-31sl2w-vs-defensive-0-9qp1e0-883334017.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-defensive-0-9qp1e0-883334017.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-defensive-0-9qp1e0-883334017.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-defensive-0-9qp1e0-883334017.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-defensive-0-9qp1e0-883334017.webm",
+    "clipExists": false,
+    "seed": 883334017,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "defensive-0-9qp1e0"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 3,
+        "rightScore": 1,
+        "tick": 906,
+        "maxBallSpeed": 716.6936,
+        "hash": "187644c5",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 3,
+        "rightScore": 2,
+        "tick": 775,
+        "maxBallSpeed": 690.0000000000001,
+        "hash": "1598861c",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-defensive-1-15a2hr-523063683",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-defensive-1-15a2hr-523063683.json",
+    "replayFileName": "defensive-0-31sl2w-vs-defensive-1-15a2hr-523063683.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-defensive-1-15a2hr-523063683.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-defensive-1-15a2hr-523063683.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-defensive-1-15a2hr-523063683.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-defensive-1-15a2hr-523063683.webm",
+    "clipExists": false,
+    "seed": 523063683,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "defensive-1-15a2hr"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 2,
+        "rightScore": 2,
+        "tick": 1143,
+        "maxBallSpeed": 743.5858130330353,
+        "hash": "5ebf0a5b",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 3,
+        "rightScore": 1,
+        "tick": 903,
+        "maxBallSpeed": 716.6936000000001,
+        "hash": "c0819e32",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-defensive-1-c2nf22-178625380",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-defensive-1-c2nf22-178625380.json",
+    "replayFileName": "defensive-0-31sl2w-vs-defensive-1-c2nf22-178625380.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-defensive-1-c2nf22-178625380.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-defensive-1-c2nf22-178625380.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-defensive-1-c2nf22-178625380.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-defensive-1-c2nf22-178625380.webm",
+    "clipExists": false,
+    "seed": 178625380,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "defensive-1-c2nf22"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 3,
+        "rightScore": 1,
+        "tick": 899,
+        "maxBallSpeed": 716.6936000000001,
+        "hash": "d5cdbd96",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 3,
+        "rightScore": 2,
+        "tick": 775,
+        "maxBallSpeed": 690,
+        "hash": "a9906c5d",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-trickster-0-8zo0a9-794350674",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-trickster-0-8zo0a9-794350674.json",
+    "replayFileName": "defensive-0-31sl2w-vs-trickster-0-8zo0a9-794350674.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-trickster-0-8zo0a9-794350674.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-trickster-0-8zo0a9-794350674.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-trickster-0-8zo0a9-794350674.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-trickster-0-8zo0a9-794350674.webm",
+    "clipExists": false,
+    "seed": 794350674,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "trickster-0-8zo0a9"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 1,
+        "rightScore": 2,
+        "tick": 453,
+        "maxBallSpeed": 690,
+        "hash": "bc712439",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 1,
+        "rightScore": 2,
+        "tick": 473,
+        "maxBallSpeed": 690,
+        "hash": "d9baec9b",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-31sl2w-vs-trickster-0-fx20h9-292280191",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-31sl2w-vs-trickster-0-fx20h9-292280191.json",
+    "replayFileName": "defensive-0-31sl2w-vs-trickster-0-fx20h9-292280191.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-31sl2w-vs-trickster-0-fx20h9-292280191.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-31sl2w-vs-trickster-0-fx20h9-292280191.webm",
+    "clipFileName": "defensive-0-31sl2w-vs-trickster-0-fx20h9-292280191.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-31sl2w-vs-trickster-0-fx20h9-292280191.webm",
+    "clipExists": false,
+    "seed": 292280191,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-31sl2w",
+      "trickster-0-fx20h9"
+    ],
+    "heuristicFlags": [
+      "brittle_to_seed_shift"
+    ],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 1,
+        "rightScore": 1,
+        "tick": 696,
+        "maxBallSpeed": 716.6936,
+        "hash": "cda9e976",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 2,
+        "rightScore": 1,
+        "tick": 456,
+        "maxBallSpeed": 690,
+        "hash": "31634019",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "watch",
+    "humanRating": null
+  },
+  {
+    "replayId": "defensive-0-9qp1e0-vs-aggressive-0-7t5tme-77347205",
+    "replayPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\replays\\defensive-0-9qp1e0-vs-aggressive-0-7t5tme-77347205.json",
+    "replayFileName": "defensive-0-9qp1e0-vs-aggressive-0-7t5tme-77347205.json",
+    "replayRelativePath": "reports\\replays\\defensive-0-9qp1e0-vs-aggressive-0-7t5tme-77347205.json",
+    "clipPath": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\clips\\defensive-0-9qp1e0-vs-aggressive-0-7t5tme-77347205.webm",
+    "clipFileName": "defensive-0-9qp1e0-vs-aggressive-0-7t5tme-77347205.webm",
+    "clipRelativePath": "reports\\clips\\defensive-0-9qp1e0-vs-aggressive-0-7t5tme-77347205.webm",
+    "clipExists": false,
+    "seed": 77347205,
+    "configHash": "3a06a5c9",
+    "botIds": [
+      "defensive-0-9qp1e0",
+      "aggressive-0-7t5tme"
+    ],
+    "heuristicFlags": [],
+    "perturbationResults": {
+      "plusSeed": {
+        "leftScore": 1,
+        "rightScore": 2,
+        "tick": 467,
+        "maxBallSpeed": 690,
+        "hash": "7fd9aa32",
+        "leftShots": 0,
+        "rightShots": 0
+      },
+      "delayed": {
+        "leftScore": 1,
+        "rightScore": 2,
+        "tick": 458,
+        "maxBallSpeed": 690.0000000000001,
+        "hash": "74443162",
+        "leftShots": 0,
+        "rightShots": 0
+      }
+    },
+    "agentDecision": "accept",
+    "humanRating": null
+  }
+]

@@ -1,0 +1,169 @@
+{
+  "createdAt": "2026-03-14T21:16:01.948Z",
+  "runtimeVersion": "0.3.5",
+  "seed": 1337,
+  "generations": 1,
+  "populationPerArchetype": 3,
+  "inputSize": 59,
+  "ratingsFileUsed": "C:\\Users\\Rosa_Maria\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\review-ratings.json",
+  "humanReviewSummary": {
+    "reviewCount": 0,
+    "acceptCount": 0,
+    "watchCount": 0,
+    "rejectCount": 0
+  },
+  "generationReports": [
+    {
+      "generation": 0,
+      "summary": [
+        {
+          "archetype": "defensive",
+          "topBotId": "defensive-0-7t5tme",
+          "topFitness": 15.009090909090911,
+          "topElo": 1011.1625078125563
+        },
+        {
+          "archetype": "aggressive",
+          "topBotId": "aggressive-0-9aaccq",
+          "topFitness": 77.05454545454546,
+          "topElo": 1047.7367119088533
+        },
+        {
+          "archetype": "control",
+          "topBotId": "control-0-94ckep",
+          "topFitness": 53.81818181818182,
+          "topElo": 1050.0469805260623
+        },
+        {
+          "archetype": "trickster",
+          "topBotId": "trickster-0-dtel4o",
+          "topFitness": 40.17272727272727,
+          "topElo": 1033.0557533109536
+        }
+      ]
+    }
+  ],
+  "blockedBots": [],
+  "exportedBots": [
+    {
+      "id": "control-0-fx20h9",
+      "name": "Weaver 20h9",
+      "archetype": "control",
+      "difficultyBand": "absurd",
+      "elo": 1054,
+      "promotionScore": 1054,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "control-0-94ckep",
+      "name": "Weaver ckep",
+      "archetype": "control",
+      "difficultyBand": "absurd",
+      "elo": 1050,
+      "promotionScore": 1050,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "aggressive-0-9aaccq",
+      "name": "Volt accq",
+      "archetype": "aggressive",
+      "difficultyBand": "absurd",
+      "elo": 1048,
+      "promotionScore": 1048,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "trickster-0-dtel4o",
+      "name": "Glitch el4o",
+      "archetype": "trickster",
+      "difficultyBand": "absurd",
+      "elo": 1033,
+      "promotionScore": 1033,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "defensive-0-31sl2w",
+      "name": "Anchor sl2w",
+      "archetype": "defensive",
+      "difficultyBand": "spicy",
+      "elo": 1015,
+      "promotionScore": 1015,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "defensive-0-7t5tme",
+      "name": "Anchor 5tme",
+      "archetype": "defensive",
+      "difficultyBand": "spicy",
+      "elo": 1011,
+      "promotionScore": 1011,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "defensive-1-9lav6y",
+      "name": "Anchor av6y",
+      "archetype": "defensive",
+      "difficultyBand": "spicy",
+      "elo": 1000,
+      "promotionScore": 1000,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "aggressive-1-enfr3f",
+      "name": "Volt fr3f",
+      "archetype": "aggressive",
+      "difficultyBand": "spicy",
+      "elo": 1000,
+      "promotionScore": 1000,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "control-1-1f2pgj",
+      "name": "Weaver 2pgj",
+      "archetype": "control",
+      "difficultyBand": "chill",
+      "elo": 1000,
+      "promotionScore": 1000,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "trickster-1-ecqa69",
+      "name": "Glitch qa69",
+      "archetype": "trickster",
+      "difficultyBand": "chill",
+      "elo": 1000,
+      "promotionScore": 1000,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "trickster-0-age1yx",
+      "name": "Glitch e1yx",
+      "archetype": "trickster",
+      "difficultyBand": "chill",
+      "elo": 986,
+      "promotionScore": 986,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    },
+    {
+      "id": "aggressive-0-b2w9pf",
+      "name": "Volt w9pf",
+      "archetype": "aggressive",
+      "difficultyBand": "chill",
+      "elo": 985,
+      "promotionScore": 985,
+      "reviewBlocked": false,
+      "reviewSummary": null
+    }
+  ]
+}

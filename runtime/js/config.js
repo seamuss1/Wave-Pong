@@ -1,4 +1,13 @@
-(function () {
+(function (root, factory) {
+  const config = factory();
+  if (typeof module === 'object' && module.exports) {
+    module.exports = config;
+  }
+  if (root) {
+    root.WavePong = root.WavePong || {};
+    root.WavePong.CONFIG = config;
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   // Primary gameplay tuning surface. Change numbers here before touching js/app.js.
   const balance = {
     // Fixed internal game resolution. Rendering scales this to the browser window.
@@ -483,6 +492,5 @@
     }
   };
 
-  window.WavePong = window.WavePong || {};
-  window.WavePong.CONFIG = config;
-})();
+  return config;
+});

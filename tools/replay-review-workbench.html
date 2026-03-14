@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wave Pong Replay Review Workbench</title>
+  <link rel="stylesheet" href="./replay-review-workbench.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-main">
+        <div class="brand">
+          <span class="eyebrow">Wave Pong</span>
+          <h1>Replay Review Workbench</h1>
+          <p>Load the replay manifest, inspect rendered clip files from <code>tools/reports/clips</code>, and record human ratings that the evolution pipeline can use to reward fun, fair play and block exploit-heavy bots.</p>
+        </div>
+        <div class="toolbar">
+          <label class="field-button">Load manifest<input id="manifestInput" type="file" accept=".json,application/json" /></label>
+          <label class="field-button">Import ratings<input id="ratingsInput" type="file" accept=".json,application/json" /></label>
+          <label class="field-button">Load clips<input id="clipsInput" type="file" accept=".webm,video/webm" multiple webkitdirectory /></label>
+          <button id="repoButton" type="button">Try repo defaults</button>
+          <button id="saveButton" type="button" class="primary">Save ratings file</button>
+          <button id="downloadButton" type="button">Download JSON</button>
+        </div>
+      </div>
+      <div class="status-strip">
+        <span class="status-pill" id="manifestStatus">Manifest not loaded</span>
+        <span class="status-pill" id="clipsStatus">Using repo-relative clips</span>
+        <span class="status-pill" id="ratingsStatus">Local cache ready</span>
+        <span class="status-pill" id="exportHint">Expected export path: <code>tools/reports/review-ratings.json</code></span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <div class="panel-body">
+            <div class="stats-grid" id="statsGrid"></div>
+            <div class="filters">
+              <input id="searchInput" type="search" placeholder="Search replay id or bot id" />
+              <select id="decisionFilter">
+                <option value="all">All decisions</option>
+                <option value="unrated">Unrated only</option>
+                <option value="accept">Accepted</option>
+                <option value="watch">Watch</option>
+                <option value="reject">Rejected</option>
+              </select>
+              <label class="check-row"><input id="flaggedOnly" type="checkbox" /> Flagged heuristics only</label>
+            </div>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Replay Queue</h2>
+            <span class="muted" id="queueCount">0 items</span>
+          </div>
+          <div class="replay-list" id="replayList"></div>
+        </section>
+      </aside>
+
+      <section class="viewer">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 id="viewerTitle">No replay selected</h2>
+              <p class="muted" id="viewerSubtitle">Load a manifest to begin reviewing.</p>
+            </div>
+            <div class="viewer-actions">
+              <button id="prevReplayButton" type="button">Previous</button>
+              <button id="nextReplayButton" type="button">Next</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="video-shell">
+              <video id="clipPlayer" controls preload="metadata" playsinline></video>
+              <div class="video-empty" id="videoEmpty">No clip loaded yet. If the player stays empty after choosing a replay, load the clip folder or render the replay clip first.</div>
+            </div>
+            <div class="tag-row" id="viewerTags"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-body">
+            <h2>Match Metadata</h2>
+            <div class="meta-grid" id="metaGrid"></div>
+            <hr class="subtle-rule" />
+            <h3>Perturbation Checks</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Scenario</th>
+                  <th>Score</th>
+                  <th>Ticks</th>
+                  <th>Max Ball Speed</th>
+                  <th>Hash</th>
+                </tr>
+              </thead>
+              <tbody id="perturbationTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <aside class="inspector">
+        <section class="panel">
+          <div class="panel-body">
+            <h2>Human Rating</h2>
+            <p class="muted">Higher scores should reflect matches that feel skillful, fair, and readable. Higher exploit risk means the clip looks suspicious or too brittle for human play.</p>
+            <div class="rating-grid">
+              <div class="rating-card">
+                <div class="rating-row"><strong>Fun</strong><output id="funValue">3</output></div>
+                <input id="funInput" type="range" min="1" max="5" step="1" value="3" />
+              </div>
+              <div class="rating-card">
+                <div class="rating-row"><strong>Fairness</strong><output id="fairnessValue">3</output></div>
+                <input id="fairnessInput" type="range" min="1" max="5" step="1" value="3" />
+              </div>
+              <div class="rating-card">
+                <div class="rating-row"><strong>Skill expression</strong><output id="skillExpressionValue">3</output></div>
+                <input id="skillExpressionInput" type="range" min="1" max="5" step="1" value="3" />
+              </div>
+              <div class="rating-card">
+                <div class="rating-row"><strong>Pace</strong><output id="paceValue">3</output></div>
+                <input id="paceInput" type="range" min="1" max="5" step="1" value="3" />
+              </div>
+              <div class="rating-card">
+                <div class="rating-row"><strong>Exploit risk</strong><output id="exploitRiskValue">1</output></div>
+                <input id="exploitRiskInput" type="range" min="0" max="5" step="1" value="1" />
+              </div>
+            </div>
+            <div class="decision-row section-gap">
+              <label for="decisionInput">Decision</label>
+              <select id="decisionInput">
+                <option value="accept">Accept</option>
+                <option value="watch">Watch</option>
+                <option value="reject">Reject</option>
+              </select>
+              <label for="notesInput">Review notes</label>
+              <textarea id="notesInput" placeholder="Why is this fun, fair, suspicious, or worth revisiting?"></textarea>
+            </div>
+            <div class="button-row">
+              <button id="saveReplayRatingButton" type="button" class="primary">Save current rating</button>
+              <button id="clearReplayRatingButton" type="button" class="danger">Clear current rating</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-body">
+            <h2>Bot Review Summary</h2>
+            <p class="muted">This is the view the evolution pipeline now uses for review-aware export and exploit blocking.</p>
+            <div class="bot-summary" id="botSummary"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-body">
+            <p class="footer-note">The workbench keeps a local cache in your browser. Use <strong>Save ratings file</strong> or <strong>Download JSON</strong> when you want the training tools to read your latest decisions from <code>tools/reports/review-ratings.json</code>.</p>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+  <script src="./replay-review-workbench.js"></script>
+</body>
+</html>
