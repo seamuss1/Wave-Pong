@@ -648,10 +648,31 @@
       gap: 8px;
     }
 
+    .menuHeaderTop {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
     .menuHeader h1 {
       margin: 0;
       line-height: 1;
       color: #f3f8ff;
+    }
+
+    .menuVersion {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(20, 29, 43, 0.9);
+      color: #dbe8fb;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     }
 
     .menuSubtle {
@@ -853,6 +874,15 @@
       .pauseCard,
       .gameOverPanel {
         gap: 12px;
+      }
+
+      .menuHeaderTop {
+        gap: 12px;
+      }
+
+      .menuVersion {
+        padding: 6px 10px;
+        font-size: 11px;
       }
 
       .btnRow {

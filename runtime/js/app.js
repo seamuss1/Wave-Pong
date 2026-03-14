@@ -32,6 +32,7 @@
         pauseBallCount: document.getElementById('pauseBallCount'),
         pausePowerCount: document.getElementById('pausePowerCount'),
         pauseScoreLimit: document.getElementById('pauseScoreLimit'),
+        menuVersion: document.getElementById('menuVersion'),
         modeSelect: document.getElementById('modeSelect'),
         difficultySelect: document.getElementById('difficultySelect'),
         scoreLimitSelect: document.getElementById('scoreLimitSelect'),
@@ -41,8 +42,13 @@
       };
 
       const config = (window.WavePong && window.WavePong.CONFIG) || null;
+      const runtimeVersion = (window.WavePong && window.WavePong.VERSION) || null;
       if (!config) {
         throw new Error('Wave Pong config missing. Load js/config.js before js/app.js.');
+      }
+
+      if (ui.menuVersion && runtimeVersion) {
+        ui.menuVersion.textContent = 'v' + runtimeVersion;
       }
 
       const {

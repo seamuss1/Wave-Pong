@@ -11,6 +11,7 @@
 ## File map
 
 - `runtime/index.html`: overlay markup and script/style includes.
+- `runtime/js/version.js`: runtime-exposed build version shown in the menu UI.
 - `runtime/styles/main.css`: all page and HUD styling.
 - `runtime/js/config.js`: primary tuning surface for gameplay numbers and static definitions.
 - `runtime/js/app.js`: game loop, rendering, input, physics, UI wiring, and persistence.
@@ -45,6 +46,7 @@
   - increment the second number and reset the third for bigger feature/change sets
   - increment the first number for major releases or redesigns
 - Do not auto-increment the version during packaging. Bump `version.json` explicitly before packaging, using a patch/minor/major decision.
+- Use `powershell -ExecutionPolicy Bypass -File .\tools\bump-version.ps1 -Level patch|minor|major` to update `version.json` and sync `runtime/js/version.js`.
 - The deployable zip should contain the contents of `itch-build/` at the archive root.
 - Keep only the most recent deploy zip in the repo, and keep the version number in the filename, for example `wave-pong-itchio-v0.3.2.zip`.
 - The packaging script should refresh that single current versioned zip and include the current version metadata from `version.json` inside the packaged build.

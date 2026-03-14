@@ -37,6 +37,7 @@ function escapeInlineScript(source) {
 
 const htmlPath = path.join(runtimeDir, 'index.html');
 const cssPath = path.join(runtimeDir, 'styles', 'main.css');
+const versionJsPath = path.join(runtimeDir, 'js', 'version.js');
 const configPath = path.join(runtimeDir, 'js', 'config.js');
 const appPath = path.join(runtimeDir, 'js', 'app.js');
 const legacyPath = path.join(runtimeDir, 'wave_pong.html');
@@ -44,6 +45,7 @@ const versionPath = path.join(repoRoot, 'version.json');
 
 let html = read(htmlPath);
 const css = read(cssPath);
+const versionJs = read(versionJsPath);
 const configJs = read(configPath);
 const appJs = read(appPath);
 const legacyHtml = read(legacyPath);
@@ -58,8 +60,8 @@ html = replaceExact(
 
 html = replacePattern(
   html,
-  /^\s*<script src="\.\/*js\/config\.js"><\/script>\s*\r?\n\s*<script src="\.\/*js\/app\.js"><\/script>/m,
-  `  <script>\n${escapeInlineScript(configJs)}\n</script>\n  <script>\n${escapeInlineScript(appJs)}\n</script>`,
+  /^\s*<script src="\.\/*js\/version\.js"><\/script>\s*\r?\n\s*<script src="\.\/*js\/config\.js"><\/script>\s*\r?\n\s*<script src="\.\/*js\/app\.js"><\/script>/m,
+  `  <script>\n${escapeInlineScript(versionJs)}\n</script>\n  <script>\n${escapeInlineScript(configJs)}\n</script>\n  <script>\n${escapeInlineScript(appJs)}\n</script>`,
   'the runtime script tags'
 );
 

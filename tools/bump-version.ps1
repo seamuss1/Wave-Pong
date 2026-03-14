@@ -7,6 +7,7 @@ param(
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $versionPath = Join-Path $repoRoot 'version.json'
+$runtimeVersionPath = Join-Path $repoRoot 'runtime\js\version.js'
 
 if (-not (Test-Path $versionPath)) {
   throw "Expected version file at '$versionPath'."
@@ -47,4 +48,11 @@ $updatedJson = [ordered]@{
 } | ConvertTo-Json
 
 [System.IO.File]::WriteAllText($versionPath, $updatedJson + [Environment]::NewLine)
+[System.IO.File]::WriteAllText(
+  $runtimeVersionPath,
+  "(function () {" + [Environment]::NewLine +
+  "  window.WavePong = window.WavePong || {};" + [Environment]::NewLine +
+  "  window.WavePong.VERSION = '" + $newVersion + "';" + [Environment]::NewLine +
+  "})();" + [Environment]::NewLine
+)
 Write-Host "Updated version: $newVersion"

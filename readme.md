@@ -19,6 +19,7 @@ Open `runtime/index.html` in a modern desktop browser.
 
 - `version.json` contains the current release/build version.
 - `runtime/index.html` contains the game UI markup and is the local browser entrypoint.
+- `runtime/js/version.js` exposes the current build version to the runtime UI.
 - `runtime/styles/main.css` contains the presentation layer.
 - `runtime/js/app.js` contains the game loop, rendering, input, and gameplay systems.
 - `runtime/js/config.js` contains the tweakable gameplay numbers and static game definitions.
@@ -46,6 +47,8 @@ npm.cmd run version:patch
 npm.cmd run version:minor
 npm.cmd run version:major
 ```
+
+Those commands update both `version.json` and `runtime/js/version.js`, so the in-game menu version stays in sync with packaging and deploy metadata.
 
 Recommended release flow:
 
