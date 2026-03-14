@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory = $true)]
+  [ValidateSet('test', 'production')]
+  [string]$Destination = 'test',
+
   [string]$Target,
 
   [string]$BuildPath,
@@ -15,6 +17,20 @@ param(
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if (-not $BuildPath) {
   $BuildPath = Join-Path $repoRoot 'itch-build'
+}
+
+if (-not $Target) {
+  switch ($Destination) {
+    'test' {
+      $Target = 'rainman1337/wave-pong-test:html5'
+    }
+    'production' {
+      $Target = 'rainman1337/wave-pong:html5'
+    }
+    default {
+      throw "Unsupported destination '$Destination'."
+    }
+  }
 }
 
 function Resolve-ButlerExe {

@@ -3,6 +3,14 @@ name: Deploy to itch.io
 on:
   workflow_dispatch:
     inputs:
+      destination:
+        description: Choose which itch.io project to deploy
+        required: true
+        default: test
+        type: choice
+        options:
+          - test
+          - production
       userversion:
         description: Optional butler --userversion value
         required: false
@@ -13,9 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-      ITCH_USERNAME: ${{ vars.ITCH_USERNAME }}
-      ITCH_GAME: ${{ vars.ITCH_GAME }}
-      ITCH_CHANNEL: ${{ vars.ITCH_CHANNEL }}
+      ITCH_CHANNEL: html5
+      ITCH_TEST_TARGET: rainman1337/wave-pong-test
+      ITCH_PRODUCTION_TARGET: rainman1337/wave-pong
+      INPUT_DESTINATION: ${{ inputs.destination }}
       INPUT_USERVERSION: ${{ inputs.userversion }}
     steps:
       - name: Checkout
@@ -42,18 +51,8 @@ jobs:
             exit 1
           fi
 
-          if [[ -z "${ITCH_USERNAME:-}" ]]; then
-            echo "Missing ITCH_USERNAME repository variable." >&2
-            exit 1
-          fi
-
-          if [[ -z "${ITCH_GAME:-}" ]]; then
-            echo "Missing ITCH_GAME repository variable." >&2
-            exit 1
-          fi
-
           if [[ -z "${ITCH_CHANNEL:-}" ]]; then
-            echo "Missing ITCH_CHANNEL repository variable." >&2
+            echo "Missing ITCH_CHANNEL value." >&2
             exit 1
           fi
 
@@ -61,6 +60,21 @@ jobs:
             echo "Expected itch-build/index.html after the build step." >&2
             exit 1
           fi
+
+          case "${INPUT_DESTINATION}" in
+            test)
+              TARGET_BASE="${ITCH_TEST_TARGET}"
+              ;;
+            production)
+              TARGET_BASE="${ITCH_PRODUCTION_TARGET}"
+              ;;
+            *)
+              echo "Unsupported destination: ${INPUT_DESTINATION}" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "TARGET_BASE=${TARGET_BASE}" >> "${GITHUB_ENV}"
 
       - name: Install butler
         shell: bash
@@ -81,6 +95,6 @@ jobs:
             USER_VERSION="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
           fi
 
-          TARGET="${ITCH_USERNAME}/${ITCH_GAME}:${ITCH_CHANNEL}"
+          TARGET="${TARGET_BASE}:${ITCH_CHANNEL}"
           echo "Pushing itch-build to ${TARGET} with version ${USER_VERSION}"
           butler push "itch-build" "${TARGET}" --userversion "${USER_VERSION}"

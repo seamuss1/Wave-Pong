@@ -14,7 +14,8 @@
 - `runtime/styles/main.css`: all page and HUD styling.
 - `runtime/js/config.js`: primary tuning surface for gameplay numbers and static definitions.
 - `runtime/js/app.js`: game loop, rendering, input, physics, UI wiring, and persistence.
-- `tools/browser-smoke-test.js`: headless browser smoke test with process cleanup.
+- `tools/browser-smoke-test.ps1`: Windows launcher for the headless browser smoke test with process cleanup.
+- `tools/browser-smoke-test.js`: DevTools smoke assertions and browser-attach logic.
 - `tools/build-itch-html.js`: builds the single-file itch.io HTML artifact under `itch-build/`.
 - `tools/deploy-itch.ps1`: local butler helper that builds and pushes the itch.io artifact.
 - `tools/package.json`: tooling-only package manifest.

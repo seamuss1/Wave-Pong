@@ -15,7 +15,8 @@ function parseArgs(argv) {
   const args = {
     target: 'runtime/index.html',
     timeoutMs: DEFAULT_TIMEOUT_MS,
-    browser: null
+    browser: null,
+    attachPort: null
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -32,6 +33,10 @@ function parseArgs(argv) {
       args.browser = argv[++i];
     } else if (arg.startsWith('--browser=')) {
       args.browser = arg.slice('--browser='.length);
+    } else if (arg === '--attach-port' && argv[i + 1]) {
+      args.attachPort = Number(argv[++i]);
+    } else if (arg.startsWith('--attach-port=')) {
+      args.attachPort = Number(arg.slice('--attach-port='.length));
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
@@ -39,6 +44,10 @@ function parseArgs(argv) {
 
   if (!Number.isFinite(args.timeoutMs) || args.timeoutMs <= 0) {
     throw new Error(`Invalid --timeout-ms value: ${args.timeoutMs}`);
+  }
+
+  if (args.attachPort !== null && (!Number.isFinite(args.attachPort) || args.attachPort <= 0)) {
+    throw new Error(`Invalid --attach-port value: ${args.attachPort}`);
   }
 
   return args;
@@ -76,6 +85,15 @@ function findBrowser(explicitBrowser) {
   }
 
   throw new Error('No supported Chromium browser was found. Pass --browser or set BROWSER_BIN.');
+}
+
+function formatLaunchError(error) {
+  if (process.platform === 'win32' && error && error.code === 'EPERM') {
+    return new Error(
+      'Browser launch was blocked with EPERM. On Windows, use tools/browser-smoke-test.ps1 or npm run smoke so the browser is launched through PowerShell.'
+    );
+  }
+  return error;
 }
 
 function reservePort() {
@@ -288,9 +306,10 @@ async function removeDirWithRetries(dir, attempts = 12, delayMs = 250) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const targetUrl = resolveTargetUrl(args.target);
-  const browserPath = findBrowser(args.browser);
-  const port = await reservePort();
-  const profileDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'wave-pong-smoke-'));
+  const attachedBrowser = args.attachPort !== null;
+  const browserPath = args.browser || (attachedBrowser ? 'attached-browser' : findBrowser(args.browser));
+  const port = attachedBrowser ? args.attachPort : await reservePort();
+  const profileDir = attachedBrowser ? null : await fsp.mkdtemp(path.join(os.tmpdir(), 'wave-pong-smoke-'));
 
   let browser = null;
   let stderrBuffer = '';
@@ -299,7 +318,7 @@ async function main() {
 
   function cleanupSync() {
     killProcessTree(browser);
-    if (profileRemoved) {
+    if (profileRemoved || !profileDir) {
       return;
     }
     try {
@@ -312,7 +331,7 @@ async function main() {
 
   async function cleanup() {
     killProcessTree(browser);
-    if (!profileRemoved) {
+    if (!profileRemoved && profileDir) {
       await waitForChildExit(browser);
       await removeDirWithRetries(profileDir);
       profileRemoved = true;
@@ -364,27 +383,33 @@ async function main() {
   });
 
   try {
-    browser = spawn(browserPath, [
-      '--headless=new',
-      '--disable-gpu',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--allow-file-access-from-files',
-      '--remote-allow-origins=*',
-      `--remote-debugging-port=${port}`,
-      `--user-data-dir=${profileDir}`,
-      'about:blank'
-    ], {
-      stdio: ['ignore', 'ignore', 'pipe']
-    });
-
-    browser.stderr.setEncoding('utf8');
-    browser.stderr.on('data', (chunk) => {
-      stderrBuffer += chunk;
-      if (stderrBuffer.length > 4000) {
-        stderrBuffer = stderrBuffer.slice(-4000);
+    if (!attachedBrowser) {
+      try {
+        browser = spawn(browserPath, [
+          '--headless=new',
+          '--disable-gpu',
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--allow-file-access-from-files',
+          '--remote-allow-origins=*',
+          `--remote-debugging-port=${port}`,
+          `--user-data-dir=${profileDir}`,
+          'about:blank'
+        ], {
+          stdio: ['ignore', 'ignore', 'pipe']
+        });
+      } catch (error) {
+        throw formatLaunchError(error);
       }
-    });
+
+      browser.stderr.setEncoding('utf8');
+      browser.stderr.on('data', (chunk) => {
+        stderrBuffer += chunk;
+        if (stderrBuffer.length > 4000) {
+          stderrBuffer = stderrBuffer.slice(-4000);
+        }
+      });
+    }
 
     const pageTarget = await waitForDebuggerTarget(port, args.timeoutMs);
     const result = await runDevToolsSmoke(pageTarget.webSocketDebuggerUrl, targetUrl, args.timeoutMs);

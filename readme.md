@@ -22,7 +22,8 @@ Open `runtime/index.html` in a modern desktop browser.
 - `runtime/js/app.js` contains the game loop, rendering, input, and gameplay systems.
 - `runtime/js/config.js` contains the tweakable gameplay numbers and static game definitions.
 - `runtime/wave_pong.html` is a legacy entry that redirects to `runtime/index.html`.
-- `tools/browser-smoke-test.js` contains the headless browser smoke test.
+- `tools/browser-smoke-test.ps1` launches the Windows smoke test browser and cleans it up.
+- `tools/browser-smoke-test.js` contains the DevTools-driven smoke assertions and can also attach to an already-launched browser.
 - `tools/package.json` contains tooling-only Node metadata.
 
 ## itch.io packaging
@@ -49,6 +50,22 @@ That command:
 - recreates `wave-pong-itchio.zip`
 - verifies the archived `index.html` matches `itch-build/index.html`
 
+## Smoke testing
+
+Run the default Windows smoke test with:
+
+```bash
+npm.cmd run smoke
+```
+
+That script uses `tools/browser-smoke-test.ps1` to launch Edge headlessly through PowerShell, attach the Node-based DevTools checks, and clean up the browser/profile directory afterward.
+
+If you specifically want the raw Node launcher, use:
+
+```bash
+npm.cmd run smoke:node
+```
+
 ## itch.io deployment with butler
 
 This repo now includes both a local butler helper and a GitHub Actions workflow for pushing the HTML5 build to itch.io.
@@ -57,23 +74,21 @@ This repo now includes both a local butler helper and a GitHub Actions workflow 
 
 Workflow file: `.github/workflows/itch-deploy.yml`
 
-Set these repository settings before running it:
+Set this repository secret before running it:
 
 - Secret: `BUTLER_API_KEY`
-- Variable: `ITCH_USERNAME`
-- Variable: `ITCH_GAME`
-- Variable: `ITCH_CHANNEL`
 
-Recommended values:
+The workflow is manual by default (`workflow_dispatch`), builds the single-file itch artifact, and uploads `itch-build/` to one of these repo-specific targets:
 
-- `ITCH_USERNAME`: your itch.io account name
-- `ITCH_GAME`: your project slug
-- `ITCH_CHANNEL`: `html5`
+- `test`: `rainman1337/wave-pong-test:html5`
+- `production`: `rainman1337/wave-pong:html5`
 
-The workflow is manual by default (`workflow_dispatch`), builds the single-file itch artifact, and uploads `itch-build/` with:
+`test` is the default destination so updates land in the test project first. You have to explicitly choose `production` when you want to push the final build.
+
+The workflow uploads with:
 
 ```bash
-butler push itch-build user/game:html5 --userversion <value>
+butler push itch-build rainman1337/wave-pong-test:html5 --userversion <value>
 ```
 
 If you leave the workflow `userversion` input blank, it falls back to `<branch-or-tag-name>-<short-sha>`.
@@ -86,7 +101,15 @@ Example:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
-  -Target "yourname/wave-pong:html5" `
+  -Destination test `
+  -UserVersion "2026.03.14"
+```
+
+Production example:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
+  -Destination production `
   -UserVersion "2026.03.14"
 ```
 
@@ -94,6 +117,10 @@ The script:
 
 - builds `itch-build/` by default before pushing
 - defaults `BuildPath` to `itch-build/`
+- defaults `Destination` to `test`
+- maps `test` to `rainman1337/wave-pong-test:html5`
+- maps `production` to `rainman1337/wave-pong:html5`
+- still accepts an explicit `-Target` override if you need a one-off push elsewhere
 - looks for `butler.exe` on `PATH`
 - falls back to the itch app's bundled butler install on Windows
 - accepts local `butler login` credentials or a `BUTLER_API_KEY` environment variable
