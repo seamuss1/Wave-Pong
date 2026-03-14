@@ -37,6 +37,18 @@ That generates `itch-build/`, which contains a single-file `index.html` with the
 
 If you are uploading a zip manually, zip the **contents** of `itch-build/`, not the folder itself.
 
+Recommended command on Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1
+```
+
+That command:
+
+- rebuilds `itch-build/`
+- recreates `wave-pong-itchio.zip`
+- verifies the archived `index.html` matches `itch-build/index.html`
+
 ## itch.io deployment with butler
 
 This repo now includes both a local butler helper and a GitHub Actions workflow for pushing the HTML5 build to itch.io.

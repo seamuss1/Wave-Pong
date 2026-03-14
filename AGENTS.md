@@ -39,5 +39,6 @@
 
 - Build the itch.io artifact first with `node tools/build-itch-html.js`.
 - The deployable zip should contain the contents of `itch-build/` at the archive root.
+- Prefer `powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1` so the zip is rebuilt and verified against `itch-build/index.html`.
 - Recommended PowerShell command:
-  `node tools/build-itch-html.js; Compress-Archive -Path itch-build\* -DestinationPath wave-pong-itchio.zip -Force`
+  `powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1`
