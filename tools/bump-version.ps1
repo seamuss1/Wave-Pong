@@ -8,6 +8,7 @@ param(
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $versionPath = Join-Path $repoRoot 'version.json'
 $runtimeVersionPath = Join-Path $repoRoot 'runtime\js\version.js'
+$runtimeIndexPath = Join-Path $repoRoot 'runtime\index.html'
 
 if (-not (Test-Path $versionPath)) {
   throw "Expected version file at '$versionPath'."
@@ -55,4 +56,22 @@ $updatedJson = [ordered]@{
   "  window.WavePong.VERSION = '" + $newVersion + "';" + [Environment]::NewLine +
   "})();" + [Environment]::NewLine
 )
+
+if (-not (Test-Path $runtimeIndexPath)) {
+  throw "Expected runtime index file at '$runtimeIndexPath'."
+}
+
+$runtimeIndex = Get-Content $runtimeIndexPath -Raw
+$updatedRuntimeIndex = [System.Text.RegularExpressions.Regex]::Replace(
+  $runtimeIndex,
+  '(<div id="menuVersion" class="menuVersion">)v[^<]+(</div>)',
+  ('$1v' + $newVersion + '$2'),
+  [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+)
+
+if ($updatedRuntimeIndex -eq $runtimeIndex) {
+  throw "Could not update the menu version placeholder in '$runtimeIndexPath'."
+}
+
+[System.IO.File]::WriteAllText($runtimeIndexPath, $updatedRuntimeIndex)
 Write-Host "Updated version: $newVersion"

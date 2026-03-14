@@ -285,7 +285,14 @@
     },
     // Match flow toggles that change when new balls are introduced.
     matchFlow: {
-      alwaysSpawnReplacementAfterGoal: false // When true, every goal immediately serves a fresh ball even if others are still active.
+      alwaysSpawnReplacementAfterGoal: false, // When true, every goal immediately serves a fresh ball even if others are still active.
+      countdownSeconds: 3, // Countdown duration before play begins on match start and after resuming from pause.
+      preview: {
+        arrowMinLength: 42, // Minimum ghost-arrow length shown while play is stopped.
+        arrowMaxLength: 118, // Maximum ghost-arrow length shown while play is stopped.
+        arrowHeadLength: 16, // Arrowhead size for the stopped-play trajectory preview.
+        alpha: 0.42 // Base opacity of the ghost-arrow preview while play is stopped.
+      }
     },
     // Powerup spawn timing and per-effect values.
     powerups: {

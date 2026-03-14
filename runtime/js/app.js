@@ -93,6 +93,54 @@
       let screenShake = 0;
       let nextBallId = 1;
 
+      function focusGameCanvas() {
+        if (!canvas || typeof canvas.focus !== 'function') return;
+        try {
+          canvas.focus({ preventScroll: true });
+        } catch (err) {
+          canvas.focus();
+        }
+      }
+
+      function shouldCaptureGameplayKeys() {
+        const helpOpen = ui.help && !ui.help.classList.contains('hidden');
+        return !state.menuOpen && !helpOpen;
+      }
+
+      function beginPlayCountdown(context = 'start') {
+        const countdownLabel = String(Math.max(1, Math.ceil(matchFlowBalance.countdownSeconds)));
+        state.countdownActive = true;
+        state.countdownContext = context;
+        state.countdownDuration = matchFlowBalance.countdownSeconds;
+        state.countdownTimer = matchFlowBalance.countdownSeconds;
+        focusGameCanvas();
+        updateStatus(context === 'resume'
+          ? ('Resuming in ' + countdownLabel + '. Fire to skip.')
+          : ('Starting in ' + countdownLabel + '. Fire to skip.'));
+      }
+
+      function finishPlayCountdown(skipped = false) {
+        state.countdownActive = false;
+        state.countdownTimer = 0;
+        state.countdownDuration = matchFlowBalance.countdownSeconds;
+        updateStatus(skipped ? 'Countdown skipped. Play live.' : 'Play live. Brace for geometry.');
+        showMessage(skipped ? 'Countdown skipped.' : 'Go!', 0.55);
+      }
+
+      function skipPlayCountdown() {
+        if (!state.countdownActive) return false;
+        finishPlayCountdown(true);
+        return true;
+      }
+
+      function updatePlayCountdown(dt) {
+        if (!state.countdownActive) return;
+        state.countdownTimer = Math.max(0, state.countdownTimer - dt);
+        if (state.countdownTimer <= 0) {
+          finishPlayCountdown(false);
+        }
+      }
+
       const BALL_SPEED_CAP = ballBalance.speedCap;
       const BLUE_WAVE_COST = chargeBalance.blueCost;
       const PINK_WAVE_COST = chargeBalance.pinkCost;
@@ -205,7 +253,11 @@
         impacts: 0,
         nextLongRallySpawnAt: rallyBalance.initialSpawnAtSeconds,
         helpReturnToPause: false,
-        lowPerfEffects: REDUCED_WAVE_FX
+        lowPerfEffects: REDUCED_WAVE_FX,
+        countdownActive: false,
+        countdownTimer: 0,
+        countdownDuration: matchFlowBalance.countdownSeconds,
+        countdownContext: 'start'
       };
 
       const world = {
@@ -1000,8 +1052,8 @@ function startMatch({ demo = false } = {}) {
         state.helpReturnToPause = false;
         applyTheme(state.theme);
         resetMatch();
-        updateStatus(demo ? 'Demo mode: two robots, one court.' : 'Match live. Rectangles are focused.');
-        showMessage(demo ? 'Demo mode activated. Nobody can complain about the controls.' : 'Game on.', 1.6);
+        beginPlayCountdown('start');
+        showMessage(demo ? 'Demo mode activated. Fire to skip the countdown.' : 'Match loaded. Fire to skip the countdown.', 1.1);
         playTone(330, 0.08, 'triangle', 0.04);
         playTone(660, 0.12, 'triangle', 0.03);
       }
@@ -1011,6 +1063,8 @@ function startMatch({ demo = false } = {}) {
         state.paused = false;
         state.menuOpen = true;
         state.gameOver = false;
+        state.countdownActive = false;
+        state.countdownTimer = 0;
         ui.menu.classList.remove('hidden');
         ui.pause.classList.add('hidden');
         ui.gameOver.classList.add('hidden');
@@ -1022,6 +1076,7 @@ function startMatch({ demo = false } = {}) {
 
       function pauseGame(toggle) {
         if (!state.running || state.gameOver) return;
+        const wasPaused = state.paused;
         state.paused = typeof toggle === 'boolean' ? toggle : !state.paused;
         if (!state.paused) {
           if (ui.help) ui.help.classList.add('hidden');
@@ -1029,10 +1084,12 @@ function startMatch({ demo = false } = {}) {
         }
         ui.pause.classList.toggle('hidden', !state.paused);
         if (state.paused) {
+          state.countdownActive = false;
+          state.countdownTimer = 0;
           updateStatus('Paused. The ball is thinking about its choices.');
           playTone(260, 0.08, 'sine', 0.03);
-        } else {
-          updateStatus('Match resumed. Brace for geometry.');
+        } else if (wasPaused) {
+          beginPlayCountdown('resume');
           playTone(390, 0.08, 'sine', 0.03);
         }
       }
@@ -1040,6 +1097,8 @@ function startMatch({ demo = false } = {}) {
 function endMatch(leftWon) {
   state.running = false;
   state.gameOver = true;
+  state.countdownActive = false;
+  state.countdownTimer = 0;
   const name = leftWon ? ui.leftName.textContent : ui.rightName.textContent;
   recordMatchHistory(leftWon);
   ui.winnerTitle.textContent = name + ' Wins';
@@ -1840,6 +1899,12 @@ function updateParticles(dt) {
 function update(dt) {
         if (!state.running || state.paused || state.menuOpen || state.gameOver) return;
 
+        updatePlayCountdown(dt);
+        if (state.countdownActive) {
+          updateUI();
+          return;
+        }
+
         updateTimers(dt);
 
         if (state.demoMode) {
@@ -2237,6 +2302,75 @@ function renderPaddle(paddle) {
         }
       }
 
+      function renderStoppedPlayGhostArrows() {
+        if ((!state.countdownActive && !state.paused) || !world.balls.length) return;
+
+        for (const ball of world.balls) {
+          const speed = Math.hypot(ball.vx, ball.vy);
+          if (speed < 1) continue;
+
+          const dirX = ball.vx / speed;
+          const dirY = ball.vy / speed;
+          const t = themes[state.theme];
+          const color = ball.lastHitSide === 'left' ? t.paddleLeft : (ball.lastHitSide === 'right' ? t.paddleRight : t.ball);
+          const length = clamp(
+            matchFlowBalance.preview.arrowMinLength + (speed / BALL_SPEED_CAP) * (matchFlowBalance.preview.arrowMaxLength - matchFlowBalance.preview.arrowMinLength),
+            matchFlowBalance.preview.arrowMinLength,
+            matchFlowBalance.preview.arrowMaxLength
+          );
+          const head = matchFlowBalance.preview.arrowHeadLength;
+          const wingX = -dirY;
+          const wingY = dirX;
+          const startX = ball.x + dirX * (ball.r + 8);
+          const startY = ball.y + dirY * (ball.r + 8);
+          const endX = startX + dirX * length;
+          const endY = startY + dirY * length;
+
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.globalAlpha = matchFlowBalance.preview.alpha;
+          ctx.lineCap = 'round';
+          ctx.lineWidth = 2.4;
+          ctx.setLineDash([8, 8]);
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(endX, endY);
+          ctx.lineTo(endX - dirX * head + wingX * (head * 0.55), endY - dirY * head + wingY * (head * 0.55));
+          ctx.lineTo(endX - dirX * head - wingX * (head * 0.55), endY - dirY * head - wingY * (head * 0.55));
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function renderCountdownOverlay() {
+        if (!state.countdownActive) return;
+
+        const secondsLeft = Math.max(1, Math.ceil(state.countdownTimer));
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255,255,255,0.94)';
+        ctx.strokeStyle = 'rgba(2, 6, 12, 0.78)';
+        ctx.lineWidth = 8;
+        ctx.font = '900 124px Inter, Segoe UI, sans-serif';
+        ctx.strokeText(String(secondsLeft), W / 2, H / 2 - 10);
+        ctx.fillText(String(secondsLeft), W / 2, H / 2 - 10);
+        ctx.font = '700 22px Inter, Segoe UI, sans-serif';
+        ctx.lineWidth = 5;
+        ctx.fillStyle = 'rgba(223, 240, 255, 0.92)';
+        ctx.strokeText('Press fire to skip', W / 2, H / 2 + 66);
+        ctx.fillText('Press fire to skip', W / 2, H / 2 + 66);
+        ctx.restore();
+      }
+
 function renderParticles() {
         for (const p of world.particles) {
           const alpha = Math.max(0, p.life / p.maxLife);
@@ -2434,7 +2568,9 @@ function renderOverlayFX() {
         renderPaddle(world.paddles.left);
         renderPaddle(world.paddles.right);
         renderBalls();
+        renderStoppedPlayGhostArrows();
         renderOverlayFX();
+        renderCountdownOverlay();
         renderStatsOnCanvas();
         ctx.restore();
       }
@@ -2451,12 +2587,20 @@ function renderOverlayFX() {
         const key = e.key.toLowerCase();
         if (key === 'w') input.w = true;
         else if (key === 's') input.s = true;
-        else if (e.key === 'ArrowUp') input.up = true;
-        else if (e.key === 'ArrowDown') input.down = true;
+        else if (e.key === 'ArrowUp') {
+          input.up = true;
+          if (shouldCaptureGameplayKeys()) e.preventDefault();
+        }
+        else if (e.key === 'ArrowDown') {
+          input.down = true;
+          if (shouldCaptureGameplayKeys()) e.preventDefault();
+        }
         else if (key === 'f' || e.code === 'Space') {
           e.preventDefault();
+          if (skipPlayCountdown()) return;
           if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver) firePulse(world.paddles.left);
         } else if (key === '/') {
+          if (skipPlayCountdown()) return;
           if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver && state.mode === 'pvp' && !state.demoMode) firePulse(world.paddles.right);
         } else if (key === 'm') {
           muted = !muted;
@@ -2482,8 +2626,14 @@ function renderOverlayFX() {
         const key = e.key.toLowerCase();
         if (key === 'w') input.w = false;
         else if (key === 's') input.s = false;
-        else if (e.key === 'ArrowUp') input.up = false;
-        else if (e.key === 'ArrowDown') input.down = false;
+        else if (e.key === 'ArrowUp') {
+          input.up = false;
+          if (shouldCaptureGameplayKeys()) e.preventDefault();
+        }
+        else if (e.key === 'ArrowDown') {
+          input.down = false;
+          if (shouldCaptureGameplayKeys()) e.preventDefault();
+        }
       });
 
       function wireMenuButton(id, handler) {

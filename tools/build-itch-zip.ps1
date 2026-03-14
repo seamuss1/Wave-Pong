@@ -104,6 +104,7 @@ if (-not $SkipBuild) {
 
 $resolvedBuildPath = (Resolve-Path $buildPath).Path
 $resolvedZipPath = [System.IO.Path]::GetFullPath($ZipPath)
+$zipPattern = 'wave-pong-itchio-v*.zip'
 
 foreach ($requiredFile in @('index.html', 'wave_pong.html', 'version.json')) {
   $requiredPath = Join-Path $resolvedBuildPath $requiredFile
@@ -111,6 +112,10 @@ foreach ($requiredFile in @('index.html', 'wave_pong.html', 'version.json')) {
     throw "Expected '$requiredPath' before packaging the itch.io zip."
   }
 }
+
+Get-ChildItem -Path $repoRoot -Filter $zipPattern -File -ErrorAction SilentlyContinue |
+  Where-Object { $_.FullName -ne $resolvedZipPath } |
+  Remove-Item -Force
 
 if (Test-Path $resolvedZipPath) {
   Remove-Item $resolvedZipPath -Force
