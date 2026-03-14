@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Tooling for the Wave Pong repo",
   "scripts": {
+    "build:itch": "node build-itch-html.js",
     "smoke": "node browser-smoke-test.js"
   }
 }

@@ -15,6 +15,8 @@
 - `runtime/js/config.js`: primary tuning surface for gameplay numbers and static definitions.
 - `runtime/js/app.js`: game loop, rendering, input, physics, UI wiring, and persistence.
 - `tools/browser-smoke-test.js`: headless browser smoke test with process cleanup.
+- `tools/build-itch-html.js`: builds the single-file itch.io HTML artifact under `itch-build/`.
+- `tools/deploy-itch.ps1`: local butler helper that builds and pushes the itch.io artifact.
 - `tools/package.json`: tooling-only package manifest.
 - `readme.md`: player-facing documentation.
 
@@ -35,6 +37,7 @@
 
 ## Packaging
 
-- The deployable zip should contain the contents of `runtime/` at the archive root.
+- Build the itch.io artifact first with `node tools/build-itch-html.js`.
+- The deployable zip should contain the contents of `itch-build/` at the archive root.
 - Recommended PowerShell command:
-  `Compress-Archive -Path runtime\* -DestinationPath wave-pong-itchio.zip -Force`
+  `node tools/build-itch-html.js; Compress-Archive -Path itch-build\* -DestinationPath wave-pong-itchio.zip -Force`

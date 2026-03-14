@@ -1,0 +1,86 @@
+name: Deploy to itch.io
+
+on:
+  workflow_dispatch:
+    inputs:
+      userversion:
+        description: Optional butler --userversion value
+        required: false
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+      ITCH_USERNAME: ${{ vars.ITCH_USERNAME }}
+      ITCH_GAME: ${{ vars.ITCH_GAME }}
+      ITCH_CHANNEL: ${{ vars.ITCH_CHANNEL }}
+      INPUT_USERVERSION: ${{ inputs.userversion }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build itch.io HTML artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/build-itch-html.js
+
+      - name: Validate deploy settings
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${BUTLER_API_KEY:-}" ]]; then
+            echo "Missing BUTLER_API_KEY secret." >&2
+            exit 1
+          fi
+
+          if [[ -z "${ITCH_USERNAME:-}" ]]; then
+            echo "Missing ITCH_USERNAME repository variable." >&2
+            exit 1
+          fi
+
+          if [[ -z "${ITCH_GAME:-}" ]]; then
+            echo "Missing ITCH_GAME repository variable." >&2
+            exit 1
+          fi
+
+          if [[ -z "${ITCH_CHANNEL:-}" ]]; then
+            echo "Missing ITCH_CHANNEL repository variable." >&2
+            exit 1
+          fi
+
+          if [[ ! -f "itch-build/index.html" ]]; then
+            echo "Expected itch-build/index.html after the build step." >&2
+            exit 1
+          fi
+
+      - name: Install butler
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default -o butler.zip
+          unzip -q butler.zip -d butler-bin
+          chmod +x butler-bin/butler
+          echo "${PWD}/butler-bin" >> "${GITHUB_PATH}"
+
+      - name: Push build
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          USER_VERSION="${INPUT_USERVERSION}"
+          if [[ -z "${USER_VERSION}" ]]; then
+            USER_VERSION="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          fi
+
+          TARGET="${ITCH_USERNAME}/${ITCH_GAME}:${ITCH_CHANNEL}"
+          echo "Pushing itch-build to ${TARGET} with version ${USER_VERSION}"
+          butler push "itch-build" "${TARGET}" --userversion "${USER_VERSION}"

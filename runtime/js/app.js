@@ -108,9 +108,26 @@
       const DEBUFF_XP_LOSS = xpBalance.debuffLoss;
       const YELLOW_HIT_XP_LOSS = xpBalance.goldHitLoss;
 
+      function safeStorageGetItem(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch (err) {
+          return null;
+        }
+      }
+
+      function safeStorageSetItem(key, value) {
+        try {
+          localStorage.setItem(key, value);
+          return true;
+        } catch (err) {
+          return false;
+        }
+      }
+
       function loadHistory() {
         try {
-          const raw = localStorage.getItem(HISTORY_KEY);
+          const raw = safeStorageGetItem(HISTORY_KEY);
           if (!raw) return { ...defaultHistory };
           return { ...defaultHistory, ...JSON.parse(raw) };
         } catch (err) {
@@ -119,7 +136,7 @@
       }
 
       function saveHistory(history) {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        safeStorageSetItem(HISTORY_KEY, JSON.stringify(history));
       }
 
       function createMatchStats() {
@@ -166,7 +183,7 @@
         powerupsEnabled: defaults.powerupsEnabled,
         trailsEnabled: defaults.trailsEnabled,
         theme: defaults.theme,
-        bestRally: Number(history.bestRally || localStorage.getItem(BEST_RALLY_KEY) || 0),
+        bestRally: Number(history.bestRally || safeStorageGetItem(BEST_RALLY_KEY) || 0),
         powerSpawnTimer: powerupBalance.spawn.initialDelayBaseSeconds + powerupBalance.spawn.initialDelayRandomSeconds,
         powerDurationTimer: 0,
         lastPowerType: null,
@@ -255,7 +272,7 @@
 
       function storeBestRally(value) {
         state.bestRally = value;
-        localStorage.setItem(BEST_RALLY_KEY, String(value));
+        safeStorageSetItem(BEST_RALLY_KEY, String(value));
         history.bestRally = Math.max(history.bestRally || 0, value);
         saveHistory(history);
       }
