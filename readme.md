@@ -1,6 +1,6 @@
 # Game Wave Pong
 
-Game Wave Pong is a fast, arcade-style browser Pong game with wave weapons, XP progression, multiball chaos, instant powerups, and head-to-head stats. It runs as a single standalone HTML file, so you can drop it into a browser and play.
+Game Wave Pong is a fast, arcade-style browser Pong game with wave weapons, XP progression, multiball chaos, instant powerups, and head-to-head stats. It runs as a static browser game with `index.html` as the entrypoint, so it can be opened directly or uploaded to itch.io as an HTML5 game.
 
 ## What the game is
 
@@ -13,7 +13,15 @@ The result is part Pong, part arena control game.
 
 ## How to play
 
-Open the HTML file in a modern desktop browser.
+Open `index.html` in a modern desktop browser.
+
+## Project layout
+
+- `index.html` contains the game UI markup and is the file itch.io should launch.
+- `styles/main.css` contains the presentation layer.
+- `js/app.js` contains the game loop, rendering, input, and gameplay systems.
+- `js/config.js` contains the tweakable gameplay numbers and static game definitions.
+- `wave_pong.html` is a legacy entry that redirects to `index.html`.
 
 ### Controls
 
@@ -238,7 +246,7 @@ Because blue, pink, and gold all spend from the same resource, smart timing matt
 
 # Feature summary
 
-- Single file browser game
+- Static browser game with itch.io-ready entrypoint
 - Single player, local two player, and demo options
 - Smooth paddle aiming
 - Shared wave charge system
@@ -265,4 +273,4 @@ Prioritize positioning and pink defense first. Then use blue to tame the most da
 
 # Notes
 
-This README describes the current Game Wave Pong build and its intended gameplay loop. If you continue tuning the HTML file, update this README alongside the code so the strategy and powerup sections stay accurate.
+This README describes the current Game Wave Pong build and its intended gameplay loop. If you continue tuning the game, update this README alongside the code so the strategy and powerup sections stay accurate. Gameplay balance now lives in `js/config.js`.

@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wave Pong</title>
+  <link rel="stylesheet" href="./styles/main.css" />
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+  <div class="hud">
+    <div class="topbar">
+      <div class="pill scoreboard">
+        <span id="leftName">PLAYER</span>
+        <span id="leftScore">0</span>
+        <span class="sep">:</span>
+        <span id="rightScore">0</span>
+        <span id="rightName">CPU</span>
+      </div>
+    </div>
+
+    <div id="message" class="message">Ball deployed.</div>
+    <div id="statusPill" class="srOnly">Ready to embarrass a rectangle.</div>
+  </div>
+
+  <div id="menuOverlay" class="overlay">
+    <div class="card menuCard">
+      <div class="menuHeader">
+        <h1>Wave Pong</h1>
+        <div class="menuSubtle">Set up the match here, then open Help for controls, rules, and powerups.</div>
+      </div>
+
+      <div class="section">
+        <h2>Match setup</h2>
+        <div class="form">
+          <label>
+            Game Mode
+            <select id="modeSelect">
+              <option value="cpu">Player vs CPU</option>
+              <option value="pvp">Two Players</option>
+            </select>
+          </label>
+
+          <label>
+            Difficulty
+            <select id="difficultySelect">
+              <option value="chill">Chill</option>
+              <option value="spicy" selected>Spicy</option>
+              <option value="absurd">Ridiculous</option>
+            </select>
+          </label>
+
+          <label>
+            Score to Win
+            <input id="scoreLimitSelect" type="number" min="1" step="1" value="7" />
+          </label>
+
+          <label>
+            Arena Theme
+            <select id="themeSelect">
+              <option value="neon" selected>Neon Night</option>
+              <option value="ember">Ember Court</option>
+              <option value="mint">Mint Storm</option>
+            </select>
+          </label>
+
+          <label class="toggle">
+            <input id="powerupsToggle" type="checkbox" checked />
+            <span>Enable powerups and chaos</span>
+          </label>
+
+          <label class="toggle">
+            <input id="trailToggle" type="checkbox" checked />
+            <span>Enable trails and particles</span>
+          </label>
+        </div>
+
+        <div class="btnRow">
+          <button id="startBtn" class="primary">Start Match</button>
+          <button id="demoBtn" class="secondary">CPU vs CPU Demo</button>
+          <button id="menuHelpBtn" class="ghost">Help</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="helpOverlay" class="overlay hidden">
+    <div class="card">
+      <div class="tiny">Help</div>
+      <h2>How to play</h2>
+      <div class="helpGrid">
+        <div class="section">
+          <h2>Rules and controls</h2>
+          <div class="helpList">
+            <div class="controlItem"><strong>Player 1</strong><br>W and S move • F or Space fires a wave</div>
+            <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move • / fires a wave</div>
+            <div class="controlItem"><strong>Pause</strong><br>P or Escape pauses the match</div>
+            <div class="controlItem"><strong>Menu</strong><br>Return to setup from the pause menu</div>
+            <div class="controlItem"><strong>Mute</strong><br>M toggles sound</div>
+            <div class="controlItem"><strong>Wave costs</strong><br>Blue uses 15 percent charge • Pink uses 50 percent • Gold uses the full base bar</div>
+            <div class="controlItem"><strong>Wave roles</strong><br>Blue is flexible control, pink is defensive coverage, and gold is the high impact finisher</div>
+          </div>
+          <div class="helpNote">XP raises wave level over time. Powerups apply instantly, and some temporary buffs also change charge capacity or recharge speed.</div>
+        </div>
+
+        <div class="section">
+          <h2>Powerups</h2>
+          <div class="powerList">
+            <div class="powerRow"><div class="iconBox">⇕</div><div><div class="title">Mega Paddle</div><div class="desc">Temporarily increases paddle height.</div></div></div>
+            <div class="powerRow"><div class="iconBox">⚡</div><div><div class="title">Overcharge</div><div class="desc">Instantly fills the wave bar to its current maximum.</div></div></div>
+            <div class="powerRow"><div class="iconBox">▰</div><div><div class="title">Cap Bank</div><div class="desc">Temporarily extends max charge to 150 percent.</div></div></div>
+            <div class="powerRow"><div class="iconBox">≫</div><div><div class="title">Rapid Charge</div><div class="desc">Temporarily makes the wave bar recharge much faster.</div></div></div>
+            <div class="powerRow"><div class="iconBox">◎</div><div><div class="title">Multiball</div><div class="desc">Adds another ball to the court.</div></div></div>
+            <div class="powerRow"><div class="iconBox">⟲</div><div><div class="title">XP Surge</div><div class="desc">Grants bonus XP to the collecting side.</div></div></div>
+            <div class="powerRow"><div class="iconBox">⇣</div><div><div class="title">Shrink Hex</div><div class="desc">Temporarily reduces the opponent paddle size.</div></div></div>
+            <div class="powerRow"><div class="iconBox">⌛</div><div><div class="title">Drag Field</div><div class="desc">Slows the opponent paddle for a short time.</div></div></div>
+            <div class="powerRow"><div class="iconBox">✶</div><div><div class="title">Aim Jam</div><div class="desc">Makes the opponent aim wobble.</div></div></div>
+            <div class="powerRow"><div class="iconBox">◌</div><div><div class="title">XP Drain</div><div class="desc">Removes XP and some charge from the opponent.</div></div></div>
+            <div class="powerRow"><div class="iconBox">✹</div><div><div class="title">XP Minion</div><div class="desc">A neutral pickup that gives XP when collected.</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="btnRow" style="justify-content: center;">
+        <button id="closeHelpBtn" class="primary">Close Help</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pauseOverlay" class="overlay hidden">
+    <div class="card">
+      <div class="tiny">Match paused</div>
+      <h2>Pause menu</h2>
+      <div class="pauseGrid">
+        <div class="section">
+          <h2>Match info</h2>
+          <div class="miniStatGrid">
+            <div class="miniStat"><div class="label">Mode</div><div class="value" id="modeLabel">VS CPU</div></div>
+            <div class="miniStat"><div class="label">Difficulty</div><div class="value" id="difficultyLabel">Spicy</div></div>
+            <div class="miniStat"><div class="label">Rally</div><div class="value" id="rallyLabel">0</div></div>
+            <div class="miniStat"><div class="label">Best Rally</div><div class="value" id="bestRallyLabel">0</div></div>
+            <div class="miniStat"><div class="label">Score</div><div class="value" id="pauseScoreLine">0 : 0</div></div>
+            <div class="miniStat"><div class="label">Balls in Play</div><div class="value" id="pauseBallCount">1</div></div>
+            <div class="miniStat"><div class="label">Powerups</div><div class="value" id="pausePowerCount">0</div></div>
+            <div class="miniStat"><div class="label">Score Limit</div><div class="value" id="pauseScoreLimit">7</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <h2>Statuses</h2>
+          <div class="pauseStatusWrap">
+            <div class="pauseStatusRow"><div class="pauseStatusName">Left</div><div class="iconTray" id="leftStatusIcons"></div></div>
+            <div class="pauseStatusRow"><div class="pauseStatusName">Field</div><div class="iconTray" id="globalStatusIcons"></div></div>
+            <div class="pauseStatusRow"><div class="pauseStatusName">Right</div><div class="iconTray" id="rightStatusIcons"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="btnRow" style="justify-content: center;">
+        <button id="resumeBtn" class="primary">Resume</button>
+        <button id="pauseHelpBtn" class="secondary">Help</button>
+        <button id="pauseMenuBtn" class="ghost">Back to Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gameOverOverlay" class="overlay hidden">
+    <div class="card centerPanel gameOverPanel">
+      <div class="btnRow gameOverActions" style="justify-content: center;">
+        <button id="rematchBtn" class="primary">Rematch</button>
+        <button id="gameOverMenuBtn" class="secondary">New Setup</button>
+      </div>
+      <div class="tiny gameOverTag">Match complete</div>
+      <h2 id="winnerTitle">Left Paddle Wins</h2>
+      <p id="winnerSubtitle">Somewhere, a scoreboard is weeping softly.</p>
+      <div id="gameOverScoreLine" class="gameOverScoreLine">PLAYER 7 : 5 CPU</div>
+      <div class="gameOverStatsGrid">
+        <div class="section">
+          <h2 style="font-size: 18px; margin-bottom: 10px;">This match</h2>
+          <div id="gameOverMatchStats" class="compareGrid"></div>
+        </div>
+        <div class="section">
+          <h2 style="font-size: 18px; margin-bottom: 10px;">History</h2>
+          <div id="gameOverHistoryStats" class="compareGrid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="./js/config.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
