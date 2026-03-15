@@ -2033,6 +2033,11 @@ function updateAI(paddle, dt, isLeft) {
         return side === 'left' ? world.paddles.left : world.paddles.right;
       }
 
+      function normalizeAimAngleForObservation(angle, paddleSide) {
+        const inwardAngle = paddleSide === 'left' ? 0 : Math.PI;
+        return angleDiff(angle, inwardAngle) / Math.PI;
+      }
+
       function getObservation(side) {
         const self = getPaddleBySide(side);
         const opponent = getPaddleBySide(side === 'left' ? 'right' : 'left');
@@ -2044,7 +2049,7 @@ function updateAI(paddle, dt, isLeft) {
           .map((ball) => ({
             x: ((ball.x / W) * 2 - 1) * direction,
             y: (ball.y / H) * 2 - 1,
-            vx: ball.vx / BALL_SPEED_CAP,
+            vx: (ball.vx / BALL_SPEED_CAP) * direction,
             vy: ball.vy / BALL_SPEED_CAP,
             towardSelf: side === 'left' ? ball.vx < 0 : ball.vx > 0,
             radius: ball.r / 24
@@ -2074,7 +2079,7 @@ function updateAI(paddle, dt, isLeft) {
             y: (self.y / H) * 2 - 1,
             vy: self.vy / paddleBalance.speed,
             h: self.h / paddleBalance.height,
-            aimAngle: self.aimAngle / Math.PI,
+            aimAngle: normalizeAimAngleForObservation(self.aimAngle, self.side),
             charge: self.pulseCharge / Math.max(1, getPaddleMaxCharge(self)),
             level: self.pulseLevel / MAX_WAVE_LEVEL,
             xpProgress: getLevelProgress(self),
@@ -2086,7 +2091,7 @@ function updateAI(paddle, dt, isLeft) {
             y: (opponent.y / H) * 2 - 1,
             vy: opponent.vy / paddleBalance.speed,
             h: opponent.h / paddleBalance.height,
-            aimAngle: opponent.aimAngle / Math.PI,
+            aimAngle: normalizeAimAngleForObservation(opponent.aimAngle, opponent.side),
             charge: opponent.pulseCharge / Math.max(1, getPaddleMaxCharge(opponent)),
             level: opponent.pulseLevel / MAX_WAVE_LEVEL,
             xpProgress: getLevelProgress(opponent),

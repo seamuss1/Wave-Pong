@@ -439,14 +439,14 @@
     });
     const summary = humanTraining.buildDatasetSummary(merged.sessions, datasetBuild.sampleCounts);
     const summariesByBot = humanTraining.summarizeSessionsByBot(merged.sessions, datasetBuild.sampleCounts);
-    const newSamplesByBot = humanTraining.buildImitationDatasetByBot(newSessions, {
-      maxSamplesPerBot: Number(repoTrainingConfig.maxSamplesPerBot) || 4000
-    });
+    const touchedBotIds = new Set(newSessions.map((session) => session.bot && session.bot.id).filter(Boolean));
     const now = new Date().toISOString();
     const fineTuneResults = [];
     const unmatchedBotIds = [];
 
-    for (const [botId, samples] of newSamplesByBot.byBot.entries()) {
+    for (const botId of touchedBotIds) {
+      const samples = datasetBuild.byBot.get(botId) || [];
+      if (!samples.length) continue;
       const bot = findBotById(botId);
       if (!bot) {
         unmatchedBotIds.push(botId);

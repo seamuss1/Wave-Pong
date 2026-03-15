@@ -417,6 +417,54 @@
     return copy.slice(0, limit);
   }
 
+  function sampleWithReplacement(items, limit, random = Math.random) {
+    if (!Array.isArray(items) || !items.length || !Number.isFinite(limit) || limit <= 0) return [];
+    const copy = items.slice();
+    shuffleInPlace(copy, random);
+    const picked = [];
+    for (let i = 0; i < limit; i += 1) {
+      picked.push(copy[i % copy.length]);
+    }
+    return picked;
+  }
+
+  function buildWeightedTrainingSampleSet(samples, limit, options = {}) {
+    if (!Array.isArray(samples)) return [];
+    if (!Number.isFinite(limit) || limit <= 0 || samples.length <= limit) return samples.slice();
+
+    const random = options.random || Math.random;
+    const firePositiveShare = clamp(Number(options.firePositiveShare) || 0.18, 0, 0.4);
+    const movePositiveShare = clamp(Number(options.movePositiveShare) || 0.42, 0, 0.7);
+    const fireSamples = [];
+    const moveSamples = [];
+    const idleSamples = [];
+
+    for (const sample of samples) {
+      if (sample && sample.targets && sample.targets.fire) fireSamples.push(sample);
+      else if (sample && sample.targets && (sample.targets.moveLeft || sample.targets.moveRight)) moveSamples.push(sample);
+      else idleSamples.push(sample);
+    }
+
+    const targetFireCount = Math.min(limit, Math.max(
+      fireSamples.length ? Math.floor(limit * firePositiveShare) : 0,
+      Math.min(fireSamples.length, limit)
+    ));
+    const picked = sampleWithReplacement(fireSamples, targetFireCount, random);
+
+    const remainingAfterFire = Math.max(0, limit - picked.length);
+    const targetMoveCount = Math.min(remainingAfterFire, Math.floor(limit * movePositiveShare));
+    picked.push(...sampleList(moveSamples, targetMoveCount, random));
+
+    const remainingAfterMove = Math.max(0, limit - picked.length);
+    picked.push(...sampleList(idleSamples, remainingAfterMove, random));
+
+    if (picked.length < limit) {
+      picked.push(...sampleList(samples, limit - picked.length, random));
+    }
+
+    return shuffleInPlace(picked.slice(0, limit), random);
+  }
+
   function buildImitationDatasetByBot(sessions, options = {}) {
     const random = options.random || Math.random;
     const maxSamplesPerBot = Number.isFinite(options.maxSamplesPerBot) ? Math.max(1, Math.floor(options.maxSamplesPerBot)) : 4000;
@@ -440,7 +488,11 @@
     const sampleCounts = new Map();
     const limitedSamplesByBot = new Map();
     for (const [botId, samples] of samplesByBot.entries()) {
-      const limited = sampleList(samples, maxSamplesPerBot, random);
+      const limited = buildWeightedTrainingSampleSet(samples, maxSamplesPerBot, {
+        random,
+        firePositiveShare: options.firePositiveShare,
+        movePositiveShare: options.movePositiveShare
+      });
       limitedSamplesByBot.set(botId, limited);
       sampleCounts.set(botId, limited.length);
     }
@@ -502,6 +554,111 @@
     }
 
     return { activations, weightedSums };
+  }
+
+  function findBestBinaryThreshold(positiveScores, negativeScores, options = {}) {
+    const defaultThreshold = Number.isFinite(Number(options.defaultThreshold)) ? Number(options.defaultThreshold) : 0.5;
+    const minThreshold = Number.isFinite(Number(options.minThreshold)) ? Number(options.minThreshold) : 0.1;
+    const maxThreshold = Number.isFinite(Number(options.maxThreshold)) ? Number(options.maxThreshold) : 0.9;
+    const step = Number.isFinite(Number(options.step)) ? Number(options.step) : 0.01;
+    const beta = Math.max(0.5, Number(options.beta) || 1);
+    const betaSquared = beta * beta;
+    const fBetaWeight = Number.isFinite(Number(options.fBetaWeight)) ? Number(options.fBetaWeight) : 0.75;
+    const balancedAccuracyWeight = Number.isFinite(Number(options.balancedAccuracyWeight)) ? Number(options.balancedAccuracyWeight) : 0.25;
+    const falsePositivePenalty = Number.isFinite(Number(options.falsePositivePenalty)) ? Number(options.falsePositivePenalty) : 0;
+
+    if (!Array.isArray(positiveScores) || !positiveScores.length) {
+      return clamp(defaultThreshold, minThreshold, maxThreshold);
+    }
+
+    let bestThreshold = clamp(defaultThreshold, minThreshold, maxThreshold);
+    let bestScore = Number.NEGATIVE_INFINITY;
+
+    for (let threshold = minThreshold; threshold <= maxThreshold + 1e-9; threshold += step) {
+      let tp = 0;
+      let fp = 0;
+      let fn = 0;
+      let tn = 0;
+
+      for (const score of positiveScores) {
+        if ((Number(score) || 0) >= threshold) tp += 1;
+        else fn += 1;
+      }
+      for (const score of negativeScores || []) {
+        if ((Number(score) || 0) >= threshold) fp += 1;
+        else tn += 1;
+      }
+
+      const precision = tp / Math.max(1, tp + fp);
+      const recall = tp / Math.max(1, tp + fn);
+      const specificity = tn / Math.max(1, tn + fp);
+      const fBeta = (1 + betaSquared) * precision * recall / Math.max(1e-9, betaSquared * precision + recall);
+      const balancedAccuracy = (recall + specificity) / 2;
+      const falsePositiveRate = fp / Math.max(1, (negativeScores || []).length);
+      const score = fBeta * fBetaWeight + balancedAccuracy * balancedAccuracyWeight - falsePositiveRate * falsePositivePenalty;
+
+      if (score > bestScore || (Math.abs(score - bestScore) < 1e-9 && Math.abs(threshold - defaultThreshold) < Math.abs(bestThreshold - defaultThreshold))) {
+        bestScore = score;
+        bestThreshold = threshold;
+      }
+    }
+
+    return clamp(bestThreshold, minThreshold, maxThreshold);
+  }
+
+  function buildCalibratedControllerParams(bot, samples) {
+    const existing = bot && bot.controllerParams && typeof bot.controllerParams === 'object'
+      ? clone(bot.controllerParams)
+      : {};
+    if (!bot || !bot.network || !Array.isArray(samples) || !samples.length) {
+      return existing;
+    }
+
+    const defaultMoveThreshold = Number.isFinite(Number(existing.moveThreshold)) ? Number(existing.moveThreshold) : 0.55;
+    const defaultFireThreshold = Number.isFinite(Number(existing.fireThreshold)) ? Number(existing.fireThreshold) : 0.58;
+    const movePositiveScores = [];
+    const moveNegativeScores = [];
+    const firePositiveScores = [];
+    const fireNegativeScores = [];
+
+    for (const sample of samples) {
+      const { activations } = forwardPass(bot.network, sample.inputs);
+      const outputActivations = activations[activations.length - 1] || [];
+      const moveLeft = sigmoid(outputActivations[0] || 0);
+      const moveRight = sigmoid(outputActivations[1] || 0);
+      const fireScore = sigmoid(outputActivations[2] || 0);
+      const moveScore = Math.max(moveLeft, moveRight);
+
+      if (sample.targets && (sample.targets.moveLeft || sample.targets.moveRight)) movePositiveScores.push(moveScore);
+      else moveNegativeScores.push(moveScore);
+
+      if (sample.targets && sample.targets.fire) firePositiveScores.push(fireScore);
+      else fireNegativeScores.push(fireScore);
+    }
+
+    return {
+      ...existing,
+      moveThreshold: findBestBinaryThreshold(movePositiveScores, moveNegativeScores, {
+        defaultThreshold: defaultMoveThreshold,
+        minThreshold: 0.4,
+        maxThreshold: 0.55,
+        beta: 1,
+        fBetaWeight: 0.7,
+        balancedAccuracyWeight: 0.3,
+        falsePositivePenalty: 0.08,
+        step: 0.01
+      }),
+      fireThreshold: findBestBinaryThreshold(firePositiveScores, fireNegativeScores, {
+        defaultThreshold: defaultFireThreshold,
+        minThreshold: 0.18,
+        maxThreshold: Math.min(defaultFireThreshold, 0.58),
+        beta: 2,
+        fBetaWeight: 0.8,
+        balancedAccuracyWeight: 0.2,
+        falsePositivePenalty: 0.04,
+        step: 0.01
+      })
+    };
   }
 
   function trainNetworkWithBce(network, samples, options = {}) {
@@ -617,7 +774,13 @@
       };
     }
     controllers.ensureNetworkInputSize(bot.network, samples[0] && samples[0].inputs ? samples[0].inputs.length : controllers.getObservationVectorSize());
-    return trainNetworkWithBce(bot.network, samples, options);
+    const summary = trainNetworkWithBce(bot.network, samples, options);
+    const controllerParams = buildCalibratedControllerParams(bot, samples);
+    bot.controllerParams = controllerParams;
+    return {
+      ...summary,
+      controllerParams: clone(controllerParams)
+    };
   }
 
   return {
@@ -633,6 +796,7 @@
     buildSessionBotSummary,
     collectSessionSamples,
     buildImitationDatasetByBot,
+    buildCalibratedControllerParams,
     fineTuneBotWithSamples
   };
 });

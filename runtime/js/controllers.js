@@ -214,6 +214,12 @@
     }
     ensureNetworkInputSize(botAsset.network, OBSERVATION_VECTOR_SIZE);
     const controllerParams = botAsset.controllerParams || {};
+    const moveThreshold = Number.isFinite(Number(controllerParams.moveThreshold))
+      ? Number(controllerParams.moveThreshold)
+      : 0.55;
+    const fireThreshold = Number.isFinite(Number(controllerParams.fireThreshold))
+      ? Number(controllerParams.fireThreshold)
+      : 0.58;
     return {
       kind: 'neural',
       botId: botAsset.id,
@@ -228,12 +234,12 @@
         const moveRight = sigmoid(outputs[1] || 0);
         const fireScore = sigmoid(outputs[2] || 0);
         let moveAxis = 0;
-        if (moveLeft > 0.55 || moveRight > 0.55) {
+        if (moveLeft > moveThreshold || moveRight > moveThreshold) {
           moveAxis = moveLeft > moveRight ? -1 : 1;
         }
         return {
           moveAxis,
-          fire: fireScore > (controllerParams.fireThreshold || 0.58)
+          fire: fireScore > fireThreshold
         };
       }
     };

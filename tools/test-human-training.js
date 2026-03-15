@@ -142,6 +142,10 @@ function main() {
   assert(Array.isArray(fineTuneSummary.positiveWeights) && fineTuneSummary.positiveWeights.length === 3, 'Fine-tune summary should report class-balance weights.');
   assert(fineTuneSummary.positiveWeights.some((weight) => weight > 1), 'Sparse action labels should receive positive weighting.');
   assert(fineTuneSummary.positiveWeights[2] > 1, 'Sparse fire labels should receive positive weighting.');
+  assert(fineTuneSummary.controllerParams && Number.isFinite(fineTuneSummary.controllerParams.moveThreshold), 'Fine-tune summary should expose a calibrated move threshold.');
+  assert(fineTuneSummary.controllerParams && Number.isFinite(fineTuneSummary.controllerParams.fireThreshold), 'Fine-tune summary should expose a calibrated fire threshold.');
+  assert(botClone.controllerParams && Number.isFinite(botClone.controllerParams.moveThreshold), 'Fine-tuned bot should retain its calibrated move threshold.');
+  assert(botClone.controllerParams && Number.isFinite(botClone.controllerParams.fireThreshold), 'Fine-tuned bot should retain its calibrated fire threshold.');
 
   runNodeScript(path.join(repoRoot, 'tools', 'evolve-bots.js'), [
     '--generations', '1',

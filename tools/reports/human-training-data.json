@@ -1,9 +1,7855 @@
 {
   "schema": "human-training-dataset/v1",
-  "importedAt": "2026-03-15T03:04:25.971Z",
+  "importedAt": "2026-03-15T03:18:01.681Z",
   "sourceSchema": "human-training-export/v1",
   "sourceFile": "browser-local-runtime",
   "sessions": [
+    {
+      "sessionId": "5f4f65d5",
+      "capturedAt": "2026-03-15T03:18:01.252Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 1,
+        "human": 7,
+        "bot": 1
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 4,
+        "rightShots": 0,
+        "leftBallHits": 4,
+        "rightBallHits": 1,
+        "leftWaveHits": 2,
+        "rightWaveHits": 0,
+        "leftPowerups": 2,
+        "rightPowerups": 1,
+        "leftRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 4,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 2,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 1,
+          "goldPaddleHits": 2,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 2
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 3060,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 272,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 272,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 280,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 294,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 312,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 486,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 514,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 516,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 520,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 796,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 836,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 890,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 904,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 914,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 960,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1142,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1156,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1172,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1332,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1638,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1686,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1700,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1712,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1732,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1762,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1784,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1798,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1816,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1830,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1870,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1932,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1952,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1974,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1990,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1994,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2002,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2038,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2070,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2108,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2138,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2180,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2194,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2222,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2252,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2308,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2338,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2404,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2422,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2446,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2454,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2470,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2712,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2724,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2740,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2784,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2824,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2946,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2970,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3032,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3050,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "72a678a9",
+      "capturedAt": "2026-03-15T03:17:33.505Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 1,
+        "human": 7,
+        "bot": 1
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 4,
+        "rightShots": 0,
+        "leftBallHits": 3,
+        "rightBallHits": 1,
+        "leftWaveHits": 4,
+        "rightWaveHits": 0,
+        "leftPowerups": 2,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 4,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 4,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 1,
+          "goldPaddleHits": 1,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 2
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 2710,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 54,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 54,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 86,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 106,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 132,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 140,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 258,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 276,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 282,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 358,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 366,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 402,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 490,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 516,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 530,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 582,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 620,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 642,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 678,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 918,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 946,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 950,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1242,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1266,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1282,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1316,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1346,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1372,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1426,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1450,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1616,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1652,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1658,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1738,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1774,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2004,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2016,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2026,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2050,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2072,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2086,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2260,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2278,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2358,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2390,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2456,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2468,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2500,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2642,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2668,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2682,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "42e0b112",
+      "capturedAt": "2026-03-15T03:17:08.025Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 2,
+        "human": 7,
+        "bot": 2
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 7,
+        "rightShots": 0,
+        "leftBallHits": 4,
+        "rightBallHits": 3,
+        "leftWaveHits": 4,
+        "rightWaveHits": 0,
+        "leftPowerups": 2,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 1,
+          "pinkShots": 2,
+          "goldShots": 4,
+          "blueBallHits": 0,
+          "pinkBallHits": 2,
+          "goldBallHits": 2,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 2,
+          "pinkEmergencyHits": 2,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 1,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 3
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 3342,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 54,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 54,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 274,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 306,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 308,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 404,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 422,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 596,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 604,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 644,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 662,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 732,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 750,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 792,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 808,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 966,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 974,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 986,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1246,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1282,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1578,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1598,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1612,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1664,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1674,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1924,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1956,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1998,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2010,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2058,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2074,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2088,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2110,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2228,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2362,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2396,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2406,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2436,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2440,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2660,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2690,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2722,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2850,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2904,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2990,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3002,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3060,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3092,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3122,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "b39cf6e4",
+      "capturedAt": "2026-03-15T03:16:39.046Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 0,
+        "human": 7,
+        "bot": 0
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 6,
+        "rightShots": 0,
+        "leftBallHits": 0,
+        "rightBallHits": 0,
+        "leftWaveHits": 6,
+        "rightWaveHits": 0,
+        "leftPowerups": 1,
+        "rightPowerups": 1,
+        "leftRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 5,
+          "goldShots": 1,
+          "blueBallHits": 0,
+          "pinkBallHits": 5,
+          "goldBallHits": 1,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 5,
+          "pinkEmergencyHits": 5,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 1,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 0
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 2235,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 66,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 66,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 84,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 108,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 142,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 156,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 182,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 198,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 278,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 292,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 296,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 552,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 580,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 600,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 620,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 632,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 650,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 656,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 682,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 720,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 924,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 948,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 990,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1210,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1230,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1266,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1290,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1326,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1336,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1516,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1536,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1602,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1618,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1636,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1654,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1660,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1710,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1730,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1804,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1824,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1942,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1982,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1992,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2004,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "3869a632",
+      "capturedAt": "2026-03-15T03:16:18.148Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 2,
+        "human": 7,
+        "bot": 2
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 3,
+        "rightShots": 0,
+        "leftBallHits": 3,
+        "rightBallHits": 0,
+        "leftWaveHits": 2,
+        "rightWaveHits": 0,
+        "leftPowerups": 4,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 1,
+          "goldShots": 2,
+          "blueBallHits": 0,
+          "pinkBallHits": 1,
+          "goldBallHits": 1,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 1,
+          "pinkEmergencyHits": 1,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 4,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 1
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 1
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 3142,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 362,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 362,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1988,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2006,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2016,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2096,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2130,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2146,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2180,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2220,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2236,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2238,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2282,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2292,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2308,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2336,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2354,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2400,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2424,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2478,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2494,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2550,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2568,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2608,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2626,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2744,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2762,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2826,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2846,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2882,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2900,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2904,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2934,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2968,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "1a3928c4",
+      "capturedAt": "2026-03-15T03:15:47.403Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 0,
+        "human": 7,
+        "bot": 0
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 9,
+        "rightShots": 0,
+        "leftBallHits": 2,
+        "rightBallHits": 2,
+        "leftWaveHits": 8,
+        "rightWaveHits": 0,
+        "leftPowerups": 1,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 2,
+          "pinkShots": 5,
+          "goldShots": 2,
+          "blueBallHits": 1,
+          "pinkBallHits": 5,
+          "goldBallHits": 2,
+          "blueTowardHits": 1,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 4,
+          "pinkEmergencyHits": 4,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 1,
+          "goldPaddleHits": 1,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 2
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 3089,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 42,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 42,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 84,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 94,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 108,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 134,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 230,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 248,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 260,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 288,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 292,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 336,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 356,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 558,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 574,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 596,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 804,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 824,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 874,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 916,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 932,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 948,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 968,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1010,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1054,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1076,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1130,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1148,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1292,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1332,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1348,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1370,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1434,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1576,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1598,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1626,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1638,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1644,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1672,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1680,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1700,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1724,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1774,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1778,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1790,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1816,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1986,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2012,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2038,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2080,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2118,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2136,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2144,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2322,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2340,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2386,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2410,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2428,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2446,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2498,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2662,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2678,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2714,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2720,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2748,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2772,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2808,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2832,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2844,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2846,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2866,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2896,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2936,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2994,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3008,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "919c150a",
+      "capturedAt": "2026-03-15T03:15:19.472Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 1,
+        "human": 7,
+        "bot": 1
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 6,
+        "rightShots": 0,
+        "leftBallHits": 1,
+        "rightBallHits": 0,
+        "leftWaveHits": 5,
+        "rightWaveHits": 0,
+        "leftPowerups": 0,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 1,
+          "pinkShots": 4,
+          "goldShots": 1,
+          "blueBallHits": 1,
+          "pinkBallHits": 3,
+          "goldBallHits": 1,
+          "blueTowardHits": 1,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 3,
+          "pinkEmergencyHits": 3,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 1
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 2412,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 76,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 76,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 94,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 122,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 160,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 176,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 250,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 268,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 290,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 320,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 328,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 366,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 388,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 606,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 628,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 662,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 672,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 684,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 734,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 766,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 824,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 846,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 888,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 922,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 954,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 974,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 988,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1012,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1018,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1080,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1112,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1318,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1344,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1392,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1694,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1714,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1720,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1762,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1798,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1852,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1868,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1902,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1926,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1970,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1986,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2004,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2026,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2042,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2058,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2094,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2100,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2146,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2406,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "3a34bcb2",
+      "capturedAt": "2026-03-15T03:14:57.892Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 1,
+        "human": 7,
+        "bot": 1
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 7,
+        "rightShots": 0,
+        "leftBallHits": 1,
+        "rightBallHits": 0,
+        "leftWaveHits": 5,
+        "rightWaveHits": 0,
+        "leftPowerups": 1,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 6,
+          "goldShots": 1,
+          "blueBallHits": 0,
+          "pinkBallHits": 4,
+          "goldBallHits": 1,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 4,
+          "pinkEmergencyHits": 4,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 1,
+          "goldCenterHits": 1
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 1
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 2477,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 40,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 40,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 88,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 110,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 116,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 126,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 130,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 456,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 476,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 494,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 526,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 530,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 610,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 628,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 668,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 694,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 766,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 784,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 826,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 842,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1074,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1104,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1132,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1144,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1194,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1226,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1232,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1330,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1340,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1408,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1428,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1470,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1498,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1526,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1570,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1572,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1604,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1638,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1700,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1722,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1902,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2178,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2234,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2242,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2256,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2316,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "98cba660",
+      "capturedAt": "2026-03-15T03:14:29.229Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 0,
+        "human": 7,
+        "bot": 0
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 7,
+        "rightShots": 0,
+        "leftBallHits": 3,
+        "rightBallHits": 0,
+        "leftWaveHits": 3,
+        "rightWaveHits": 0,
+        "leftPowerups": 2,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 5,
+          "goldShots": 2,
+          "blueBallHits": 0,
+          "pinkBallHits": 3,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 3,
+          "pinkEmergencyHits": 3,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 1
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 2316,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 50,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 50,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 90,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 114,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 164,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 182,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 214,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 228,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 262,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 272,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 280,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 334,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 360,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 618,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 630,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 642,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 686,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 696,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 714,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 724,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 820,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 846,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1004,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1030,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1048,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1066,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1072,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1082,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1106,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1156,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1180,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1280,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1300,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1324,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1382,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1398,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1430,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1648,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1662,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1702,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1714,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1716,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1914,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1940,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1944,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2018,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2048,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2066,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2112,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2282,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "22f0f6de",
+      "capturedAt": "2026-03-15T03:14:08.182Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 1,
+        "human": 7,
+        "bot": 1
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 26,
+        "rightShots": 0,
+        "leftBallHits": 5,
+        "rightBallHits": 1,
+        "leftWaveHits": 9,
+        "rightWaveHits": 0,
+        "leftPowerups": 0,
+        "rightPowerups": 1,
+        "leftRoleMetrics": {
+          "blueShots": 22,
+          "pinkShots": 3,
+          "goldShots": 1,
+          "blueBallHits": 6,
+          "pinkBallHits": 2,
+          "goldBallHits": 1,
+          "blueTowardHits": 5,
+          "blueAwayHits": 1,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 1,
+          "pinkEmergencyHits": 1,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 2
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 3078,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 58,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 58,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 90,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 104,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 116,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 158,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 164,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 164,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 178,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 214,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 214,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 484,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 498,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 506,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 544,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 554,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 584,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 622,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 638,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 662,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 672,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 676,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 708,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 738,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 762,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 764,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 772,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 792,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 822,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 828,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 838,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 874,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 904,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 910,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 936,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 962,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1032,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1046,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1052,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1098,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1112,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1158,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1174,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1188,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1192,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1212,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1262,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1276,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1296,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1318,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1332,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1342,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1370,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1456,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1476,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1478,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1524,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1542,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1580,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1596,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1626,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1634,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1650,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1656,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1714,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1730,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1748,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1764,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1794,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1820,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1882,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1900,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1930,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1954,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2002,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2024,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2032,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2100,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2114,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2126,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2146,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2170,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2192,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2222,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2258,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2278,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2298,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2312,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2374,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2400,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2448,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2470,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2492,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2504,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2508,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2520,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2540,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2556,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2570,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2596,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2742,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2756,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2822,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2834,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2862,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2876,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2894,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2916,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2920,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2944,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2994,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3016,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "a97d6d0c",
+      "capturedAt": "2026-03-15T03:13:39.619Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 0,
+        "human": 7,
+        "bot": 0
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 14,
+        "rightShots": 0,
+        "leftBallHits": 4,
+        "rightBallHits": 0,
+        "leftWaveHits": 8,
+        "rightWaveHits": 0,
+        "leftPowerups": 1,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 10,
+          "pinkShots": 2,
+          "goldShots": 2,
+          "blueBallHits": 4,
+          "pinkBallHits": 2,
+          "goldBallHits": 2,
+          "blueTowardHits": 2,
+          "blueAwayHits": 2,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 1,
+          "pinkEmergencyHits": 1,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 1
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 2565,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 112,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 112,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 120,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 154,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 176,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 180,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 480,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 496,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 526,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 540,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 562,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 592,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 650,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 664,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 694,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 708,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 752,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 774,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 820,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 830,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 886,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 906,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 992,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1022,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1058,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1072,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1118,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1128,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1190,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1202,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1212,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1234,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1238,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1344,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1362,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1388,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1428,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1508,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1512,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1518,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1556,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1602,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1618,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1624,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1628,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1658,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1664,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1686,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1698,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1746,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1768,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1798,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1822,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1864,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1914,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1946,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1978,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1984,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2004,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2012,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2036,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2062,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2086,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2146,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2164,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2214,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2244,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2264,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2274,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2302,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2326,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2342,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2366,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2374,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2382,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2390,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2400,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2462,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2496,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2526,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2548,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "8e7f760c",
+      "capturedAt": "2026-03-15T03:13:15.890Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 0,
+        "human": 7,
+        "bot": 0
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 5,
+        "rightShots": 0,
+        "leftBallHits": 5,
+        "rightBallHits": 1,
+        "leftWaveHits": 4,
+        "rightWaveHits": 0,
+        "leftPowerups": 2,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 1,
+          "goldShots": 4,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 4,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 1,
+          "goldPaddleHits": 1,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 2
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 2780,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 62,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 62,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 114,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 134,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 138,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 298,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 320,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 426,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 466,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 592,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 694,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 718,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 818,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 844,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 860,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 884,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 940,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 968,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1142,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1336,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1352,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1390,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1406,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1428,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1446,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1454,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1628,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1644,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1740,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1762,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1764,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1804,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1848,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1910,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1928,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1930,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2118,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2186,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2214,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2228,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2262,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2404,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2424,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2498,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2522,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2524,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2536,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "d91c3b3c",
+      "capturedAt": "2026-03-15T03:12:48.542Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 0,
+        "human": 7,
+        "bot": 0
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 7,
+        "rightShots": 0,
+        "leftBallHits": 8,
+        "rightBallHits": 3,
+        "leftWaveHits": 2,
+        "rightWaveHits": 0,
+        "leftPowerups": 5,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 1,
+          "goldShots": 6,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 2,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 3,
+          "goldPaddleHits": 3,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 4
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 4079,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 50,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 50,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 98,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 132,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 154,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 174,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 204,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 284,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 296,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 396,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 430,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 458,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 494,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 530,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 548,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 762,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 788,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 824,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 950,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1074,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1076,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1102,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1144,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1170,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1272,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1308,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1350,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1356,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1402,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1418,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1500,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1510,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1512,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1596,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1624,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1636,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1652,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1668,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1694,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1748,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1760,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1860,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2008,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2036,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2054,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2098,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2278,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2404,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2442,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2462,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2478,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3438,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3462,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3476,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 3584,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3624,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3630,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3656,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3678,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3690,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3762,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3790,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3846,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3858,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3924,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 3934,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 4038,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sessionId": "cb26a577",
+      "capturedAt": "2026-03-15T03:12:08.781Z",
+      "runtimeVersion": "0.9.1",
+      "humanSide": "left",
+      "bot": {
+        "id": "control-0-fx20h9",
+        "name": "Strategist",
+        "difficultyBand": "absurd",
+        "elo": 1131
+      },
+      "matchOptions": {
+        "mode": "cpu",
+        "demo": false,
+        "scoreLimit": 7,
+        "powerupsEnabled": true,
+        "trailsEnabled": true,
+        "theme": "neon",
+        "difficulty": "spicy"
+      },
+      "finalScore": {
+        "left": 7,
+        "right": 0,
+        "human": 7,
+        "bot": 0
+      },
+      "result": {
+        "humanWon": true,
+        "botWon": false
+      },
+      "matchStats": {
+        "leftShots": 5,
+        "rightShots": 0,
+        "leftBallHits": 7,
+        "rightBallHits": 1,
+        "leftWaveHits": 0,
+        "rightWaveHits": 0,
+        "leftPowerups": 4,
+        "rightPowerups": 0,
+        "leftRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 5,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 2,
+          "goldPaddleHits": 1,
+          "goldCenterHits": 0
+        },
+        "rightRoleMetrics": {
+          "blueShots": 0,
+          "pinkShots": 0,
+          "goldShots": 0,
+          "blueBallHits": 0,
+          "pinkBallHits": 0,
+          "goldBallHits": 0,
+          "blueTowardHits": 0,
+          "blueAwayHits": 0,
+          "blueResistGrants": 0,
+          "pinkThreatHits": 0,
+          "pinkEmergencyHits": 0,
+          "blueWavePowerups": 0,
+          "pinkWavePowerups": 0,
+          "goldWavePowerups": 0,
+          "goldPaddleHits": 0,
+          "goldCenterHits": 0
+        },
+        "longestRally": 3
+      },
+      "replay": {
+        "version": 1,
+        "seed": 3210480161,
+        "configHash": "3a06a5c9",
+        "durationTicks": 2979,
+        "fixedTickRate": 120,
+        "decisionIntervalTicks": 2,
+        "actionEncoding": "delta-v1",
+        "actions": [
+          {
+            "tick": 84,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 84,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 124,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 158,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 168,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 200,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 208,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 214,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 218,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 242,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 388,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 406,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 502,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 572,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 650,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 728,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 780,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 826,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 850,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 864,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1012,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1036,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1064,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1214,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1236,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1254,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1282,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1372,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1424,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1450,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1504,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1688,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 1800,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1852,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1858,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1870,
+            "side": "right",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1908,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 1972,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2118,
+            "side": "right",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2292,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2312,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2328,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          },
+          {
+            "tick": 2392,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2410,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2424,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2460,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2510,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2530,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2594,
+            "side": "left",
+            "action": {
+              "moveAxis": -1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2634,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2674,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2686,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2808,
+            "side": "left",
+            "action": {
+              "moveAxis": 1,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2834,
+            "side": "right",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2834,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": false
+            }
+          },
+          {
+            "tick": 2904,
+            "side": "left",
+            "action": {
+              "moveAxis": 0,
+              "fire": true
+            }
+          }
+        ]
+      }
+    },
     {
       "sessionId": "932dafc7",
       "capturedAt": "2026-03-15T03:04:25.324Z",
@@ -33298,19 +41144,19 @@
     }
   ],
   "summary": {
-    "sessionCount": 28,
+    "sessionCount": 42,
     "botCount": 3,
     "totalSamples": 8083,
     "byBot": [
       {
         "botId": "control-0-fx20h9",
         "botName": "Strategist",
-        "sessionCount": 25,
+        "sessionCount": 39,
         "botWins": 0,
-        "humanWins": 25,
+        "humanWins": 39,
         "draws": 0,
         "botWinRate": 0,
-        "averageGoalDiff": -6.52,
+        "averageGoalDiff": -6.461538461538462,
         "challengeScore": -60,
         "sampleCount": 4000
       },
