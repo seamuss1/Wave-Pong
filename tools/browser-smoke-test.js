@@ -271,6 +271,12 @@ async function runDevToolsSmoke(pageWebSocketUrl, targetUrl, timeoutMs) {
       }
 
       runtime.clearStoredTrainingSessions();
+      let captureListenerCount = 0;
+      if (typeof runtime.onTrainingSessionCaptured === 'function') {
+        runtime.onTrainingSessionCaptured(() => {
+          captureListenerCount += 1;
+        });
+      }
       const selectedBot = selectCurrentBot();
       if (selectedBot && typeof runtime.setTrainingContext === 'function') {
         runtime.setTrainingContext({
@@ -286,6 +292,22 @@ async function runDevToolsSmoke(pageWebSocketUrl, targetUrl, timeoutMs) {
       const trainingSection = document.getElementById('trainingCaptureSection');
       const trainingButtonsPresent = !!document.getElementById('downloadTrainingBtn') && !!document.getElementById('clearTrainingBtn');
       const trainingStatusText = document.getElementById('trainingCaptureStatus')?.textContent || '';
+      const repoButtonsPresent = !!document.getElementById('connectRepoTrainingBtn') && !!document.getElementById('disconnectRepoTrainingBtn');
+      const repoStatusText = document.getElementById('trainingRepoStatus')?.textContent || '';
+      runtime.world.powerups.push({
+        type: 'grow',
+        x: runtime.config.balance.canvas.width * 0.5,
+        y: runtime.config.balance.canvas.height * 0.5,
+        r: runtime.config.balance.powerups.spawn.standardRadius,
+        life: runtime.config.balance.powerups.spawn.standardLifeSeconds
+      });
+      const observedState = typeof runtime.getObservation === 'function' ? runtime.getObservation('left') : null;
+      const observedPowerup = observedState && observedState.powerups ? observedState.powerups[0] : null;
+      const observationVectorSize = observedState ? controllers.flattenObservation(observedState).length : null;
+      const expectedObservationVectorSize = typeof controllers.getObservationVectorSize === 'function'
+        ? controllers.getObservationVectorSize()
+        : null;
+      runtime.world.powerups.length = 0;
 
       runtime.clearStoredTrainingSessions();
       runtime.startMatch({ demo: true, skipCountdown: true });
@@ -302,8 +324,18 @@ async function runDevToolsSmoke(pageWebSocketUrl, targetUrl, timeoutMs) {
         sectionVisible: !!trainingSection && !trainingSection.classList.contains('hidden'),
         buttonsPresent: trainingButtonsPresent,
         statusText: trainingStatusText,
+        repoButtonsPresent,
+        repoStatusText,
+        observationVectorSize,
+        expectedObservationVectorSize,
+        xpFieldsPresent: !!(observedState && observedState.self && observedState.opponent &&
+          typeof observedState.self.xpProgress === 'number' &&
+          typeof observedState.opponent.xpProgress === 'number'),
+        powerupTypeId: observedPowerup ? observedPowerup.typeId : null,
+        powerupTypeIdNormalized: observedPowerup ? observedPowerup.typeIdNormalized : null,
         cpuSessionCount,
         cpuExportSchema: cpuExport && cpuExport.schema ? cpuExport.schema : null,
+        captureListenerCount,
         demoSessionCount,
         pvpSessionCount,
         finalGameOverVisible: !document.getElementById('gameOverOverlay').classList.contains('hidden')
@@ -500,8 +532,17 @@ async function main() {
       result.exceptions.length === 0 &&
       trainingChecks.sectionVisible === true &&
       trainingChecks.buttonsPresent === true &&
+      trainingChecks.repoButtonsPresent === true &&
+      typeof trainingChecks.repoStatusText === 'string' &&
+      trainingChecks.repoStatusText.length > 0 &&
+      trainingChecks.xpFieldsPresent === true &&
+      trainingChecks.powerupTypeId === 1 &&
+      typeof trainingChecks.powerupTypeIdNormalized === 'number' &&
+      trainingChecks.powerupTypeIdNormalized > 0 &&
+      trainingChecks.observationVectorSize === trainingChecks.expectedObservationVectorSize &&
       trainingChecks.cpuSessionCount === 1 &&
       trainingChecks.cpuExportSchema === 'human-training-export/v1' &&
+      trainingChecks.captureListenerCount === 1 &&
       trainingChecks.demoSessionCount === 0 &&
       trainingChecks.pvpSessionCount === 0 &&
       trainingChecks.finalGameOverVisible === true;

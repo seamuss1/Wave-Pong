@@ -661,6 +661,14 @@
   justify-content: flex-start;
 }
 
+.trainingRepoStatus {
+  margin: 0;
+}
+
+.trainingRepoActions {
+  margin-top: -2px;
+}
+
 .compareGrid {
   display: grid;
   gap: 8px;

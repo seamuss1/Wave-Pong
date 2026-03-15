@@ -104,8 +104,11 @@
       gameOverHistoryStats: get('gameOverHistoryStats'),
       trainingCaptureSection: get('trainingCaptureSection'),
       trainingCaptureStatus: get('trainingCaptureStatus'),
+      trainingRepoStatus: get('trainingRepoStatus'),
       trainingSessionCount: get('trainingSessionCount'),
       downloadTrainingBtn: get('downloadTrainingBtn'),
+      connectRepoTrainingBtn: get('connectRepoTrainingBtn'),
+      disconnectRepoTrainingBtn: get('disconnectRepoTrainingBtn'),
       clearTrainingBtn: get('clearTrainingBtn'),
       menuBestRally: get('menuBestRally'),
       lastWinnerStat: get('lastWinnerStat'),
@@ -202,6 +205,7 @@
         stateHashes: []
       };
       const eventQueue = [];
+      const trainingCaptureListeners = new Set();
       const inputQueue = {
         left: new Map(),
         right: new Map()
@@ -282,6 +286,10 @@
         exportFilePrefix: (training && training.exportFilePrefix) || 'wave-pong-human-training'
       };
       const TRAINING_SESSIONS_KEY = trainingSettings.storage.sessionsKey;
+      const MAX_POWERUP_TYPE_ID = Object.keys(powerupDefs || {}).reduce((maxId, key) => {
+        const def = powerupDefs[key];
+        return Math.max(maxId, Number(def && def.id) || 0);
+      }, 0);
       const MAX_WAVE_LEVEL = waveLevelBalance.max;
       const WAVE_LEVEL_XP = waveLevelBalance.xpThresholds;
       const PASSIVE_XP_PER_SEC = xpBalance.passivePerSecond;
@@ -869,6 +877,15 @@
         trainingCapture.storedSessions = saveStoredTrainingSessions(nextSessions);
         trainingCapture.lastSavedSessionId = session.sessionId;
         trainingCapture.lastStatus = `Saved training session for ${session.bot.name}.`;
+        const payload = deepClone(session);
+        const snapshot = buildTrainingExport();
+        for (const listener of Array.from(trainingCaptureListeners)) {
+          try {
+            listener(payload, snapshot);
+          } catch (error) {
+            // External listeners should not break the runtime capture loop.
+          }
+        }
         return session;
       }
 
@@ -2036,13 +2053,19 @@ function updateAI(paddle, dt, isLeft) {
           .slice()
           .sort((a, b) => Math.abs(a.x - self.x) - Math.abs(b.x - self.x))
           .slice(0, 4)
-          .map((item) => ({
-            x: ((item.x / W) * 2 - 1) * direction,
-            y: (item.y / H) * 2 - 1,
-            type: item.type,
-            radius: item.r / 48,
-            life: item.life / Math.max(powerupBalance.spawn.standardLifeSeconds, powerupBalance.spawn.minionLifeSeconds)
-          }));
+          .map((item) => {
+            const def = powerupDefs[item.type] || {};
+            const typeId = Number(def.id) || 0;
+            return {
+              x: ((item.x / W) * 2 - 1) * direction,
+              y: (item.y / H) * 2 - 1,
+              type: item.type,
+              typeId,
+              typeIdNormalized: MAX_POWERUP_TYPE_ID > 0 ? typeId / MAX_POWERUP_TYPE_ID : 0,
+              radius: item.r / 48,
+              life: item.life / Math.max(powerupBalance.spawn.standardLifeSeconds, powerupBalance.spawn.minionLifeSeconds)
+            };
+          });
         return {
           schemaVersion: 1,
           tick: state.tick,
@@ -2054,6 +2077,7 @@ function updateAI(paddle, dt, isLeft) {
             aimAngle: self.aimAngle / Math.PI,
             charge: self.pulseCharge / Math.max(1, getPaddleMaxCharge(self)),
             level: self.pulseLevel / MAX_WAVE_LEVEL,
+            xpProgress: getLevelProgress(self),
             cooldown: self.cooldown / Math.max(waveBalance.blue.cooldown, waveBalance.pink.cooldown, waveBalance.gold.cooldown),
             jam: self.jamTimer,
             slow: self.slowTimer
@@ -2065,6 +2089,7 @@ function updateAI(paddle, dt, isLeft) {
             aimAngle: opponent.aimAngle / Math.PI,
             charge: opponent.pulseCharge / Math.max(1, getPaddleMaxCharge(opponent)),
             level: opponent.pulseLevel / MAX_WAVE_LEVEL,
+            xpProgress: getLevelProgress(opponent),
             jam: opponent.jamTimer,
             slow: opponent.slowTimer
           },
@@ -3505,6 +3530,16 @@ function renderOverlayFX() {
         muted = !!nextMuted;
       }
 
+      function onTrainingSessionCaptured(listener) {
+        if (typeof listener !== 'function') {
+          return function noop() {};
+        }
+        trainingCaptureListeners.add(listener);
+        return function unsubscribeTrainingListener() {
+          trainingCaptureListeners.delete(listener);
+        };
+      }
+
       function setTrainingContext(nextContext) {
         const value = nextContext && typeof nextContext === 'object' ? nextContext : {};
         trainingCapture.selectedBotId = value.selectedBotId ? String(value.selectedBotId) : '';
@@ -3662,6 +3697,7 @@ function renderOverlayFX() {
         setControllers,
         setMuted,
         setTrainingContext,
+        onTrainingSessionCaptured,
         buildTrainingExport,
         downloadTrainingExport,
         clearStoredTrainingSessions,

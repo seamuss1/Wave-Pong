@@ -32,24 +32,32 @@ Open `runtime/index.html` in a modern desktop browser.
 
 Player vs CPU matches now keep a small browser-side cache of compact training sessions for the selected bot.
 
+If you open `runtime/index.html` from the checked-out repo in a Chromium browser, you can also use **Connect repo auto-train** on the game-over screen. After the one-time repo permission grant, completed Player vs CPU matches will:
+
+- merge their sessions into `tools/reports/human-training-data.json`
+- refresh `tools/reports/human-training-import-report.json`
+- fine-tune matching loaded roster bots in the browser
+- write the updated roster back to `runtime/js/bot-roster.js`
+
 Recommended flow:
 
 1. Open `runtime/index.html` and play one or more Player vs CPU matches.
-2. On the game-over screen, use **Download training JSON** to export the cached sessions.
-3. Import that download into the tooling dataset:
+2. For automatic local improvement, connect the repo root once and keep playing.
+3. For the manual tooling flow, use **Download training JSON** to export the cached sessions.
+4. Import that download into the tooling dataset:
 
 ```bash
 cd tools
 npm.cmd run import:human-training -- --input <path-to-downloaded-json>
 ```
 
-4. Run bot evolution so the imported sessions can fine-tune matching roster seeds and influence promotion:
+5. Run bot evolution so the imported sessions can fine-tune matching roster seeds and influence promotion:
 
 ```bash
 npm.cmd run evolve
 ```
 
-5. Publish the evolved bots back into `runtime/js/bot-roster.js` when you are ready:
+6. Publish the evolved bots back into `runtime/js/bot-roster.js` when you are ready:
 
 ```bash
 npm.cmd run publish:bots

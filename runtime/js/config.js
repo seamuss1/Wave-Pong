@@ -394,7 +394,33 @@
       },
       maxStoredSessions: 8,
       exportSchema: 'human-training-export/v1',
-      exportFilePrefix: 'wave-pong-human-training'
+      exportFilePrefix: 'wave-pong-human-training',
+      localRepo: {
+        enabled: true,
+        permissionsDb: {
+          name: 'wavePongRepoTrainingV1',
+          storeName: 'handles',
+          handleKey: 'repoRoot'
+        },
+        repoMarkers: {
+          gitDir: '.git',
+          versionFile: 'version.json',
+          runtimeIndex: 'runtime/index.html',
+          rosterFile: 'runtime/js/bot-roster.js',
+          reportsDir: 'tools/reports'
+        },
+        files: {
+          dataset: 'tools/reports/human-training-data.json',
+          report: 'tools/reports/human-training-import-report.json',
+          roster: 'runtime/js/bot-roster.js'
+        },
+        maxSamplesPerBot: 4000,
+        fineTune: {
+          batchSize: 64,
+          epochs: 3,
+          learningRate: 0.01
+        }
+      }
     },
     balance, // Gameplay tuning numbers.
     // Shape of the persistent history record saved in localStorage.
@@ -418,17 +444,17 @@
     // Powerup presentation definitions.
     // icon: glyph shown in menus/HUD, label: UI text, kind: style bucket, color/fill/outline: render colors.
     powerupDefs: {
-      grow: { icon: '\u21D5', label: 'Mega Paddle', kind: 'buff', color: '#86ffb1', fill: 'rgba(134, 255, 177, 0.22)', outline: 'rgba(134, 255, 177, 0.82)' },
-      overcharge: { icon: '\u26A1', label: 'Overcharge', kind: 'buff', color: '#71f1ff', fill: 'rgba(113, 241, 255, 0.22)', outline: 'rgba(113, 241, 255, 0.82)' },
-      capacitor: { icon: '\u25B0', label: 'Cap Bank', kind: 'buff', color: '#78f0ff', fill: 'rgba(120, 240, 255, 0.22)', outline: 'rgba(120, 240, 255, 0.84)' },
-      rapid: { icon: '\u226B', label: 'Rapid Charge', kind: 'buff', color: '#fff085', fill: 'rgba(255, 240, 133, 0.22)', outline: 'rgba(255, 240, 133, 0.84)' },
-      multi: { icon: '\u25CE', label: 'Multiball', kind: 'buff', color: '#ffd06e', fill: 'rgba(255, 208, 110, 0.22)', outline: 'rgba(255, 208, 110, 0.82)' },
-      pulse: { icon: '\u27F2', label: 'XP Surge', kind: 'buff', color: '#a7b6ff', fill: 'rgba(167, 182, 255, 0.22)', outline: 'rgba(167, 182, 255, 0.82)' },
-      shrink: { icon: '\u21E3', label: 'Shrink Hex', kind: 'debuff', color: '#ff88c6', fill: 'rgba(255, 136, 198, 0.22)', outline: 'rgba(255, 136, 198, 0.82)' },
-      slow: { icon: '\u231B', label: 'Drag Field', kind: 'debuff', color: '#ff9d7e', fill: 'rgba(255, 157, 126, 0.22)', outline: 'rgba(255, 157, 126, 0.82)' },
-      jam: { icon: '\u2736', label: 'Aim Jam', kind: 'debuff', color: '#ff6a8b', fill: 'rgba(255, 106, 139, 0.22)', outline: 'rgba(255, 106, 139, 0.82)' },
-      drain: { icon: '\u25CC', label: 'XP Drain', kind: 'debuff', color: '#ffb7ff', fill: 'rgba(255, 183, 255, 0.2)', outline: 'rgba(255, 183, 255, 0.82)' },
-      minion: { icon: '\u2739', label: 'XP Minion', kind: 'minion', color: '#8dff7f', fill: 'rgba(141, 255, 127, 0.18)', outline: 'rgba(141, 255, 127, 0.88)' }
+      grow: { id: 1, icon: '\u21D5', label: 'Mega Paddle', kind: 'buff', color: '#86ffb1', fill: 'rgba(134, 255, 177, 0.22)', outline: 'rgba(134, 255, 177, 0.82)' },
+      overcharge: { id: 2, icon: '\u26A1', label: 'Overcharge', kind: 'buff', color: '#71f1ff', fill: 'rgba(113, 241, 255, 0.22)', outline: 'rgba(113, 241, 255, 0.82)' },
+      capacitor: { id: 3, icon: '\u25B0', label: 'Cap Bank', kind: 'buff', color: '#78f0ff', fill: 'rgba(120, 240, 255, 0.22)', outline: 'rgba(120, 240, 255, 0.84)' },
+      rapid: { id: 4, icon: '\u226B', label: 'Rapid Charge', kind: 'buff', color: '#fff085', fill: 'rgba(255, 240, 133, 0.22)', outline: 'rgba(255, 240, 133, 0.84)' },
+      multi: { id: 5, icon: '\u25CE', label: 'Multiball', kind: 'buff', color: '#ffd06e', fill: 'rgba(255, 208, 110, 0.22)', outline: 'rgba(255, 208, 110, 0.82)' },
+      pulse: { id: 6, icon: '\u27F2', label: 'XP Surge', kind: 'buff', color: '#a7b6ff', fill: 'rgba(167, 182, 255, 0.22)', outline: 'rgba(167, 182, 255, 0.82)' },
+      shrink: { id: 7, icon: '\u21E3', label: 'Shrink Hex', kind: 'debuff', color: '#ff88c6', fill: 'rgba(255, 136, 198, 0.22)', outline: 'rgba(255, 136, 198, 0.82)' },
+      slow: { id: 8, icon: '\u231B', label: 'Drag Field', kind: 'debuff', color: '#ff9d7e', fill: 'rgba(255, 157, 126, 0.22)', outline: 'rgba(255, 157, 126, 0.82)' },
+      jam: { id: 9, icon: '\u2736', label: 'Aim Jam', kind: 'debuff', color: '#ff6a8b', fill: 'rgba(255, 106, 139, 0.22)', outline: 'rgba(255, 106, 139, 0.82)' },
+      drain: { id: 10, icon: '\u25CC', label: 'XP Drain', kind: 'debuff', color: '#ffb7ff', fill: 'rgba(255, 183, 255, 0.2)', outline: 'rgba(255, 183, 255, 0.82)' },
+      minion: { id: 11, icon: '\u2739', label: 'XP Minion', kind: 'minion', color: '#8dff7f', fill: 'rgba(141, 255, 127, 0.18)', outline: 'rgba(141, 255, 127, 0.88)' }
     },
     // Randomized game-over subtitles.
     wittyLines: [

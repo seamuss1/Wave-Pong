@@ -28,6 +28,43 @@
     return 1 / (1 + Math.exp(-value));
   }
 
+  function createEmptyObservation() {
+    return {
+      self: {
+        y: 0,
+        vy: 0,
+        h: 0,
+        aimAngle: 0,
+        charge: 0,
+        level: 0,
+        xpProgress: 0,
+        cooldown: 0
+      },
+      opponent: {
+        y: 0,
+        vy: 0,
+        h: 0,
+        aimAngle: 0,
+        charge: 0,
+        level: 0,
+        xpProgress: 0
+      },
+      score: {
+        self: 0,
+        opponent: 0,
+        limit: 1
+      },
+      meta: {
+        rally: 0,
+        ballsInPlay: 0,
+        powerupsInPlay: 0,
+        countdownActive: false
+      },
+      balls: [],
+      powerups: []
+    };
+  }
+
   function flattenObservation(observation) {
     const values = [
       observation.self.y,
@@ -61,7 +98,39 @@
       values.push(item.x, item.y, item.radius, item.life);
     }
 
+    values.push(clamp(Number(observation.self.xpProgress) || 0, 0, 1));
+    values.push(clamp(Number(observation.opponent.xpProgress) || 0, 0, 1));
+
+    for (let i = 0; i < 4; i += 1) {
+      const item = observation.powerups[i] || { typeIdNormalized: 0 };
+      values.push(clamp(Number(item.typeIdNormalized) || 0, 0, 1));
+    }
+
     return values;
+  }
+
+  const OBSERVATION_VECTOR_SIZE = flattenObservation(createEmptyObservation()).length;
+
+  function ensureNetworkInputSize(network, inputSize = OBSERVATION_VECTOR_SIZE) {
+    if (!network || !Array.isArray(network.layers) || !network.layers.length) return network;
+    const targetSize = Math.max(1, Math.floor(Number(inputSize) || OBSERVATION_VECTOR_SIZE));
+    const firstLayer = network.layers[0];
+    if (!firstLayer || !Array.isArray(firstLayer.weights)) {
+      network.inputSize = targetSize;
+      return network;
+    }
+    for (const row of firstLayer.weights) {
+      if (!Array.isArray(row)) continue;
+      while (row.length < targetSize) {
+        row.push(0);
+      }
+    }
+    network.inputSize = Math.max(targetSize, Number(network.inputSize) || 0);
+    return network;
+  }
+
+  function getObservationVectorSize() {
+    return OBSERVATION_VECTOR_SIZE;
   }
 
   function inferFeedForward(network, inputs) {
@@ -143,6 +212,7 @@
     if (!botAsset || !botAsset.network || botAsset.schemaVersion !== 1) {
       throw new Error('Invalid bot asset. Expected schemaVersion 1 with a network definition.');
     }
+    ensureNetworkInputSize(botAsset.network, OBSERVATION_VECTOR_SIZE);
     const controllerParams = botAsset.controllerParams || {};
     return {
       kind: 'neural',
@@ -190,6 +260,8 @@
 
   return {
     flattenObservation,
+    getObservationVectorSize,
+    ensureNetworkInputSize,
     inferFeedForward,
     createHumanController,
     createScriptedController,

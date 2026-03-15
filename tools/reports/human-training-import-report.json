@@ -1,0 +1,326 @@
+{
+  "importedAt": "2026-03-15T02:52:02.818Z",
+  "inputFile": "browser-local-runtime",
+  "outputFile": "tools/reports/human-training-data.json",
+  "rosterFile": "runtime/js/bot-roster.js",
+  "incomingSessionCount": 8,
+  "newSessionCount": 1,
+  "duplicateSessionCount": 7,
+  "totalSessionCount": 17,
+  "totalSampleCount": 8083,
+  "byBot": [
+    {
+      "botId": "control-0-fx20h9",
+      "botName": "Strategist",
+      "sessionCount": 14,
+      "botWins": 0,
+      "humanWins": 14,
+      "draws": 0,
+      "botWinRate": 0,
+      "averageGoalDiff": -6.571428571428571,
+      "challengeScore": -60,
+      "sampleCount": 4000
+    },
+    {
+      "botId": "aggressive-0-9aaccq",
+      "botName": "Sniper",
+      "sessionCount": 2,
+      "botWins": 0,
+      "humanWins": 2,
+      "draws": 0,
+      "botWinRate": 0,
+      "averageGoalDiff": -4.5,
+      "challengeScore": -60,
+      "sampleCount": 2760
+    },
+    {
+      "botId": "control-0-94ckep",
+      "botName": "Defensive Specialist",
+      "sessionCount": 1,
+      "botWins": 0,
+      "humanWins": 1,
+      "draws": 0,
+      "botWinRate": 0,
+      "averageGoalDiff": -7,
+      "challengeScore": -60,
+      "sampleCount": 1323
+    }
+  ],
+  "validations": [
+    {
+      "sessionId": "d3b0c7ae",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1327,
+      "replayValidation": {
+        "tick": 2654,
+        "gameOver": false,
+        "finalScore": {
+          "left": 5,
+          "right": 6
+        },
+        "recordedSampleCount": 1327,
+        "scheduledDecisionCount": 1327
+      }
+    },
+    {
+      "sessionId": "5c0cb9f3",
+      "botId": "control-0-94ckep",
+      "recordedSampleCount": 1323,
+      "replayValidation": {
+        "tick": 2647,
+        "gameOver": false,
+        "finalScore": {
+          "left": 5,
+          "right": 4
+        },
+        "recordedSampleCount": 1323,
+        "scheduledDecisionCount": 1323
+      }
+    },
+    {
+      "sessionId": "775531c3",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1123,
+      "replayValidation": {
+        "tick": 2246,
+        "gameOver": true,
+        "finalScore": {
+          "left": 7,
+          "right": 2
+        },
+        "recordedSampleCount": 1123,
+        "scheduledDecisionCount": 1888
+      }
+    },
+    {
+      "sessionId": "1dd7d7f5",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1139,
+      "replayValidation": {
+        "tick": 2279,
+        "gameOver": false,
+        "finalScore": {
+          "left": 5,
+          "right": 4
+        },
+        "recordedSampleCount": 1139,
+        "scheduledDecisionCount": 1139
+      }
+    },
+    {
+      "sessionId": "6a56b9fe",
+      "botId": "aggressive-0-9aaccq",
+      "recordedSampleCount": 1485,
+      "replayValidation": {
+        "tick": 2970,
+        "gameOver": false,
+        "finalScore": {
+          "left": 4,
+          "right": 3
+        },
+        "recordedSampleCount": 1485,
+        "scheduledDecisionCount": 1485
+      }
+    },
+    {
+      "sessionId": "4865d112",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1502,
+      "replayValidation": {
+        "tick": 3004,
+        "gameOver": false,
+        "finalScore": {
+          "left": 5,
+          "right": 3
+        },
+        "recordedSampleCount": 1502,
+        "scheduledDecisionCount": 1502
+      }
+    },
+    {
+      "sessionId": "f39d3c24",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1436,
+      "replayValidation": {
+        "tick": 2873,
+        "gameOver": true,
+        "finalScore": {
+          "left": 7,
+          "right": 4
+        },
+        "recordedSampleCount": 1436,
+        "scheduledDecisionCount": 1964
+      }
+    },
+    {
+      "sessionId": "2dd82e88",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1474,
+      "replayValidation": {
+        "tick": 2949,
+        "gameOver": false,
+        "finalScore": {
+          "left": 3,
+          "right": 3
+        },
+        "recordedSampleCount": 1474,
+        "scheduledDecisionCount": 1474
+      }
+    },
+    {
+      "sessionId": "062a9943",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1423,
+      "replayValidation": {
+        "tick": 2846,
+        "gameOver": false,
+        "finalScore": {
+          "left": 4,
+          "right": 4
+        },
+        "recordedSampleCount": 1423,
+        "scheduledDecisionCount": 1423
+      }
+    },
+    {
+      "sessionId": "da795fa3",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1819,
+      "replayValidation": {
+        "tick": 3639,
+        "gameOver": true,
+        "finalScore": {
+          "left": 7,
+          "right": 2
+        },
+        "recordedSampleCount": 1819,
+        "scheduledDecisionCount": 2320
+      }
+    },
+    {
+      "sessionId": "1961ed20",
+      "botId": "aggressive-0-9aaccq",
+      "recordedSampleCount": 1275,
+      "replayValidation": {
+        "tick": 2551,
+        "gameOver": true,
+        "finalScore": {
+          "left": 7,
+          "right": 2
+        },
+        "recordedSampleCount": 1275,
+        "scheduledDecisionCount": 1916
+      }
+    },
+    {
+      "sessionId": "2211c22b",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1429,
+      "replayValidation": {
+        "tick": 2858,
+        "gameOver": false,
+        "finalScore": {
+          "left": 6,
+          "right": 3
+        },
+        "recordedSampleCount": 1429,
+        "scheduledDecisionCount": 1429
+      }
+    },
+    {
+      "sessionId": "efd230b2",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1414,
+      "replayValidation": {
+        "tick": 2829,
+        "gameOver": true,
+        "finalScore": {
+          "left": 7,
+          "right": 4
+        },
+        "recordedSampleCount": 1414,
+        "scheduledDecisionCount": 1745
+      }
+    },
+    {
+      "sessionId": "2be4329e",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1269,
+      "replayValidation": {
+        "tick": 2539,
+        "gameOver": true,
+        "finalScore": {
+          "left": 7,
+          "right": 3
+        },
+        "recordedSampleCount": 1269,
+        "scheduledDecisionCount": 1704
+      }
+    },
+    {
+      "sessionId": "05a0437e",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1691,
+      "replayValidation": {
+        "tick": 3382,
+        "gameOver": true,
+        "finalScore": {
+          "left": 7,
+          "right": 4
+        },
+        "recordedSampleCount": 1691,
+        "scheduledDecisionCount": 1883
+      }
+    },
+    {
+      "sessionId": "b5902736",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1440,
+      "replayValidation": {
+        "tick": 2880,
+        "gameOver": true,
+        "finalScore": {
+          "left": 7,
+          "right": 6
+        },
+        "recordedSampleCount": 1440,
+        "scheduledDecisionCount": 1572
+      }
+    },
+    {
+      "sessionId": "5cf9a529",
+      "botId": "control-0-fx20h9",
+      "recordedSampleCount": 1497,
+      "replayValidation": {
+        "tick": 2995,
+        "gameOver": true,
+        "finalScore": {
+          "left": 7,
+          "right": 4
+        },
+        "recordedSampleCount": 1497,
+        "scheduledDecisionCount": 1866
+      }
+    }
+  ],
+  "fineTuneResults": [
+    {
+      "botId": "control-0-fx20h9",
+      "botName": "Strategist",
+      "sampleCount": 1327,
+      "epochs": 3,
+      "batchSize": 64,
+      "learningRate": 0.01,
+      "positiveWeights": [
+        8.151724137931035,
+        8.615942028985508,
+        24
+      ],
+      "averageLoss": 0.8541678883917271,
+      "source": "browser-local-auto-train",
+      "updatedAt": "2026-03-15T02:52:02.818Z",
+      "newSessionCount": 1
+    }
+  ],
+  "unmatchedBotIds": []
+}

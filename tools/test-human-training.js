@@ -135,9 +135,13 @@ function main() {
     learningRate: 0.01
   });
   const afterWeights = flattenNetwork(botClone.network);
-  assert.strictEqual(beforeWeights.length, afterWeights.length, 'Fine-tuning should preserve network shape.');
-  assert(afterWeights.some((value, index) => Math.abs(value - beforeWeights[index]) > 1e-8), 'Fine-tuning should update at least one network weight.');
+  assert(afterWeights.length >= beforeWeights.length, 'Fine-tuning should preserve or expand the network shape for new inputs.');
+  assert.strictEqual(botClone.network.inputSize, botSamples[0].inputs.length, 'Fine-tuned bot should match the current observation width.');
+  assert(afterWeights.some((value, index) => Math.abs(value - (beforeWeights[index] ?? 0)) > 1e-8), 'Fine-tuning should update at least one network weight.');
   assert.strictEqual(fineTuneSummary.sampleCount, botSamples.length, 'Fine-tune summary should report the used sample count.');
+  assert(Array.isArray(fineTuneSummary.positiveWeights) && fineTuneSummary.positiveWeights.length === 3, 'Fine-tune summary should report class-balance weights.');
+  assert(fineTuneSummary.positiveWeights.some((weight) => weight > 1), 'Sparse action labels should receive positive weighting.');
+  assert(fineTuneSummary.positiveWeights[2] > 1, 'Sparse fire labels should receive positive weighting.');
 
   runNodeScript(path.join(repoRoot, 'tools', 'evolve-bots.js'), [
     '--generations', '1',
