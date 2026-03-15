@@ -30,7 +30,7 @@ Open `runtime/index.html` in a modern desktop browser.
 
 ## itch.io packaging
 
-Versioning is tracked in `version.json`. The current version is `0.3.3`.
+Versioning is tracked in `version.json`. The current version is `0.6.3`.
 
 Version rules:
 
@@ -76,7 +76,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1
 That command:
 
 - rebuilds `itch-build/`
-- creates the single current deploy zip as `wave-pong-itchio-v0.3.3.zip`
+- creates the single current deploy zip as `wave-pong-itchio-v0.6.3.zip`
 - verifies the archived `index.html` matches `itch-build/index.html`
 
 ## Smoke testing
@@ -94,6 +94,28 @@ If you specifically want the raw Node launcher, use:
 ```bash
 npm.cmd run smoke:node
 ```
+
+## Bot training
+
+Run bot evolution from the repo root with:
+
+```bash
+node tools/evolve-bots.js --population 20 --generations 900 --update-all-roster --checkpoint-every 25
+```
+
+Useful training flags:
+
+- `--publish-runtime` publishes the final export to the roster file when training completes.
+- `--auto-promote-every <N>` snapshots and publishes the current best eligible bots every `N` generations, using the same roster destination as `--roster-file`.
+- each run now writes a timestamped training log in `tools/reports/` by default; use `--log-file <path>` if you want a custom location
+- `--roster-file <path>` lets you train and auto-promote against a temporary roster file for dry runs.
+- omit `--progress-every` to use the built-in low-noise progress mode, which logs a few useful progress updates per generation instead of every small batch of matches
+
+Role-specific training in `tools/evolve-bots.js` is intentionally documented around `TRAINING_METRIC_GUIDE`. When adding future archetypes or named roles:
+
+- reuse those normalized metric keys instead of inventing role-only score fields
+- keep role intent in the profile `fitness` weights
+- keep promotion safety checks in the profile `promotion` block so archetype fit and roster promotion stay aligned
 
 ## itch.io deployment with butler
 
@@ -174,14 +196,14 @@ npm.cmd run deploy:test
 npm.cmd run deploy:production
 ```
 
-If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.3.3`.
+If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.6.3`.
 
 You can still override it for a one-off deploy:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
   -Destination test `
-  -UserVersion "0.3.3-hotfix1"
+  -UserVersion "0.6.3-hotfix1"
 ```
 
 ### First-time itch.io setup
