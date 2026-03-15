@@ -361,6 +361,18 @@ function createPromotionCandidate(bot, reviewSummary) {
   };
 }
 
+function comparePromotionCandidates(left, right) {
+  if (!right) return 1;
+  if (!left) return -1;
+  const promotionDelta = (Number(left.promotionScore) || -Infinity) - (Number(right.promotionScore) || -Infinity);
+  if (promotionDelta !== 0) return promotionDelta;
+  const eloDelta = (Number(left.elo) || -Infinity) - (Number(right.elo) || -Infinity);
+  if (eloDelta !== 0) return eloDelta;
+  const trainingHoursDelta = (Number(left.trainingHours) || 0) - (Number(right.trainingHours) || 0);
+  if (trainingHoursDelta !== 0) return trainingHoursDelta;
+  return (Number(left.generation) || 0) - (Number(right.generation) || 0);
+}
+
 function summarizePromotionCandidates(populations, reviewRatings, limit = 12) {
   return Object.values(populations)
     .flat()
@@ -525,6 +537,7 @@ function createPopulation(inputSize, populationSize, random, rosterSeeds = [], o
       continue;
     }
     const seeded = seedsByArchetype.get(archetype.id) || [];
+    let seededParentCursor = 0;
     populations[archetype.id] = seeded.map((bot) => ({
       ...clone(bot),
       fitnessScore: 0,
@@ -532,9 +545,17 @@ function createPopulation(inputSize, populationSize, random, rosterSeeds = [], o
     }));
     const targetSize = Math.max(populationSize, populations[archetype.id].length);
     while (populations[archetype.id].length < targetSize) {
-      populations[archetype.id].push(focusedSeed && archetype.id === focusedSeed.archetype
-        ? createGenome(archetype, 0, inputSize, random, focusedSeed)
-        : createGenome(archetype, 0, inputSize, random));
+      if (focusedSeed && archetype.id === focusedSeed.archetype) {
+        populations[archetype.id].push(createGenome(archetype, 0, inputSize, random, focusedSeed));
+        continue;
+      }
+      if (seeded.length) {
+        const parent = seeded[seededParentCursor % seeded.length];
+        seededParentCursor += 1;
+        populations[archetype.id].push(createGenome(archetype, 0, inputSize, random, parent));
+        continue;
+      }
+      populations[archetype.id].push(createGenome(archetype, 0, inputSize, random));
     }
   }
   return populations;
@@ -836,6 +857,10 @@ function buildFocusedBotExport(promotionCandidates, focusSeedBot) {
     .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo)[0] || focusSeedBot;
   return [{
     ...bestCandidate,
+    selectedCandidateId: bestCandidate.id,
+    selectedCandidateGeneration: bestCandidate.generation,
+    selectedCandidateTrainingHours: bestCandidate.trainingHours,
+    selectedCandidatePromotionScore: bestCandidate.promotionScore,
     id: focusSeedBot.id,
     name: focusSeedBot.name,
     personality: focusSeedBot.personality,
@@ -852,6 +877,10 @@ function buildUpdateAllRosterExport(promotionCandidates, rosterSeedBots) {
       .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo)[0] || seedBot;
     return {
       ...bestCandidate,
+      selectedCandidateId: bestCandidate.id,
+      selectedCandidateGeneration: bestCandidate.generation,
+      selectedCandidateTrainingHours: bestCandidate.trainingHours,
+      selectedCandidatePromotionScore: bestCandidate.promotionScore,
       id: seedBot.id,
       name: seedBot.name,
       personality: seedBot.personality,
@@ -860,6 +889,37 @@ function buildUpdateAllRosterExport(promotionCandidates, rosterSeedBots) {
       metadata: seedBot.metadata ? clone(seedBot.metadata) : null
     };
   }).sort((a, b) => (Number(b.elo) || 0) - (Number(a.elo) || 0));
+}
+
+function updateBestRosterSeedCandidates(bestBySeedId, populations, reviewRatings, rosterSeedBots) {
+  const trackedSeedIds = new Set((rosterSeedBots || []).map((bot) => bot.id));
+  if (!trackedSeedIds.size) return;
+  Object.values(populations)
+    .flat()
+    .forEach((bot) => {
+      const trackedSeedId = bot.sourceBotId || (trackedSeedIds.has(bot.id) ? bot.id : null);
+      if (!trackedSeedId || !trackedSeedIds.has(trackedSeedId)) return;
+      const candidate = createPromotionCandidate(bot, reviewRatings.byBot.get(bot.id));
+      const current = bestBySeedId.get(trackedSeedId) || null;
+      if (comparePromotionCandidates(candidate, current) > 0) {
+        bestBySeedId.set(trackedSeedId, clone(candidate));
+      }
+    });
+}
+
+function summarizeBestRosterSeedCandidates(bestBySeedId, rosterSeedBots) {
+  return (rosterSeedBots || []).map((seedBot) => {
+    const candidate = bestBySeedId.get(seedBot.id) || null;
+    return {
+      seedBotId: seedBot.id,
+      seedBotName: seedBot.name,
+      selectedCandidateId: candidate ? candidate.id : seedBot.id,
+      selectedCandidateGeneration: candidate ? candidate.generation : seedBot.generation,
+      selectedCandidateElo: Math.round(candidate ? candidate.elo : seedBot.elo),
+      selectedCandidatePromotionScore: Math.round(candidate ? candidate.promotionScore : seedBot.elo),
+      selectedCandidateTrainingHours: Number((Number(candidate ? candidate.trainingHours : seedBot.trainingHours) || 0).toFixed(3))
+    };
+  });
 }
 
 function autoPublishRuntimeBots(exportFile, reportsDir) {
@@ -923,6 +983,8 @@ function main() {
   let populations = createPopulation(inputSize, args.population, random, mutableRosterSeeds, {
     focusBotId: focusSeedBot ? focusSeedBot.id : null
   });
+  const bestRosterSeedCandidates = new Map();
+  updateBestRosterSeedCandidates(bestRosterSeedCandidates, populations, reviewRatings, mutableRosterSeeds);
   const generationReports = [];
   let finalReplayBundles = [];
   const totalBots = Object.values(populations).flat().length;
@@ -976,6 +1038,7 @@ function main() {
         bot.trainingHours = (Number(bot.trainingHours) || 0) + generationTrainingHours;
       });
     });
+    updateBestRosterSeedCandidates(bestRosterSeedCandidates, nextPopulations, reviewRatings, mutableRosterSeeds);
     populations = nextPopulations;
     finalReplayBundles = replayBundles;
 
@@ -1003,7 +1066,8 @@ function main() {
         elapsedMs,
         trainingHoursAddedThisGeneration: generationTrainingHours,
         generationReports,
-        topCandidates: summarizePromotionCandidates(populations, reviewRatings)
+        topCandidates: summarizePromotionCandidates(populations, reviewRatings),
+        bestRosterSeedCandidates: summarizeBestRosterSeedCandidates(bestRosterSeedCandidates, mutableRosterSeeds)
       };
       writeGenerationCheckpoint(checkpointsDir, checkpoint);
       console.log(`${generationLabel} checkpoint written to ${checkpointsDir}`);
@@ -1014,12 +1078,14 @@ function main() {
     .flat()
     .map((bot) => createPromotionCandidate(bot, reviewRatings.byBot.get(bot.id)))
     .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo);
+  const bestSeedPromotionCandidates = Array.from(bestRosterSeedCandidates.values())
+    .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo);
 
   const exportPool = promotionCandidates.filter((bot) => !bot.reviewBlocked);
   const selectedForExport = args.focusBotId
-    ? buildFocusedBotExport(exportPool.length ? exportPool : promotionCandidates, focusSeedBot)
+    ? buildFocusedBotExport(bestSeedPromotionCandidates.length ? bestSeedPromotionCandidates : (exportPool.length ? exportPool : promotionCandidates), focusSeedBot)
     : args.updateAllRoster
-    ? buildUpdateAllRosterExport(exportPool.length ? exportPool : promotionCandidates, mutableRosterSeeds)
+    ? buildUpdateAllRosterExport(bestSeedPromotionCandidates.length ? bestSeedPromotionCandidates : (exportPool.length ? exportPool : promotionCandidates), mutableRosterSeeds)
     : (exportPool.length ? exportPool : promotionCandidates).slice(0, 12);
   const exportBots = (args.updateAllRoster || args.focusBotId) ? selectedForExport : assignDifficultyBands(selectedForExport);
   const rankedBots = exportBots.map((bot) => ({
@@ -1034,6 +1100,10 @@ function main() {
     difficultyBand: bot.difficultyBand,
     elo: Math.round(bot.elo),
     promotionScore: Math.round(bot.promotionScore),
+    selectedCandidateId: bot.selectedCandidateId || bot.id,
+    selectedCandidateGeneration: bot.selectedCandidateGeneration != null ? bot.selectedCandidateGeneration : bot.generation,
+    selectedCandidateTrainingHours: Number((Number(bot.selectedCandidateTrainingHours != null ? bot.selectedCandidateTrainingHours : bot.trainingHours) || 0).toFixed(3)),
+    selectedCandidatePromotionScore: bot.selectedCandidatePromotionScore != null ? Math.round(bot.selectedCandidatePromotionScore) : Math.round(bot.promotionScore),
     metadata: bot.metadata ? clone(bot.metadata) : null,
     trainingHours: Number((Number(bot.trainingHours) || 0).toFixed(3)),
     controllerParams: bot.controllerParams,
@@ -1068,6 +1138,7 @@ function main() {
     ratingsFileUsed: args.ratingsFile,
     humanReviewSummary: reviewRatings.summary,
     generationReports,
+    bestRosterSeedCandidates: summarizeBestRosterSeedCandidates(bestRosterSeedCandidates, mutableRosterSeeds),
     blockedBots: promotionCandidates
       .filter((bot) => bot.reviewBlocked)
       .map((bot) => ({
@@ -1087,6 +1158,9 @@ function main() {
       difficultyBand: bot.difficultyBand,
       elo: bot.elo,
       promotionScore: bot.promotionScore,
+      selectedCandidateId: bot.selectedCandidateId || bot.id,
+      selectedCandidateGeneration: bot.selectedCandidateGeneration != null ? bot.selectedCandidateGeneration : bot.generation,
+      selectedCandidateTrainingHours: bot.selectedCandidateTrainingHours != null ? bot.selectedCandidateTrainingHours : bot.trainingHours,
       trainingHours: bot.trainingHours,
       reviewBlocked: bot.reviewBlocked,
       reviewSummary: bot.reviewSummary
