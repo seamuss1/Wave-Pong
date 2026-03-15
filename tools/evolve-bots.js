@@ -9,6 +9,7 @@ const config = require(path.join(repoRoot, 'runtime/js/config.js'));
 const simCore = require(path.join(repoRoot, 'runtime/js/sim-core.js'));
 const controllers = require(path.join(repoRoot, 'runtime/js/controllers.js'));
 const runtimeVersion = require(path.join(repoRoot, 'runtime/js/version.js'));
+const humanTraining = require(path.join(repoRoot, 'tools', 'human-training.js'));
 
 const ARCHETYPES = [
   {
@@ -102,12 +103,14 @@ function parseArgs(argv) {
     reportsDir: path.join(repoRoot, 'tools', 'reports'),
     exportFile: path.join(repoRoot, 'tools', 'reports', 'exported-bots.js'),
     ratingsFile: path.join(repoRoot, 'tools', 'reports', 'review-ratings.json'),
+    humanTrainingFile: path.join(repoRoot, 'tools', 'reports', 'human-training-data.json'),
     rosterFile: path.join(repoRoot, 'runtime', 'js', 'bot-roster.js'),
     rosterMode: 'none',
     focusBotId: null,
     selfPlay: false,
     updateAllRoster: false,
     publishRuntime: false,
+    autoPromoteEvery: 0,
     checkpointEvery: 1,
     progressEveryMatches: 100
   };
@@ -122,12 +125,14 @@ function parseArgs(argv) {
     else if (arg === '--reports-dir' && argv[i + 1]) args.reportsDir = path.resolve(argv[++i]);
     else if (arg === '--export-file' && argv[i + 1]) args.exportFile = path.resolve(argv[++i]);
     else if (arg === '--ratings-file' && argv[i + 1]) args.ratingsFile = path.resolve(argv[++i]);
+    else if (arg === '--human-training-file' && argv[i + 1]) args.humanTrainingFile = path.resolve(argv[++i]);
     else if (arg === '--roster-file' && argv[i + 1]) args.rosterFile = path.resolve(argv[++i]);
     else if (arg === '--roster-mode' && argv[i + 1]) args.rosterMode = String(argv[++i]).toLowerCase();
     else if (arg === '--focus-bot-id' && argv[i + 1]) args.focusBotId = String(argv[++i]);
     else if (arg === '--self-play') args.selfPlay = true;
     else if (arg === '--update-all-roster') args.updateAllRoster = true;
     else if (arg === '--publish-runtime') args.publishRuntime = true;
+    else if (arg === '--auto-promote-every' && argv[i + 1]) args.autoPromoteEvery = Number(argv[++i]);
     else if (arg === '--checkpoint-every' && argv[i + 1]) args.checkpointEvery = Number(argv[++i]);
     else if (arg === '--progress-every' && argv[i + 1]) args.progressEveryMatches = Number(argv[++i]);
     else throw new Error(`Unknown argument: ${arg}`);
@@ -140,6 +145,12 @@ function parseArgs(argv) {
   if (args.focusBotId && args.rosterMode === 'none') args.rosterMode = 'mutable';
   if (args.selfPlay && args.focusBotId && args.population < 2) {
     throw new Error('--self-play with --focus-bot-id requires --population 2 or higher so the bot has descendants to spar against.');
+  }
+  if (args.autoPromoteEvery < 0) {
+    throw new Error('--auto-promote-every must be 0 or higher.');
+  }
+  if (args.autoPromoteEvery > 0 && !args.publishRuntime) {
+    throw new Error('--auto-promote-every requires --publish-runtime because auto-promotion only affects the live runtime roster.');
   }
 
   return args;
@@ -350,21 +361,35 @@ function aggregateHumanRatings(ratings) {
   };
 }
 
-function createPromotionCandidate(bot, reviewSummary) {
+function getHumanTrainingLookupId(bot) {
+  return bot && (bot.sourceBotId || bot.id) ? (bot.sourceBotId || bot.id) : null;
+}
+
+function createPromotionCandidate(bot, reviewSummary, humanTrainingSummary) {
   const blockedByReview = !!(reviewSummary && reviewSummary.rejectCount > 0);
-  const promotionScore = bot.elo + (reviewSummary ? reviewSummary.reviewScoreAverage : 0) - (blockedByReview ? 2000 : 0);
+  const humanChallengeScore = humanTrainingSummary ? Number(humanTrainingSummary.challengeScore) || 0 : 0;
+  const promotionScore = bot.elo +
+    (reviewSummary ? reviewSummary.reviewScoreAverage : 0) +
+    humanChallengeScore -
+    (blockedByReview ? 2000 : 0);
   return {
     ...bot,
     reviewSummary: reviewSummary || null,
     reviewBlocked: blockedByReview,
+    humanTrainingSummary: humanTrainingSummary || bot.humanTrainingSummary || null,
+    humanChallengeScore,
     promotionScore
   };
 }
 
-function summarizePromotionCandidates(populations, reviewRatings, limit = 12) {
+function summarizePromotionCandidates(populations, reviewRatings, humanTrainingSummaries, limit = 12) {
   return Object.values(populations)
     .flat()
-    .map((bot) => createPromotionCandidate(bot, reviewRatings.byBot.get(bot.id)))
+    .map((bot) => createPromotionCandidate(
+      bot,
+      reviewRatings.byBot.get(bot.id),
+      humanTrainingSummaries.get(getHumanTrainingLookupId(bot))
+    ))
     .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo)
     .slice(0, limit)
     .map((bot) => ({
@@ -375,7 +400,9 @@ function summarizePromotionCandidates(populations, reviewRatings, limit = 12) {
       elo: Math.round(bot.elo),
       promotionScore: Math.round(bot.promotionScore),
       reviewBlocked: !!bot.reviewBlocked,
-      reviewSummary: bot.reviewSummary
+      reviewSummary: bot.reviewSummary,
+      humanTrainingSummary: bot.humanTrainingSummary,
+      humanChallengeScore: Number((bot.humanChallengeScore || 0).toFixed(2))
     }));
 }
 
@@ -455,6 +482,8 @@ function createGenome(archetype, generation, inputSize, random, parent = null) {
     lineageId: parent ? parent.lineageId : baseId,
     sourceBotId: parent ? (parent.sourceBotId || null) : null,
     metadata: parent && parent.metadata ? clone(parent.metadata) : null,
+    humanTrainingSummary: parent && parent.humanTrainingSummary ? clone(parent.humanTrainingSummary) : null,
+    humanFineTuneSummary: parent && parent.humanFineTuneSummary ? clone(parent.humanFineTuneSummary) : null,
     trainingHours: Number(parent && parent.trainingHours) || 0,
     elo: 1000,
     fitnessScore: 0,
@@ -482,6 +511,8 @@ function normalizeRosterSeed(bot) {
     lineageId: bot.lineageId || bot.id,
     sourceBotId: bot.sourceBotId || bot.id,
     metadata: clone(bot.metadata || null),
+    humanTrainingSummary: clone(bot.humanTrainingSummary || (bot.metadata && bot.metadata.humanTrainingSummary) || null),
+    humanFineTuneSummary: clone(bot.humanFineTuneSummary || (bot.metadata && bot.metadata.humanFineTuneSummary) || null),
     trainingHours: Number(bot.trainingHours) || Number(bot.metadata && bot.metadata.trainingHours) || 0,
     difficultyBand: bot.difficultyBand || null,
     elo: Number(bot.elo) || 1000,
@@ -503,6 +534,72 @@ function loadRosterBots(filePath) {
   const rosterValue = loadModule(filePath);
   const rawBots = Array.isArray(rosterValue) ? rosterValue : [];
   return rawBots.filter((bot) => bot && bot.network && bot.archetype).map(normalizeRosterSeed);
+}
+
+function attachHumanTrainingMetadata(bot, humanTrainingSummary, humanFineTuneSummary) {
+  if (!bot) return;
+  if (!bot.metadata || typeof bot.metadata !== 'object') bot.metadata = {};
+  if (humanTrainingSummary) {
+    bot.humanTrainingSummary = clone(humanTrainingSummary);
+    bot.metadata.humanTrainingSummary = clone(humanTrainingSummary);
+  }
+  if (humanFineTuneSummary) {
+    bot.humanFineTuneSummary = clone(humanFineTuneSummary);
+    bot.metadata.humanFineTuneSummary = clone(humanFineTuneSummary);
+  }
+}
+
+function applyHumanTrainingToRosterBots(rosterBots, humanTrainingDataset, random, options = {}) {
+  const dataset = humanTrainingDataset && Array.isArray(humanTrainingDataset.sessions)
+    ? humanTrainingDataset
+    : { sessions: [] };
+  const enableFineTune = options.enableFineTune !== false;
+  const imitationDataset = humanTraining.buildImitationDatasetByBot(dataset.sessions, {
+    maxSamplesPerBot: 4000,
+    random
+  });
+  const summary = humanTraining.buildDatasetSummary(dataset.sessions, imitationDataset.sampleCounts);
+  const summariesByBot = new Map(summary.byBot.map((entry) => [entry.botId, entry]));
+  const fineTuneResults = [];
+
+  for (const bot of rosterBots) {
+    const lookupId = getHumanTrainingLookupId(bot);
+    const humanSummary = summariesByBot.get(lookupId) || null;
+    const samples = imitationDataset.byBot.get(bot.id) || imitationDataset.byBot.get(lookupId) || [];
+    let fineTuneSummary = null;
+    if (enableFineTune && samples.length) {
+      fineTuneSummary = humanTraining.fineTuneBotWithSamples(bot, samples, {
+        batchSize: 64,
+        epochs: 3,
+        learningRate: 0.01,
+        random
+      });
+      fineTuneResults.push({
+        botId: bot.id,
+        botName: bot.name,
+        sourceBotId: bot.sourceBotId || null,
+        sampleCount: fineTuneSummary.sampleCount,
+        epochs: fineTuneSummary.epochs,
+        averageLoss: fineTuneSummary.averageLoss
+      });
+    }
+    if (humanSummary || fineTuneSummary) {
+      attachHumanTrainingMetadata(bot, humanSummary, fineTuneSummary);
+    }
+  }
+
+  const rosterBotIds = new Set(rosterBots.map((bot) => bot.id));
+  const unmatchedBotIds = summary.byBot
+    .filter((entry) => !rosterBotIds.has(entry.botId))
+    .map((entry) => entry.botId);
+
+  return {
+    summary,
+    summariesByBot,
+    fineTuneResults,
+    validations: imitationDataset.validations,
+    unmatchedBotIds
+  };
 }
 
 function createPopulation(inputSize, populationSize, random, rosterSeeds = [], options = {}) {
@@ -862,6 +959,85 @@ function buildUpdateAllRosterExport(promotionCandidates, rosterSeedBots) {
   }).sort((a, b) => (Number(b.elo) || 0) - (Number(a.elo) || 0));
 }
 
+function buildRankedBotsForExport(populations, reviewRatings, humanTrainingSummaries, args, focusSeedBot, mutableRosterSeeds) {
+  const promotionCandidates = Object.values(populations)
+    .flat()
+    .map((bot) => createPromotionCandidate(
+      bot,
+      reviewRatings.byBot.get(bot.id),
+      humanTrainingSummaries.get(getHumanTrainingLookupId(bot))
+    ))
+    .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo);
+
+  const exportPool = promotionCandidates.filter((bot) => !bot.reviewBlocked);
+  const selectedForExport = args.focusBotId
+    ? buildFocusedBotExport(exportPool.length ? exportPool : promotionCandidates, focusSeedBot)
+    : args.updateAllRoster
+    ? buildUpdateAllRosterExport(exportPool.length ? exportPool : promotionCandidates, mutableRosterSeeds)
+    : (exportPool.length ? exportPool : promotionCandidates).slice(0, 12);
+  const exportBots = (args.updateAllRoster || args.focusBotId) ? selectedForExport : assignDifficultyBands(selectedForExport);
+  const rankedBots = exportBots.map((bot) => ({
+    id: bot.id,
+    name: bot.name,
+    schemaVersion: 1,
+    archetype: bot.archetype,
+    personality: bot.personality,
+    generation: bot.generation,
+    lineageId: bot.lineageId,
+    sourceBotId: bot.sourceBotId || null,
+    difficultyBand: bot.difficultyBand,
+    elo: Math.round(bot.elo),
+    promotionScore: Math.round(bot.promotionScore),
+    metadata: bot.metadata ? clone(bot.metadata) : null,
+    trainingHours: Number((Number(bot.trainingHours) || 0).toFixed(3)),
+    controllerParams: bot.controllerParams,
+    mutationProfile: bot.mutationProfile,
+    network: bot.network,
+    reviewBlocked: !!bot.reviewBlocked,
+    reviewSummary: bot.reviewSummary,
+    humanTrainingSummary: bot.humanTrainingSummary ? clone(bot.humanTrainingSummary) : null,
+    humanFineTuneSummary: bot.humanFineTuneSummary ? clone(bot.humanFineTuneSummary) : null,
+    humanChallengeScore: Number((bot.humanChallengeScore || 0).toFixed(2))
+  }));
+
+  return {
+    promotionCandidates,
+    rankedBots
+  };
+}
+
+function formatRoleLabel(bot) {
+  const roleName = bot && bot.metadata && bot.metadata.roleName;
+  return roleName ? `${bot.name} [${roleName}]` : bot.name;
+}
+
+function summarizeArchetypeLeaders(promotionCandidates) {
+  const parts = [];
+  for (const archetype of ARCHETYPES) {
+    const leader = promotionCandidates.find((bot) => bot.archetype === archetype.id);
+    if (!leader) continue;
+    parts.push(
+      `${archetype.id}:${leader.id} elo=${Math.round(leader.elo)} score=${Math.round(leader.promotionScore)}`
+    );
+  }
+  return parts;
+}
+
+function summarizeExportedBots(rankedBots) {
+  return rankedBots.map((bot, index) => {
+    const bits = [
+      `#${index + 1}`,
+      `${formatRoleLabel(bot)} (${bot.id})`,
+      `elo=${bot.elo}`,
+      `score=${bot.promotionScore}`
+    ];
+    if (bot.trainingHours !== undefined) bits.push(`hours=${bot.trainingHours}`);
+    if (bot.reviewBlocked) bits.push('reviewBlocked');
+    if (bot.humanTrainingSummary) bits.push(`humanChallenge=${Number(bot.humanChallengeScore || 0).toFixed(1)}`);
+    return bits.join(' | ');
+  });
+}
+
 function autoPublishRuntimeBots(exportFile, reportsDir) {
   const publishScript = path.join(repoRoot, 'tools', 'publish-bots.js');
   const publishReport = path.join(reportsDir, 'published-bots-report.json');
@@ -896,8 +1072,28 @@ function main() {
   const reviewRatings = aggregateHumanRatings(humanRatings);
   const invokedCommand = ['node', 'tools/evolve-bots.js', ...process.argv.slice(2)].map(formatCommandArg).join(' ');
   const rosterBots = loadRosterBots(args.rosterFile);
+  const humanTrainingDataset = humanTraining.loadDataset(args.humanTrainingFile);
+  const inputSize = getObservationSize();
+  const random = createSeededRandom(args.seed);
+  const humanTrainingRandom = createSeededRandom(args.seed + 17);
+  const humanFineTuneEnabled = !!(args.focusBotId || args.updateAllRoster || args.rosterMode !== 'none');
+  const humanTrainingReport = applyHumanTrainingToRosterBots(
+    rosterBots,
+    humanTrainingDataset,
+    humanTrainingRandom,
+    { enableFineTune: humanFineTuneEnabled }
+  );
   if (args.updateAllRoster && !rosterBots.length) {
     throw new Error(`--update-all-roster requires a non-empty roster file: ${args.rosterFile}`);
+  }
+  if (humanTrainingReport.summary.sessionCount && !rosterBots.length) {
+    console.warn(`Human training dataset has ${humanTrainingReport.summary.sessionCount} session(s), but no roster bots were loaded for fine-tuning.`);
+  }
+  if (humanTrainingReport.summary.sessionCount && !humanFineTuneEnabled) {
+    console.warn('Human training fine-tuning was skipped because this run is not using roster seeds.');
+  }
+  if (humanTrainingReport.unmatchedBotIds.length) {
+    console.warn(`Human training sessions had no matching roster seed for: ${humanTrainingReport.unmatchedBotIds.join(', ')}`);
   }
   const focusSeedBot = args.focusBotId
     ? rosterBots.find((bot) => bot.id === args.focusBotId || bot.sourceBotId === args.focusBotId) || null
@@ -918,8 +1114,6 @@ function main() {
       ? rosterBots.map((bot) => ({ ...clone(bot), isStaticRosterBot: true }))
       : []);
 
-  const inputSize = getObservationSize();
-  const random = createSeededRandom(args.seed);
   let populations = createPopulation(inputSize, args.population, random, mutableRosterSeeds, {
     focusBotId: focusSeedBot ? focusSeedBot.id : null
   });
@@ -934,7 +1128,11 @@ function main() {
   console.log(`Each generation evaluates ${matchesPerGeneration} matches; total planned matches: ${totalPlannedMatches}.`);
   console.log(
     `scoreLimit=${args.scoreLimit}, maxTicks=${args.maxTicks}, checkpointEvery=${args.checkpointEvery}, progressEvery=${args.progressEveryMatches}` +
-    `, roster=${summarizeRosterConfig(args, mutableRosterSeeds, staticRosterBots)}, publishRuntime=${args.publishRuntime}`
+    `, roster=${summarizeRosterConfig(args, mutableRosterSeeds, staticRosterBots)}, publishRuntime=${args.publishRuntime}, autoPromoteEvery=${args.autoPromoteEvery}`
+  );
+  console.log(
+    `humanTrainingSessions=${humanTrainingReport.summary.sessionCount}, humanTrainingBots=${humanTrainingReport.summary.botCount}, ` +
+    `fineTunedBots=${humanTrainingReport.fineTuneResults.length}, humanTrainingFile=${args.humanTrainingFile}`
   );
 
   for (let generation = 0; generation < args.generations; generation += 1) {
@@ -1003,45 +1201,39 @@ function main() {
         elapsedMs,
         trainingHoursAddedThisGeneration: generationTrainingHours,
         generationReports,
-        topCandidates: summarizePromotionCandidates(populations, reviewRatings)
+        topCandidates: summarizePromotionCandidates(populations, reviewRatings, humanTrainingReport.summariesByBot)
       };
       writeGenerationCheckpoint(checkpointsDir, checkpoint);
       console.log(`${generationLabel} checkpoint written to ${checkpointsDir}`);
     }
+
+    if (
+      args.publishRuntime &&
+      args.autoPromoteEvery > 0 &&
+      (generation + 1) < args.generations &&
+      ((generation + 1) % args.autoPromoteEvery === 0)
+    ) {
+      const autoPromotion = buildRankedBotsForExport(
+        populations,
+        reviewRatings,
+        humanTrainingReport.summariesByBot,
+        args,
+        focusSeedBot,
+        mutableRosterSeeds
+      );
+      writeBotsScript(args.exportFile, autoPromotion.rankedBots);
+      autoPublishRuntimeBots(args.exportFile, args.reportsDir);
+    }
   }
 
-  const promotionCandidates = Object.values(populations)
-    .flat()
-    .map((bot) => createPromotionCandidate(bot, reviewRatings.byBot.get(bot.id)))
-    .sort((a, b) => b.promotionScore - a.promotionScore || b.elo - a.elo);
-
-  const exportPool = promotionCandidates.filter((bot) => !bot.reviewBlocked);
-  const selectedForExport = args.focusBotId
-    ? buildFocusedBotExport(exportPool.length ? exportPool : promotionCandidates, focusSeedBot)
-    : args.updateAllRoster
-    ? buildUpdateAllRosterExport(exportPool.length ? exportPool : promotionCandidates, mutableRosterSeeds)
-    : (exportPool.length ? exportPool : promotionCandidates).slice(0, 12);
-  const exportBots = (args.updateAllRoster || args.focusBotId) ? selectedForExport : assignDifficultyBands(selectedForExport);
-  const rankedBots = exportBots.map((bot) => ({
-    id: bot.id,
-    name: bot.name,
-    schemaVersion: 1,
-    archetype: bot.archetype,
-    personality: bot.personality,
-    generation: bot.generation,
-    lineageId: bot.lineageId,
-    sourceBotId: bot.sourceBotId || null,
-    difficultyBand: bot.difficultyBand,
-    elo: Math.round(bot.elo),
-    promotionScore: Math.round(bot.promotionScore),
-    metadata: bot.metadata ? clone(bot.metadata) : null,
-    trainingHours: Number((Number(bot.trainingHours) || 0).toFixed(3)),
-    controllerParams: bot.controllerParams,
-    mutationProfile: bot.mutationProfile,
-    network: bot.network,
-    reviewBlocked: !!bot.reviewBlocked,
-    reviewSummary: bot.reviewSummary
-  }));
+  const { promotionCandidates, rankedBots } = buildRankedBotsForExport(
+    populations,
+    reviewRatings,
+    humanTrainingReport.summariesByBot,
+    args,
+    focusSeedBot,
+    mutableRosterSeeds
+  );
 
   writeBotsScript(args.exportFile, rankedBots);
   const totalElapsedMs = Date.now() - overallStartedAt;
@@ -1066,7 +1258,12 @@ function main() {
     elapsedMs: totalElapsedMs,
     elapsedTrainingHours: Number((totalElapsedMs / 3600000).toFixed(3)),
     ratingsFileUsed: args.ratingsFile,
+    humanTrainingFileUsed: args.humanTrainingFile,
     humanReviewSummary: reviewRatings.summary,
+    humanTrainingSummary: humanTrainingReport.summary,
+    humanTrainingFineTuneResults: humanTrainingReport.fineTuneResults,
+    humanTrainingReplayValidations: humanTrainingReport.validations,
+    unmatchedHumanTrainingBotIds: humanTrainingReport.unmatchedBotIds,
     generationReports,
     blockedBots: promotionCandidates
       .filter((bot) => bot.reviewBlocked)
@@ -1077,7 +1274,9 @@ function main() {
         elo: Math.round(bot.elo),
         promotionScore: Math.round(bot.promotionScore),
         trainingHours: Number((Number(bot.trainingHours) || 0).toFixed(3)),
-        reviewSummary: bot.reviewSummary
+        reviewSummary: bot.reviewSummary,
+        humanTrainingSummary: bot.humanTrainingSummary,
+        humanChallengeScore: Number((bot.humanChallengeScore || 0).toFixed(2))
       })),
     exportedBots: rankedBots.map((bot) => ({
       id: bot.id,
@@ -1089,7 +1288,10 @@ function main() {
       promotionScore: bot.promotionScore,
       trainingHours: bot.trainingHours,
       reviewBlocked: bot.reviewBlocked,
-      reviewSummary: bot.reviewSummary
+      reviewSummary: bot.reviewSummary,
+      humanTrainingSummary: bot.humanTrainingSummary,
+      humanFineTuneSummary: bot.humanFineTuneSummary,
+      humanChallengeScore: bot.humanChallengeScore
     }))
   };
 
@@ -1105,6 +1307,22 @@ function main() {
   console.log(`Elapsed: ${totalElapsedMs} ms | ${(totalElapsedMs / 1000).toFixed(3)} s | ${(totalElapsedMs / 3600000).toFixed(4)} h`);
   console.log(`Evolved ${rankedBots.length} bots and exported them to ${args.exportFile}`);
   console.log(`Report written to ${reportPath}`);
+  console.log(`Run summary: matches/generation=${matchesPerGeneration}, totalMatches=${totalPlannedMatches}, rosterSeeds=${mutableRosterSeeds.length}, staticRoster=${staticRosterBots.length}`);
+  const archetypeLeaderSummary = summarizeArchetypeLeaders(promotionCandidates);
+  if (archetypeLeaderSummary.length) {
+    console.log(`Archetype leaders: ${archetypeLeaderSummary.join(' | ')}`);
+  }
+  const exportedSummary = summarizeExportedBots(rankedBots);
+  if (exportedSummary.length) {
+    console.log('Exported bot summary:');
+    exportedSummary.forEach((line) => console.log(`  ${line}`));
+  }
+  if (report.blockedBots.length) {
+    console.log('Blocked bot summary:');
+    report.blockedBots.forEach((bot) => {
+      console.log(`  ${bot.id} | elo=${bot.elo} | score=${bot.promotionScore} | hours=${bot.trainingHours}`);
+    });
+  }
   console.log('Copy/paste to rerun:');
   console.log(invokedCommand);
   if (args.publishRuntime) {

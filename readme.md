@@ -28,9 +28,36 @@ Open `runtime/index.html` in a modern desktop browser.
 - `tools/browser-smoke-test.js` contains the DevTools-driven smoke assertions and can also attach to an already-launched browser.
 - `tools/package.json` contains tooling-only Node metadata.
 
+## Human bot training loop
+
+Player vs CPU matches now keep a small browser-side cache of compact training sessions for the selected bot.
+
+Recommended flow:
+
+1. Open `runtime/index.html` and play one or more Player vs CPU matches.
+2. On the game-over screen, use **Download training JSON** to export the cached sessions.
+3. Import that download into the tooling dataset:
+
+```bash
+cd tools
+npm.cmd run import:human-training -- --input <path-to-downloaded-json>
+```
+
+4. Run bot evolution so the imported sessions can fine-tune matching roster seeds and influence promotion:
+
+```bash
+npm.cmd run evolve
+```
+
+5. Publish the evolved bots back into `runtime/js/bot-roster.js` when you are ready:
+
+```bash
+npm.cmd run publish:bots
+```
+
 ## itch.io packaging
 
-Versioning is tracked in `version.json`. The current version is `0.3.3`.
+Versioning is tracked in `version.json`.
 
 Version rules:
 
@@ -76,7 +103,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1
 That command:
 
 - rebuilds `itch-build/`
-- creates the single current deploy zip as `wave-pong-itchio-v0.3.3.zip`
+- creates the single current deploy zip as `wave-pong-itchio-v<version>.zip`
 - verifies the archived `index.html` matches `itch-build/index.html`
 
 ## Smoke testing
@@ -174,14 +201,14 @@ npm.cmd run deploy:test
 npm.cmd run deploy:production
 ```
 
-If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.3.3`.
+If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.7.0`.
 
 You can still override it for a one-off deploy:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
   -Destination test `
-  -UserVersion "0.3.3-hotfix1"
+  -UserVersion "0.7.0-hotfix1"
 ```
 
 ### First-time itch.io setup

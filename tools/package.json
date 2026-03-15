@@ -9,11 +9,13 @@
     "deploy:test": "powershell -ExecutionPolicy Bypass -File ./deploy-itch.ps1 -Destination test",
     "deploy:production": "powershell -ExecutionPolicy Bypass -File ./deploy-itch.ps1 -Destination production",
     "evolve": "node evolve-bots.js",
+    "import:human-training": "node import-human-training.js",
     "publish:bots": "node publish-bots.js",
     "render:replay": "node render-replay.js",
     "review:replays": "node review-replays.js",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./browser-smoke-test.ps1",
     "smoke:node": "node browser-smoke-test.js",
+    "test:human-training": "node test-human-training.js",
     "version:patch": "powershell -ExecutionPolicy Bypass -File ./bump-version.ps1 -Level patch",
     "version:minor": "powershell -ExecutionPolicy Bypass -File ./bump-version.ps1 -Level minor",
     "version:major": "powershell -ExecutionPolicy Bypass -File ./bump-version.ps1 -Level major"

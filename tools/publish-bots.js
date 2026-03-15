@@ -17,7 +17,10 @@ function parseArgs(argv) {
     forceAdd: false,
     promotionSeeds: 4,
     promotionScoreLimit: 5,
-    promotionMaxTicks: 120 * 30
+    promotionMaxTicks: 120 * 30,
+    promotionMinPointMargin: 1,
+    promotionMinWinRate: 0.6,
+    promotionMinGoalDiff: 2
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -87,6 +90,8 @@ function inferStyleTags(bot) {
   else tags.push('static-lane');
   if ((bot.runtimeValidation && bot.runtimeValidation.totalGoals >= 9)) tags.push('high-scoring');
   else if ((bot.runtimeValidation && bot.runtimeValidation.totalGoals >= 5)) tags.push('goal-capable');
+  if (bot.humanTrainingSummary && bot.humanTrainingSummary.sessionCount > 0) tags.push('human-tested');
+  if (bot.humanTrainingSummary && Number(bot.humanTrainingSummary.challengeScore) >= 12) tags.push('human-hardened');
   return tags;
 }
 
@@ -141,8 +146,11 @@ function normalizePublishedBot(bot, sourceLabel) {
   const totalMovedTicks = samples.reduce((sum, sample) => sum + (sample.movedTicks || 0), 0);
   const totalGoals = samples.reduce((sum, sample) => sum + (sample.leftScore || 0) + (sample.rightScore || 0), 0);
   const runtimeDisabled = totalMovedTicks === 0 && totalGoals === 0;
+  const humanTrainingSummary = bot.humanTrainingSummary || existingMetadata.humanTrainingSummary || null;
+  const humanFineTuneSummary = bot.humanFineTuneSummary || existingMetadata.humanFineTuneSummary || null;
   const inferredStyleTags = inferStyleTags({
     ...bot,
+    humanTrainingSummary,
     runtimeValidation: {
       totalMovedTicks,
       totalGoals,
@@ -160,13 +168,17 @@ function normalizePublishedBot(bot, sourceLabel) {
     trainingHours: Number(trainingHours.toFixed(3)),
     styleTags: uniqueStrings([...(existingMetadata.styleTags || []), ...inferredStyleTags]),
     eloTier: eloTier(bot.elo),
-    reviewState: existingMetadata.reviewState || (bot.reviewBlocked ? 'blocked' : 'active')
+    reviewState: existingMetadata.reviewState || (bot.reviewBlocked ? 'blocked' : 'active'),
+    humanTrainingSummary: humanTrainingSummary ? clone(humanTrainingSummary) : null,
+    humanFineTuneSummary: humanFineTuneSummary ? clone(humanFineTuneSummary) : null
   };
 
   return {
     ...clone(bot),
     trainingHours: Number(trainingHours.toFixed(3)),
     runtimeDisabled,
+    humanTrainingSummary: humanTrainingSummary ? clone(humanTrainingSummary) : null,
+    humanFineTuneSummary: humanFineTuneSummary ? clone(humanFineTuneSummary) : null,
     runtimeValidation: {
       totalMovedTicks,
       totalGoals,
@@ -209,6 +221,28 @@ function normalizeSourceBots(source, sourceLabel) {
   return rawBots.filter(Boolean).map((bot) => normalizePublishedBot(bot, sourceLabel));
 }
 
+function createPromotionProfiles(options) {
+  const baseScoreLimit = Math.max(3, Math.floor(options.promotionScoreLimit || 5));
+  const baseMaxTicks = Math.max(1200, Math.floor(options.promotionMaxTicks || (120 * 30)));
+  return [
+    {
+      id: 'standard',
+      scoreLimit: baseScoreLimit,
+      maxTicks: baseMaxTicks
+    },
+    {
+      id: 'sprint',
+      scoreLimit: Math.max(3, baseScoreLimit - 2),
+      maxTicks: Math.max(1200, Math.floor(baseMaxTicks * 0.75))
+    },
+    {
+      id: 'endurance',
+      scoreLimit: baseScoreLimit + 2,
+      maxTicks: Math.max(baseMaxTicks + 1200, Math.floor(baseMaxTicks * 1.5))
+    }
+  ];
+}
+
 function evaluateHeadToHeadMatch(leftBot, rightBot, seed, options) {
   const runtime = simCore.createSimulation({ config, seed });
   runtime.setControllers({
@@ -219,21 +253,33 @@ function evaluateHeadToHeadMatch(leftBot, rightBot, seed, options) {
     demo: true,
     skipCountdown: true,
     difficulty: 'spicy',
-    scoreLimit: options.promotionScoreLimit,
+    scoreLimit: options.scoreLimit,
     powerupsEnabled: true,
     trailsEnabled: false,
     theme: 'neon'
   });
 
-  while (!runtime.state.gameOver && runtime.state.tick < options.promotionMaxTicks) {
+  let leftMovedTicks = 0;
+  let rightMovedTicks = 0;
+  let lastLeftY = runtime.world.paddles.left.y;
+  let lastRightY = runtime.world.paddles.right.y;
+  while (!runtime.state.gameOver && runtime.state.tick < options.maxTicks) {
     runtime.stepSimulation(1);
+    const nextLeftY = runtime.world.paddles.left.y;
+    const nextRightY = runtime.world.paddles.right.y;
+    if (Math.abs(nextLeftY - lastLeftY) > 1e-6) leftMovedTicks += 1;
+    if (Math.abs(nextRightY - lastRightY) > 1e-6) rightMovedTicks += 1;
+    lastLeftY = nextLeftY;
+    lastRightY = nextRightY;
   }
 
   return {
     leftScore: runtime.state.leftScore,
     rightScore: runtime.state.rightScore,
     leftWon: runtime.state.leftScore > runtime.state.rightScore,
-    rightWon: runtime.state.rightScore > runtime.state.leftScore
+    rightWon: runtime.state.rightScore > runtime.state.leftScore,
+    leftMovedTicks,
+    rightMovedTicks
   };
 }
 
@@ -248,10 +294,12 @@ function createPromotionSeeds(seedCount) {
 function summarizePromotionSeries(candidate, existing, options) {
   const seedCount = Math.max(1, Math.floor(options.promotionSeeds || 1));
   const seeds = createPromotionSeeds(seedCount);
+  const profiles = createPromotionProfiles(options);
   const summary = {
     candidateId: candidate.id,
     existingId: existing.id,
     seeds,
+    profiles,
     matchesPlayed: 0,
     candidateMatchPoints: 0,
     existingMatchPoints: 0,
@@ -260,63 +308,135 @@ function summarizePromotionSeries(candidate, existing, options) {
     draws: 0,
     candidateGoals: 0,
     existingGoals: 0,
+    candidateMovedTicks: 0,
+    existingMovedTicks: 0,
+    profileSummaries: [],
     gameResults: []
   };
 
-  for (const seed of seeds) {
-    const leftGame = evaluateHeadToHeadMatch(candidate, existing, seed, options);
-    summary.matchesPlayed += 1;
-    summary.candidateGoals += leftGame.leftScore;
-    summary.existingGoals += leftGame.rightScore;
-    if (leftGame.leftWon) {
-      summary.candidateWins += 1;
-      summary.candidateMatchPoints += 1;
-    } else if (leftGame.rightWon) {
-      summary.existingWins += 1;
-      summary.existingMatchPoints += 1;
-    } else {
-      summary.draws += 1;
-      summary.candidateMatchPoints += 0.5;
-      summary.existingMatchPoints += 0.5;
-    }
-    summary.gameResults.push({
-      seed,
-      candidateSide: 'left',
-      candidateScore: leftGame.leftScore,
-      existingScore: leftGame.rightScore
-    });
+  for (const profile of profiles) {
+    const profileSummary = {
+      id: profile.id,
+      scoreLimit: profile.scoreLimit,
+      maxTicks: profile.maxTicks,
+      matchesPlayed: 0,
+      candidateMatchPoints: 0,
+      existingMatchPoints: 0,
+      candidateWins: 0,
+      existingWins: 0,
+      draws: 0,
+      goalDiff: 0
+    };
 
-    const rightGame = evaluateHeadToHeadMatch(existing, candidate, seed, options);
-    summary.matchesPlayed += 1;
-    summary.candidateGoals += rightGame.rightScore;
-    summary.existingGoals += rightGame.leftScore;
-    if (rightGame.rightWon) {
-      summary.candidateWins += 1;
-      summary.candidateMatchPoints += 1;
-    } else if (rightGame.leftWon) {
-      summary.existingWins += 1;
-      summary.existingMatchPoints += 1;
-    } else {
-      summary.draws += 1;
-      summary.candidateMatchPoints += 0.5;
-      summary.existingMatchPoints += 0.5;
+    for (const seed of seeds) {
+      const leftGame = evaluateHeadToHeadMatch(candidate, existing, seed, profile);
+      summary.matchesPlayed += 1;
+      profileSummary.matchesPlayed += 1;
+      summary.candidateGoals += leftGame.leftScore;
+      summary.existingGoals += leftGame.rightScore;
+      summary.candidateMovedTicks += leftGame.leftMovedTicks || 0;
+      summary.existingMovedTicks += leftGame.rightMovedTicks || 0;
+      profileSummary.goalDiff += leftGame.leftScore - leftGame.rightScore;
+      if (leftGame.leftWon) {
+        summary.candidateWins += 1;
+        summary.candidateMatchPoints += 1;
+        profileSummary.candidateWins += 1;
+        profileSummary.candidateMatchPoints += 1;
+      } else if (leftGame.rightWon) {
+        summary.existingWins += 1;
+        summary.existingMatchPoints += 1;
+        profileSummary.existingWins += 1;
+        profileSummary.existingMatchPoints += 1;
+      } else {
+        summary.draws += 1;
+        summary.candidateMatchPoints += 0.5;
+        summary.existingMatchPoints += 0.5;
+        profileSummary.draws += 1;
+        profileSummary.candidateMatchPoints += 0.5;
+        profileSummary.existingMatchPoints += 0.5;
+      }
+      summary.gameResults.push({
+        profile: profile.id,
+        seed,
+        candidateSide: 'left',
+        candidateScore: leftGame.leftScore,
+        existingScore: leftGame.rightScore
+      });
+
+      const rightGame = evaluateHeadToHeadMatch(existing, candidate, seed, profile);
+      summary.matchesPlayed += 1;
+      profileSummary.matchesPlayed += 1;
+      summary.candidateGoals += rightGame.rightScore;
+      summary.existingGoals += rightGame.leftScore;
+      summary.candidateMovedTicks += rightGame.rightMovedTicks || 0;
+      summary.existingMovedTicks += rightGame.leftMovedTicks || 0;
+      profileSummary.goalDiff += rightGame.rightScore - rightGame.leftScore;
+      if (rightGame.rightWon) {
+        summary.candidateWins += 1;
+        summary.candidateMatchPoints += 1;
+        profileSummary.candidateWins += 1;
+        profileSummary.candidateMatchPoints += 1;
+      } else if (rightGame.leftWon) {
+        summary.existingWins += 1;
+        summary.existingMatchPoints += 1;
+        profileSummary.existingWins += 1;
+        profileSummary.existingMatchPoints += 1;
+      } else {
+        summary.draws += 1;
+        summary.candidateMatchPoints += 0.5;
+        summary.existingMatchPoints += 0.5;
+        profileSummary.draws += 1;
+        profileSummary.candidateMatchPoints += 0.5;
+        profileSummary.existingMatchPoints += 0.5;
+      }
+      summary.gameResults.push({
+        profile: profile.id,
+        seed,
+        candidateSide: 'right',
+        candidateScore: rightGame.rightScore,
+        existingScore: rightGame.leftScore
+      });
     }
-    summary.gameResults.push({
-      seed,
-      candidateSide: 'right',
-      candidateScore: rightGame.rightScore,
-      existingScore: rightGame.leftScore
-    });
+
+    summary.profileSummaries.push(profileSummary);
   }
 
   summary.goalDiff = summary.candidateGoals - summary.existingGoals;
-  summary.candidateBeatsRoster =
-    summary.candidateMatchPoints > summary.existingMatchPoints ||
-    (
-      summary.candidateMatchPoints === summary.existingMatchPoints &&
-      summary.goalDiff > 0
-    );
+  summary.pointMargin = summary.candidateMatchPoints - summary.existingMatchPoints;
+  summary.candidateWinRate = summary.matchesPlayed > 0 ? summary.candidateWins / summary.matchesPlayed : 0;
+  summary.existingWinRate = summary.matchesPlayed > 0 ? summary.existingWins / summary.matchesPlayed : 0;
+  summary.candidateActive = summary.candidateMovedTicks > 0;
+  summary.existingActive = summary.existingMovedTicks > 0;
+  summary.failedChecks = [];
+
+  if (summary.pointMargin < Number(options.promotionMinPointMargin || 1)) {
+    summary.failedChecks.push('point_margin');
+  }
+  if (summary.candidateWinRate < Number(options.promotionMinWinRate || 0.6)) {
+    summary.failedChecks.push('win_rate');
+  }
+  if (summary.goalDiff < Number(options.promotionMinGoalDiff || 2)) {
+    summary.failedChecks.push('goal_diff');
+  }
+  for (const profileSummary of summary.profileSummaries) {
+    if (profileSummary.candidateMatchPoints < profileSummary.existingMatchPoints) {
+      summary.failedChecks.push(`profile_${profileSummary.id}`);
+    }
+  }
+  if (!summary.candidateActive && summary.existingActive) {
+    summary.failedChecks.push('candidate_inactive');
+  }
+
+  summary.candidateBeatsRoster = summary.failedChecks.length === 0;
   return summary;
+}
+
+function formatPromotionProfileSummary(profileSummary) {
+  return `${profileSummary.id}:${profileSummary.candidateMatchPoints}-${profileSummary.existingMatchPoints} goalDiff=${profileSummary.goalDiff}`;
+}
+
+function formatPromotionChecks(summary) {
+  return summary.failedChecks.length ? summary.failedChecks.join(', ') : 'passed';
 }
 
 function main() {
@@ -345,16 +465,30 @@ function main() {
     if (replaceIndex >= 0) {
       const existing = nextRoster[replaceIndex];
       const promotionSeries = summarizePromotionSeries(candidate, existing, args);
+      console.log(
+        `Promotion match ${candidate.id} (challenger Elo ${candidate.elo}) vs ${existing.id} (incumbent Elo ${existing.elo})` +
+        ` | points ${promotionSeries.candidateMatchPoints}-${promotionSeries.existingMatchPoints}` +
+        ` | goals ${promotionSeries.candidateGoals}-${promotionSeries.existingGoals}` +
+        ` | wins ${promotionSeries.candidateWins}-${promotionSeries.existingWins}` +
+        ` | profiles ${promotionSeries.profileSummaries.map(formatPromotionProfileSummary).join(' | ')}` +
+        ` | checks ${formatPromotionChecks(promotionSeries)}`
+      );
       candidate.metadata.replacesBotId = existing.id;
       candidate.metadata.promotionSeries = {
         seeds: promotionSeries.seeds,
+        profiles: promotionSeries.profiles,
         matchesPlayed: promotionSeries.matchesPlayed,
         candidateMatchPoints: promotionSeries.candidateMatchPoints,
         existingMatchPoints: promotionSeries.existingMatchPoints,
         candidateWins: promotionSeries.candidateWins,
         existingWins: promotionSeries.existingWins,
         draws: promotionSeries.draws,
-        goalDiff: promotionSeries.goalDiff
+        goalDiff: promotionSeries.goalDiff,
+        pointMargin: promotionSeries.pointMargin,
+        candidateWinRate: promotionSeries.candidateWinRate,
+        existingWinRate: promotionSeries.existingWinRate,
+        failedChecks: promotionSeries.failedChecks,
+        profileSummaries: promotionSeries.profileSummaries
       };
       if (!promotionSeries.candidateBeatsRoster) {
         skippedBots.push({
@@ -369,6 +503,7 @@ function main() {
       replacedBots.push({
         candidateId: candidate.id,
         replacedBotId: existing.id,
+        candidateElo: candidate.elo,
         promotionSeries
       });
       continue;
@@ -417,7 +552,12 @@ function main() {
 
   console.log(`Roster write complete: ${nextRoster.length} published bot(s) in ${args.destination}`);
   if (addedBots.length) console.log(`Added ${addedBots.length} bot(s).`);
-  if (replacedBots.length) console.log(`Replaced ${replacedBots.length} bot(s).`);
+  if (replacedBots.length) {
+    const promotedSummary = replacedBots
+      .map((entry) => `${entry.candidateId} (Elo ${entry.candidateElo})`)
+      .join(', ');
+    console.log(`Promoted ${replacedBots.length} bot(s)!!! ${promotedSummary}`);
+  }
   if (skippedBots.length) console.log(`Skipped ${skippedBots.length} redundant bot(s). See ${args.report}.`);
 }
 

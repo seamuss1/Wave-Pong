@@ -102,6 +102,11 @@
       gameOverScoreLine: get('gameOverScoreLine'),
       gameOverMatchStats: get('gameOverMatchStats'),
       gameOverHistoryStats: get('gameOverHistoryStats'),
+      trainingCaptureSection: get('trainingCaptureSection'),
+      trainingCaptureStatus: get('trainingCaptureStatus'),
+      trainingSessionCount: get('trainingSessionCount'),
+      downloadTrainingBtn: get('downloadTrainingBtn'),
+      clearTrainingBtn: get('clearTrainingBtn'),
       menuBestRally: get('menuBestRally'),
       lastWinnerStat: get('lastWinnerStat'),
       energyStat: get('energyStat'),
@@ -140,6 +145,7 @@
       const {
         storage,
         defaults,
+        training,
         balance,
         defaultHistory,
         powerupDefs,
@@ -264,6 +270,18 @@
       const OVERCAP_MAX_CHARGE = chargeBalance.overcapMax;
       const HISTORY_KEY = storage.historyKey;
       const BEST_RALLY_KEY = storage.bestRallyKey;
+      const trainingSettings = {
+        enabled: !!(training && training.enabled),
+        storage: {
+          sessionsKey: training && training.storage && training.storage.sessionsKey
+            ? training.storage.sessionsKey
+            : 'gameWavePongHumanTrainingSessionsV1'
+        },
+        maxStoredSessions: Math.max(1, Math.floor(Number(training && training.maxStoredSessions) || 8)),
+        exportSchema: (training && training.exportSchema) || 'human-training-export/v1',
+        exportFilePrefix: (training && training.exportFilePrefix) || 'wave-pong-human-training'
+      };
+      const TRAINING_SESSIONS_KEY = trainingSettings.storage.sessionsKey;
       const MAX_WAVE_LEVEL = waveLevelBalance.max;
       const WAVE_LEVEL_XP = waveLevelBalance.xpThresholds;
       const PASSIVE_XP_PER_SEC = xpBalance.passivePerSecond;
@@ -302,6 +320,95 @@
         } catch (err) {
           return false;
         }
+      }
+
+      function normalizeTrainingMatchOptions(value) {
+        const matchOptions = value && typeof value === 'object' ? value : {};
+        return {
+          mode: matchOptions.mode === 'pvp' ? 'pvp' : 'cpu',
+          demo: !!matchOptions.demo,
+          scoreLimit: Math.max(1, Math.floor(Number(matchOptions.scoreLimit) || defaults.scoreLimit)),
+          powerupsEnabled: !!matchOptions.powerupsEnabled,
+          trailsEnabled: !!matchOptions.trailsEnabled,
+          theme: matchOptions.theme || defaults.theme,
+          difficulty: matchOptions.difficulty || defaults.difficulty
+        };
+      }
+
+      function normalizeTrainingReplay(value) {
+        const replayValue = value && typeof value === 'object' ? value : {};
+        return {
+          version: Number(replayValue.version) || 1,
+          seed: normalizeSeed(replayValue.seed),
+          configHash: replayValue.configHash || hashString(stableSerialize(config.balance || config)),
+          durationTicks: Math.max(0, Math.floor(Number(replayValue.durationTicks) || 0)),
+          fixedTickRate: Math.max(1, Math.floor(Number(replayValue.fixedTickRate) || fixedTickRate)),
+          decisionIntervalTicks: Math.max(1, Math.floor(Number(replayValue.decisionIntervalTicks) || decisionIntervalTicks)),
+          actionEncoding: replayValue.actionEncoding || 'delta-v1',
+          actions: Array.isArray(replayValue.actions)
+            ? replayValue.actions.map((entry) => ({
+                tick: Math.max(0, Math.floor(Number(entry && entry.tick) || 0)),
+                side: entry && entry.side === 'right' ? 'right' : 'left',
+                action: {
+                  moveAxis: entry && entry.action && Number.isFinite(entry.action.moveAxis)
+                    ? Math.max(-1, Math.min(1, Math.round(entry.action.moveAxis)))
+                    : 0,
+                  fire: !!(entry && entry.action && entry.action.fire)
+                }
+              }))
+            : []
+        };
+      }
+
+      function normalizeStoredTrainingSession(session) {
+        if (!session || !session.sessionId) return null;
+        const bot = session.bot && typeof session.bot === 'object' ? session.bot : {};
+        const finalScore = session.finalScore && typeof session.finalScore === 'object' ? session.finalScore : {};
+        const result = session.result && typeof session.result === 'object' ? session.result : {};
+        const matchStatsValue = session.matchStats && typeof session.matchStats === 'object' ? session.matchStats : {};
+        return {
+          sessionId: String(session.sessionId),
+          capturedAt: session.capturedAt || new Date().toISOString(),
+          runtimeVersion: session.runtimeVersion || runtimeVersion || null,
+          humanSide: session.humanSide === 'right' ? 'right' : 'left',
+          bot: {
+            id: bot.id ? String(bot.id) : '',
+            name: bot.name ? String(bot.name) : 'CPU',
+            difficultyBand: bot.difficultyBand || null,
+            elo: Number.isFinite(Number(bot.elo)) ? Number(bot.elo) : null
+          },
+          matchOptions: normalizeTrainingMatchOptions(session.matchOptions),
+          finalScore: {
+            left: Math.max(0, Math.floor(Number(finalScore.left) || 0)),
+            right: Math.max(0, Math.floor(Number(finalScore.right) || 0)),
+            human: Math.max(0, Math.floor(Number(finalScore.human) || 0)),
+            bot: Math.max(0, Math.floor(Number(finalScore.bot) || 0))
+          },
+          result: {
+            humanWon: !!result.humanWon,
+            botWon: !!result.botWon
+          },
+          matchStats: deepClone(matchStatsValue),
+          replay: normalizeTrainingReplay(session.replay)
+        };
+      }
+
+      function loadStoredTrainingSessions() {
+        if (!trainingSettings.enabled) return [];
+        try {
+          const raw = safeStorageGetItem(TRAINING_SESSIONS_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return (Array.isArray(parsed) ? parsed : []).map(normalizeStoredTrainingSession).filter(Boolean);
+        } catch (err) {
+          return [];
+        }
+      }
+
+      function saveStoredTrainingSessions(sessions) {
+        const list = (Array.isArray(sessions) ? sessions : []).map(normalizeStoredTrainingSession).filter(Boolean);
+        safeStorageSetItem(TRAINING_SESSIONS_KEY, JSON.stringify(list));
+        return list;
       }
 
       function loadHistory() {
@@ -361,6 +468,7 @@
       history = loadHistory();
       lastWinner = history.lastWinner || 'None';
       matchStats = createMatchStats();
+      const storedTrainingSessions = loadStoredTrainingSessions();
 
       const input = {
         w: false,
@@ -368,9 +476,24 @@
         up: false,
         down: false
       };
+      const humanInputState = {
+        leftFireLatched: false
+      };
       const controllerActionState = {
         left: { moveAxis: 0, fire: false, lastTick: -1 },
         right: { moveAxis: 0, fire: false, lastTick: -1 }
+      };
+      const trainingCapture = {
+        selectedBotId: '',
+        selectedBotName: 'CPU',
+        selectedBotDifficultyBand: null,
+        selectedBotElo: null,
+        currentMatch: null,
+        lastSavedSessionId: null,
+        lastStatus: trainingSettings.enabled
+          ? 'Player vs CPU matches will be cached for offline training.'
+          : 'Browser training capture is disabled.',
+        storedSessions: storedTrainingSessions
       };
 
       const REDUCED_WAVE_FX = (() => {
@@ -638,6 +761,210 @@
         history.lastWinner = leftWon ? leftName : rightName;
         lastWinner = history.lastWinner;
         saveHistory(history);
+      }
+
+      function compactReplayActions(actions) {
+        const compactActions = [];
+        const lastMoveAxisBySide = {
+          left: null,
+          right: null
+        };
+        for (const entry of Array.isArray(actions) ? actions : []) {
+          const side = entry && entry.side === 'right' ? 'right' : 'left';
+          const action = entry && entry.action ? normalizeAction(entry.action) : { moveAxis: 0, fire: false };
+          const moveChanged = lastMoveAxisBySide[side] === null || lastMoveAxisBySide[side] !== action.moveAxis;
+          if (!moveChanged && !action.fire) continue;
+          compactActions.push({
+            tick: Math.max(0, Math.floor(Number(entry && entry.tick) || 0)),
+            side,
+            action
+          });
+          lastMoveAxisBySide[side] = action.moveAxis;
+        }
+        return compactActions;
+      }
+
+      function createTrainingSessionId(botId, compactReplay) {
+        return hashString(stableSerialize({
+          botId: botId || 'cpu',
+          replay: compactReplay
+        }));
+      }
+
+      function buildTrainingMatchContext() {
+        if (!trainingSettings.enabled || headless || state.demoMode || state.mode === 'pvp') return null;
+        const selectedOption = ui.difficultySelect && ui.difficultySelect.selectedIndex >= 0
+          ? ui.difficultySelect.options[ui.difficultySelect.selectedIndex]
+          : null;
+        const botId = trainingCapture.selectedBotId || (selectedOption ? selectedOption.value : '');
+        if (!botId) return null;
+        return {
+          botId,
+          botName: trainingCapture.selectedBotName || (selectedOption ? selectedOption.textContent : 'CPU'),
+          difficultyBand: trainingCapture.selectedBotDifficultyBand || null,
+          elo: Number.isFinite(Number(trainingCapture.selectedBotElo)) ? Number(trainingCapture.selectedBotElo) : null,
+          startedAt: new Date().toISOString()
+        };
+      }
+
+      function shouldCaptureTrainingMatch() {
+        return !!(
+          trainingSettings.enabled &&
+          !headless &&
+          !state.demoMode &&
+          state.mode !== 'pvp' &&
+          trainingCapture.currentMatch &&
+          trainingCapture.currentMatch.botId
+        );
+      }
+
+      function buildTrainingSession() {
+        if (!shouldCaptureTrainingMatch()) return null;
+        const compactReplay = serializeReplay({ compact: true, includeEvents: false, includeStateHashes: false });
+        const currentMatch = trainingCapture.currentMatch;
+        const humanScore = state.leftScore;
+        const botScore = state.rightScore;
+        const sessionId = createTrainingSessionId(currentMatch.botId, compactReplay);
+        return normalizeStoredTrainingSession({
+          sessionId,
+          capturedAt: new Date().toISOString(),
+          runtimeVersion: runtimeVersion || null,
+          humanSide: 'left',
+          bot: {
+            id: currentMatch.botId,
+            name: currentMatch.botName,
+            difficultyBand: currentMatch.difficultyBand,
+            elo: currentMatch.elo
+          },
+          matchOptions: {
+            mode: state.mode,
+            demo: state.demoMode,
+            scoreLimit: state.scoreLimit,
+            powerupsEnabled: state.powerupsEnabled,
+            trailsEnabled: state.trailsEnabled,
+            theme: state.theme,
+            difficulty: state.difficulty
+          },
+          finalScore: {
+            left: state.leftScore,
+            right: state.rightScore,
+            human: humanScore,
+            bot: botScore
+          },
+          result: {
+            humanWon: humanScore > botScore,
+            botWon: botScore > humanScore
+          },
+          matchStats,
+          replay: compactReplay
+        });
+      }
+
+      function persistTrainingSession(session) {
+        if (!session) return null;
+        const nextSessions = [
+          session,
+          ...trainingCapture.storedSessions.filter((entry) => entry.sessionId !== session.sessionId)
+        ].slice(0, trainingSettings.maxStoredSessions);
+        trainingCapture.storedSessions = saveStoredTrainingSessions(nextSessions);
+        trainingCapture.lastSavedSessionId = session.sessionId;
+        trainingCapture.lastStatus = `Saved training session for ${session.bot.name}.`;
+        return session;
+      }
+
+      function captureCompletedTrainingSession() {
+        if (!trainingSettings.enabled) {
+          trainingCapture.lastStatus = 'Browser training capture is disabled.';
+          return null;
+        }
+        if (headless) {
+          trainingCapture.lastStatus = 'Headless sessions do not write browser training captures.';
+          return null;
+        }
+        if (state.demoMode) {
+          trainingCapture.lastStatus = 'Training capture skipped for CPU demo matches.';
+          return null;
+        }
+        if (state.mode === 'pvp') {
+          trainingCapture.lastStatus = 'Training capture only records Player vs CPU matches.';
+          return null;
+        }
+        const session = buildTrainingSession();
+        if (!session) {
+          trainingCapture.lastStatus = 'Training capture is waiting for a bot matchup.';
+          return null;
+        }
+        return persistTrainingSession(session);
+      }
+
+      function buildTrainingExport() {
+        return {
+          schema: trainingSettings.exportSchema,
+          exportedAt: new Date().toISOString(),
+          runtimeVersion: runtimeVersion || null,
+          sessionCount: trainingCapture.storedSessions.length,
+          sessions: deepClone(trainingCapture.storedSessions)
+        };
+      }
+
+      function buildTrainingExportFileName() {
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        return `${trainingSettings.exportFilePrefix}-${stamp}.json`;
+      }
+
+      function downloadTextFile(fileName, text) {
+        if (!documentRef || !windowRef || typeof windowRef.Blob !== 'function' || !windowRef.URL) return false;
+        const blob = new windowRef.Blob([text], { type: 'application/json' });
+        const url = windowRef.URL.createObjectURL(blob);
+        const anchor = documentRef.createElement('a');
+        anchor.href = url;
+        anchor.download = fileName;
+        documentRef.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        windowRef.setTimeout(() => windowRef.URL.revokeObjectURL(url), 0);
+        return true;
+      }
+
+      function downloadTrainingExport() {
+        if (!trainingCapture.storedSessions.length) {
+          trainingCapture.lastStatus = 'No saved training sessions to export yet.';
+          updateTrainingUI();
+          return false;
+        }
+        const payload = JSON.stringify(buildTrainingExport(), null, 2);
+        const downloaded = downloadTextFile(buildTrainingExportFileName(), payload);
+        trainingCapture.lastStatus = downloaded
+          ? `Downloaded ${trainingCapture.storedSessions.length} training session${trainingCapture.storedSessions.length === 1 ? '' : 's'}.`
+          : 'Training export download is unavailable in this runtime.';
+        updateTrainingUI();
+        return downloaded;
+      }
+
+      function clearStoredTrainingSessions() {
+        trainingCapture.storedSessions = saveStoredTrainingSessions([]);
+        trainingCapture.lastSavedSessionId = null;
+        trainingCapture.lastStatus = 'Cleared saved browser training sessions.';
+        updateTrainingUI();
+      }
+
+      function updateTrainingUI() {
+        if (ui.trainingCaptureSection) {
+          ui.trainingCaptureSection.classList.toggle('hidden', !trainingSettings.enabled);
+        }
+        if (!trainingSettings.enabled) return;
+        if (ui.trainingCaptureStatus) {
+          ui.trainingCaptureStatus.textContent = trainingCapture.lastStatus;
+        }
+        if (ui.trainingSessionCount) {
+          ui.trainingSessionCount.textContent = String(trainingCapture.storedSessions.length);
+        }
+        if (ui.downloadTrainingBtn) {
+          ui.downloadTrainingBtn.disabled = trainingCapture.storedSessions.length === 0;
+        }
+        if (ui.clearTrainingBtn) {
+          ui.clearTrainingBtn.disabled = trainingCapture.storedSessions.length === 0;
+        }
       }
 
       function clamp(value, min, max) {
@@ -1194,8 +1521,11 @@ function resetMatch() {
   eventQueue.length = 0;
   controllerActionState.left.moveAxis = 0;
   controllerActionState.left.fire = false;
+  controllerActionState.left.lastTick = -1;
   controllerActionState.right.moveAxis = 0;
   controllerActionState.right.fire = false;
+  controllerActionState.right.lastTick = -1;
+  humanInputState.leftFireLatched = false;
   world.paddles.left.y = H / 2 - world.paddles.left.h / 2;
   world.paddles.right.y = H / 2 - world.paddles.right.h / 2;
   world.paddles.left.h = world.paddles.left.baseH;
@@ -1257,6 +1587,8 @@ function startMatch({
         state.paused = false;
         state.menuOpen = false;
         state.gameOver = false;
+        humanInputState.leftFireLatched = false;
+        trainingCapture.currentMatch = null;
         state.serveDirection = rng.next() > 0.5 ? 1 : -1;
         if (leftController !== undefined) {
           controllerSlots.left = leftController;
@@ -1266,6 +1598,16 @@ function startMatch({
             : controllerSlots.right;
         }
         if (rightController !== undefined) controllerSlots.right = rightController;
+        trainingCapture.currentMatch = buildTrainingMatchContext();
+        trainingCapture.lastStatus = trainingCapture.currentMatch
+          ? `Training capture armed for ${trainingCapture.currentMatch.botName}.`
+          : (trainingSettings.enabled
+            ? (state.demoMode
+              ? 'Training capture skipped for CPU demo matches.'
+              : state.mode === 'pvp'
+              ? 'Training capture only records Player vs CPU matches.'
+              : 'Training capture is waiting for a bot matchup.')
+            : 'Browser training capture is disabled.');
         if (ui.menu) ui.menu.classList.add('hidden');
         if (ui.pause) ui.pause.classList.add('hidden');
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
@@ -1273,6 +1615,7 @@ function startMatch({
         state.helpReturnToPause = false;
         applyTheme(state.theme);
         resetMatch();
+        updateTrainingUI();
         if (skipCountdown || headless) {
           state.countdownActive = false;
           state.countdownTimer = 0;
@@ -1297,6 +1640,7 @@ function startMatch({
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
         if (ui.help) ui.help.classList.add('hidden');
         state.helpReturnToPause = false;
+        updateTrainingUI();
         updateStatus('Ready to embarrass a rectangle.');
         updateMenuStats();
       }
@@ -1335,12 +1679,14 @@ function endMatch(leftWon) {
     rightScore: state.rightScore
   });
   recordMatchHistory(leftWon);
+  captureCompletedTrainingSession();
   if (ui.winnerTitle) ui.winnerTitle.textContent = name + ' Wins';
   if (ui.winnerSubtitle) ui.winnerSubtitle.textContent = wittyLines[(rng.next() * wittyLines.length) | 0];
   if (ui.gameOverMatchStats && ui.gameOverHistoryStats && ui.gameOverScoreLine) renderGameOverStats();
   if (ui.help) ui.help.classList.add('hidden');
   state.helpReturnToPause = false;
   if (ui.gameOver) ui.gameOver.classList.remove('hidden');
+  updateTrainingUI();
   updateMenuStats();
   updateStatus(name + ' won. The scoreboard has receipts.');
   playTone(leftWon ? 560 : 430, 0.12, 'triangle', 0.05);
@@ -1739,6 +2085,22 @@ function updateAI(paddle, dt, isLeft) {
         };
       }
 
+      function shouldQueueBrowserHumanInput(side) {
+        return side === 'left' &&
+          !controllerSlots.left &&
+          !state.demoMode &&
+          state.mode !== 'pvp' &&
+          state.tick % decisionIntervalTicks === 0;
+      }
+
+      function queueBrowserHumanInput(side) {
+        if (!shouldQueueBrowserHumanInput(side)) return;
+        const moveAxis = (input.w || input.up ? -1 : 0) + (input.s || input.down ? 1 : 0);
+        const fire = !!humanInputState.leftFireLatched;
+        humanInputState.leftFireLatched = false;
+        queueInput(side, state.tick, { moveAxis, fire });
+      }
+
       function maybeRunController(side) {
         const controller = controllerSlots[side];
         if (!controller || state.tick % decisionIntervalTicks !== 0) return;
@@ -1798,14 +2160,21 @@ function updateAI(paddle, dt, isLeft) {
         replay.stateHashes = deepClone(snapshot.replay.stateHashes);
       }
 
-      function serializeReplay() {
+      function serializeReplay(options = {}) {
+        const compact = !!options.compact;
+        const includeEvents = options.includeEvents !== false;
+        const includeStateHashes = options.includeStateHashes !== false;
         return deepClone({
           version: replay.version,
           seed: replay.seed,
           configHash: replay.configHash,
-          actions: replay.actions,
-          events: replay.events,
-          stateHashes: replay.stateHashes
+          durationTicks: state.tick,
+          fixedTickRate,
+          decisionIntervalTicks,
+          actionEncoding: compact ? 'delta-v1' : 'dense-v1',
+          actions: compact ? compactReplayActions(replay.actions) : replay.actions,
+          events: includeEvents ? replay.events : [],
+          stateHashes: includeStateHashes ? replay.stateHashes : []
         });
       }
 
@@ -2363,8 +2732,10 @@ function update(dt) {
 
         maybeRunController('left');
         maybeRunController('right');
+        queueBrowserHumanInput('left');
 
-        const leftQueued = controllerSlots.left ? getQueuedAction('left') : null;
+        const leftUsesQueuedInput = !!controllerSlots.left || (!state.demoMode && state.mode !== 'pvp');
+        const leftQueued = leftUsesQueuedInput ? getQueuedAction('left') : null;
         const rightQueued = controllerSlots.right ? getQueuedAction('right') : null;
 
         if (leftQueued) {
@@ -3134,6 +3505,23 @@ function renderOverlayFX() {
         muted = !!nextMuted;
       }
 
+      function setTrainingContext(nextContext) {
+        const value = nextContext && typeof nextContext === 'object' ? nextContext : {};
+        trainingCapture.selectedBotId = value.selectedBotId ? String(value.selectedBotId) : '';
+        trainingCapture.selectedBotName = value.selectedBotName ? String(value.selectedBotName) : 'CPU';
+        trainingCapture.selectedBotDifficultyBand = value.selectedBotDifficultyBand || null;
+        trainingCapture.selectedBotElo = Number.isFinite(Number(value.selectedBotElo)) ? Number(value.selectedBotElo) : null;
+        if (!state.running || state.gameOver || state.menuOpen) {
+          const preview = buildTrainingMatchContext();
+          trainingCapture.lastStatus = preview
+            ? `Training capture armed for ${preview.botName}.`
+            : (trainingSettings.enabled
+              ? 'Training capture only records Player vs CPU matches.'
+              : 'Browser training capture is disabled.');
+          updateTrainingUI();
+        }
+      }
+
       function mountBrowser() {
         if (mounted || !documentRef || !windowRef) return runtimeApi;
         mounted = true;
@@ -3151,7 +3539,13 @@ function renderOverlayFX() {
           } else if (key === 'f' || e.code === 'Space') {
             e.preventDefault();
             if (skipPlayCountdown()) return;
-            if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver) firePulse(world.paddles.left);
+            if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver) {
+              if (!state.demoMode && state.mode !== 'pvp' && !controllerSlots.left) {
+                humanInputState.leftFireLatched = true;
+              } else {
+                firePulse(world.paddles.left);
+              }
+            }
           } else if (key === '/') {
             if (skipPlayCountdown()) return;
             if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver && state.mode === 'pvp' && !state.demoMode) firePulse(world.paddles.right);
@@ -3195,6 +3589,8 @@ function renderOverlayFX() {
         wireMenuButton('pauseMenuBtn', backToMenu);
         wireMenuButton('rematchBtn', () => startMatch({ demo: state.demoMode }));
         wireMenuButton('gameOverMenuBtn', backToMenu);
+        wireMenuButton('downloadTrainingBtn', downloadTrainingExport);
+        wireMenuButton('clearTrainingBtn', clearStoredTrainingSessions);
 
         ['change', 'input'].forEach((eventName) => {
           listen(ui.themeSelect, eventName, () => applyTheme(ui.themeSelect.value));
@@ -3213,6 +3609,7 @@ function renderOverlayFX() {
         applyTheme(state.theme);
         updateMenuStats();
         updateUI();
+        updateTrainingUI();
         render();
         showMessage(defaults.startupMessage, defaults.startupMessageSeconds);
         lastFrameTime = 0;
@@ -3248,6 +3645,7 @@ function renderOverlayFX() {
         },
         fixedTickRate,
         fixedDt,
+        decisionIntervalTicks,
         headless,
         startMatch,
         backToMenu,
@@ -3263,6 +3661,13 @@ function renderOverlayFX() {
         flushEvents,
         setControllers,
         setMuted,
+        setTrainingContext,
+        buildTrainingExport,
+        downloadTrainingExport,
+        clearStoredTrainingSessions,
+        getStoredTrainingSessions() {
+          return deepClone(trainingCapture.storedSessions);
+        },
         mountBrowser,
         unmountBrowser,
         render,
@@ -3294,8 +3699,8 @@ function renderOverlayFX() {
     restoreSimulation(runtime, snapshot) {
       return runtime.restoreSimulation(snapshot);
     },
-    serializeReplay(runtime) {
-      return runtime.serializeReplay();
+    serializeReplay(runtime, options) {
+      return runtime.serializeReplay(options);
     },
     loadReplay(runtime, replayData) {
       return runtime.loadReplay(replayData);

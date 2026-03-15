@@ -617,6 +617,50 @@
   margin: 18px 0 8px 0;
 }
 
+.trainingCaptureSection {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.trainingCaptureHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.trainingCaptureCount {
+  min-width: 96px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(13, 21, 34, 0.72);
+  color: #eef6ff;
+  text-align: center;
+}
+
+.trainingCaptureCount span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.trainingCaptureCount strong {
+  display: block;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.trainingCaptureActions {
+  margin-top: 0;
+  justify-content: flex-start;
+}
+
 .compareGrid {
   display: grid;
   gap: 8px;
@@ -905,6 +949,10 @@
       .form,
       .botInfoGrid {
         grid-template-columns: 1fr;
+      }
+
+      .trainingCaptureHeader {
+        flex-direction: column;
       }
 
       .scoreboard {

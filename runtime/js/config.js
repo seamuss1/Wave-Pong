@@ -387,6 +387,15 @@
       startupMessage: 'Open the match menu and unleash the rectangles.',
       startupMessageSeconds: 2.1
     },
+    training: {
+      enabled: true,
+      storage: {
+        sessionsKey: 'gameWavePongHumanTrainingSessionsV1'
+      },
+      maxStoredSessions: 8,
+      exportSchema: 'human-training-export/v1',
+      exportFilePrefix: 'wave-pong-human-training'
+    },
     balance, // Gameplay tuning numbers.
     // Shape of the persistent history record saved in localStorage.
     defaultHistory: {

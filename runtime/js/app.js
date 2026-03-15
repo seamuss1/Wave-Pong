@@ -40,6 +40,17 @@
     return findBotById(botId) || controllers.selectBotForDifficulty(botRoster, config.defaults.difficulty) || null;
   }
 
+  function syncTrainingContext() {
+    if (typeof runtime.setTrainingContext !== 'function') return;
+    const bot = currentSelectedBot();
+    runtime.setTrainingContext(bot ? {
+      selectedBotId: bot.id,
+      selectedBotName: bot.name,
+      selectedBotDifficultyBand: bot.difficultyBand || null,
+      selectedBotElo: Number(bot.elo) || null
+    } : null);
+  }
+
   function renderBotMetadata(bot) {
     if (!bot) {
       if (botInfoTitle) botInfoTitle.textContent = 'No bot selected';
@@ -55,6 +66,13 @@
     const formattedTrainingHours = Number.isFinite(trainingHours)
       ? `${trainingHours.toFixed(trainingHours >= 10 ? 1 : 3)}h`
       : 'n/a';
+    const humanTrainingSummary = bot.humanTrainingSummary || metadata.humanTrainingSummary || null;
+    const formattedHumanWinRate = humanTrainingSummary && Number.isFinite(Number(humanTrainingSummary.botWinRate))
+      ? `${(Number(humanTrainingSummary.botWinRate) * 100).toFixed(1)}%`
+      : 'n/a';
+    const formattedHumanChallenge = humanTrainingSummary && Number.isFinite(Number(humanTrainingSummary.challengeScore))
+      ? Number(humanTrainingSummary.challengeScore).toFixed(1)
+      : 'n/a';
     const rows = [
       ['ID', bot.id],
       ['Name', bot.name],
@@ -69,7 +87,10 @@
       ['Style tags', Array.isArray(metadata.styleTags) && metadata.styleTags.length ? metadata.styleTags.join(', ') : 'n/a'],
       ['Review state', metadata.reviewState || (bot.reviewBlocked ? 'blocked' : 'active')],
       ['Runtime moved ticks', runtimeValidation.totalMovedTicks != null ? runtimeValidation.totalMovedTicks : 'n/a'],
-      ['Runtime total goals', runtimeValidation.totalGoals != null ? runtimeValidation.totalGoals : 'n/a']
+      ['Runtime total goals', runtimeValidation.totalGoals != null ? runtimeValidation.totalGoals : 'n/a'],
+      ['Human sessions', humanTrainingSummary && humanTrainingSummary.sessionCount != null ? humanTrainingSummary.sessionCount : 'n/a'],
+      ['Human bot win rate', formattedHumanWinRate],
+      ['Human challenge', formattedHumanChallenge]
     ];
 
     if (botInfoTitle) botInfoTitle.textContent = bot.name;
@@ -132,6 +153,7 @@
   function syncControllers() {
     const mode = runtime.ui.modeSelect ? runtime.ui.modeSelect.value : config.defaults.mode;
     const botId = runtime.ui.difficultySelect ? runtime.ui.difficultySelect.value : '';
+    syncTrainingContext();
     if (mode === 'pvp') {
       runtime.setControllers({ left: null, right: null });
       return;
@@ -167,6 +189,7 @@
   }
 
   populateBotSelect();
+  syncTrainingContext();
   syncControllers();
   runtime.mountBrowser();
 

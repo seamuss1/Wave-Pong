@@ -231,18 +231,85 @@ async function runDevToolsSmoke(pageWebSocketUrl, targetUrl, timeoutMs) {
   await sleep(1000);
 
   const evaluation = await send('Runtime.evaluate', {
-    expression: `JSON.stringify({
-      title: document.title,
-      canvasPresent: !!document.getElementById('gameCanvas'),
-      overlayCount: document.querySelectorAll('.overlay').length,
-      menuVisible: !document.getElementById('menuOverlay').classList.contains('hidden'),
-      pauseVisible: !document.getElementById('pauseOverlay').classList.contains('hidden'),
-      gameOverVisible: !document.getElementById('gameOverOverlay').classList.contains('hidden'),
-      messageText: document.getElementById('message')?.textContent,
-      wavePongConfigPresent: !!(window.WavePong && window.WavePong.CONFIG),
-      leftScore: document.getElementById('leftScore')?.textContent,
-      rightScore: document.getElementById('rightScore')?.textContent
-    })`,
+    expression: `JSON.stringify((() => {
+      const runtime = window.WavePong && window.WavePong.RUNTIME;
+      const controllers = window.WavePong && window.WavePong.Controllers;
+      const result = {
+        title: document.title,
+        canvasPresent: !!document.getElementById('gameCanvas'),
+        overlayCount: document.querySelectorAll('.overlay').length,
+        menuVisible: !document.getElementById('menuOverlay').classList.contains('hidden'),
+        pauseVisible: !document.getElementById('pauseOverlay').classList.contains('hidden'),
+        gameOverVisible: !document.getElementById('gameOverOverlay').classList.contains('hidden'),
+        messageText: document.getElementById('message')?.textContent,
+        wavePongConfigPresent: !!(window.WavePong && window.WavePong.CONFIG),
+        leftScore: document.getElementById('leftScore')?.textContent,
+        rightScore: document.getElementById('rightScore')?.textContent,
+        trainingChecks: null
+      };
+
+      if (!runtime || !controllers || typeof runtime.clearStoredTrainingSessions !== 'function') {
+        return result;
+      }
+
+      function selectCurrentBot() {
+        const select = runtime.ui && runtime.ui.difficultySelect;
+        if (!select || select.selectedIndex < 0) return null;
+        return {
+          id: select.value,
+          name: select.options[select.selectedIndex].textContent
+        };
+      }
+
+      function forceLeftGoalToEndMatch() {
+        runtime.state.leftScore = Math.max(0, runtime.state.scoreLimit - 1);
+        const ball = runtime.world.balls[0];
+        if (!ball) return false;
+        ball.x = runtime.config.balance.canvas.width + ball.r + 24;
+        runtime.stepSimulation(1);
+        return true;
+      }
+
+      runtime.clearStoredTrainingSessions();
+      const selectedBot = selectCurrentBot();
+      if (selectedBot && typeof runtime.setTrainingContext === 'function') {
+        runtime.setTrainingContext({
+          selectedBotId: selectedBot.id,
+          selectedBotName: selectedBot.name
+        });
+      }
+
+      runtime.startMatch({ demo: false, skipCountdown: true });
+      forceLeftGoalToEndMatch();
+      const cpuExport = typeof runtime.buildTrainingExport === 'function' ? runtime.buildTrainingExport() : null;
+      const cpuSessionCount = typeof runtime.getStoredTrainingSessions === 'function' ? runtime.getStoredTrainingSessions().length : 0;
+      const trainingSection = document.getElementById('trainingCaptureSection');
+      const trainingButtonsPresent = !!document.getElementById('downloadTrainingBtn') && !!document.getElementById('clearTrainingBtn');
+      const trainingStatusText = document.getElementById('trainingCaptureStatus')?.textContent || '';
+
+      runtime.clearStoredTrainingSessions();
+      runtime.startMatch({ demo: true, skipCountdown: true });
+      forceLeftGoalToEndMatch();
+      const demoSessionCount = runtime.getStoredTrainingSessions().length;
+
+      runtime.clearStoredTrainingSessions();
+      runtime.setControllers({ left: null, right: null });
+      runtime.startMatch({ mode: 'pvp', skipCountdown: true, leftController: null, rightController: null });
+      forceLeftGoalToEndMatch();
+      const pvpSessionCount = runtime.getStoredTrainingSessions().length;
+
+      result.trainingChecks = {
+        sectionVisible: !!trainingSection && !trainingSection.classList.contains('hidden'),
+        buttonsPresent: trainingButtonsPresent,
+        statusText: trainingStatusText,
+        cpuSessionCount,
+        cpuExportSchema: cpuExport && cpuExport.schema ? cpuExport.schema : null,
+        demoSessionCount,
+        pvpSessionCount,
+        finalGameOverVisible: !document.getElementById('gameOverOverlay').classList.contains('hidden')
+      };
+      return result;
+    })())`,
     returnByValue: true
   });
 
@@ -426,7 +493,18 @@ async function main() {
 
     console.log(JSON.stringify(summary, null, 2));
 
-    const passed = result.loaded && result.pageState.canvasPresent && result.pageState.wavePongConfigPresent && result.exceptions.length === 0;
+    const trainingChecks = result.pageState.trainingChecks || {};
+    const passed = result.loaded &&
+      result.pageState.canvasPresent &&
+      result.pageState.wavePongConfigPresent &&
+      result.exceptions.length === 0 &&
+      trainingChecks.sectionVisible === true &&
+      trainingChecks.buttonsPresent === true &&
+      trainingChecks.cpuSessionCount === 1 &&
+      trainingChecks.cpuExportSchema === 'human-training-export/v1' &&
+      trainingChecks.demoSessionCount === 0 &&
+      trainingChecks.pvpSessionCount === 0 &&
+      trainingChecks.finalGameOverVisible === true;
     await cleanup();
     process.exit(passed ? 0 : 1);
   } catch (error) {
