@@ -5,6 +5,12 @@
   const config = ns.CONFIG;
   const runtimeVersion = ns.VERSION;
   const botRoster = Array.isArray(ns.BOT_ROSTER) ? ns.BOT_ROSTER : [];
+  const CLASSIC_DIFFICULTIES = [
+    { key: 'chill', label: 'Chill' },
+    { key: 'spicy', label: 'Spicy' },
+    { key: 'absurd', label: 'Ridiculous' }
+  ];
+  const DIFFICULTY_ORDER = { chill: 0, spicy: 1, absurd: 2 };
 
   if (!simCore) throw new Error('Wave Pong sim core missing. Load js/sim-core.js before js/app.js.');
   if (!controllers) throw new Error('Wave Pong controllers missing. Load js/controllers.js before js/app.js.');
@@ -21,6 +27,34 @@
     return botRoster.find((bot) => bot.id === botId) || null;
   }
 
+  function normalizeDifficultyKey(value) {
+    const difficulty = String(value || '').toLowerCase();
+    if (difficulty === 'ridiculous' || difficulty === 'absurd') return 'absurd';
+    if (difficulty === 'chill' || difficulty === 'spicy') return difficulty;
+    return 'spicy';
+  }
+
+  function formatDifficultyLabel(value) {
+    const difficulty = normalizeDifficultyKey(value);
+    const match = CLASSIC_DIFFICULTIES.find((entry) => entry.key === difficulty);
+    return match ? match.label : 'Spicy';
+  }
+
+  function currentOpponentOption() {
+    const select = runtime.ui.difficultySelect;
+    return select && select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
+  }
+
+  function currentSelectedBotId() {
+    const option = currentOpponentOption();
+    return option && option.dataset ? option.dataset.botId || '' : '';
+  }
+
+  function currentSelectedDifficulty() {
+    const option = currentOpponentOption();
+    return normalizeDifficultyKey(option && option.dataset ? option.dataset.difficulty : config.defaults.difficulty);
+  }
+
   const botInfoOverlay = document.getElementById('botInfoOverlay');
   const botInfoTitle = document.getElementById('botInfoTitle');
   const botInfoSubtitle = document.getElementById('botInfoSubtitle');
@@ -32,20 +66,33 @@
 
   function formatBotOptionLabel(bot) {
     const elo = Number.isFinite(Number(bot.elo)) ? `Elo ${Math.round(bot.elo)}` : 'Elo ?';
-    return `${bot.name} | ${elo}`;
+    return `${bot.name} | ${formatDifficultyLabel(bot.difficultyBand)} | ${elo}`;
   }
 
   function currentSelectedBot() {
-    const botId = runtime.ui.difficultySelect ? runtime.ui.difficultySelect.value : '';
-    return findBotById(botId) || controllers.selectBotForDifficulty(botRoster, config.defaults.difficulty) || null;
+    const botId = currentSelectedBotId();
+    return botId ? findBotById(botId) : null;
+  }
+
+  function syncBotInfoButtons() {
+    const hasBot = !!currentSelectedBot();
+    [menuBotInfoBtn, pauseBotInfoBtn].forEach((button) => {
+      if (!button) return;
+      button.disabled = !hasBot;
+      if (hasBot) {
+        button.removeAttribute('title');
+      } else {
+        button.title = 'Select an ML bot to inspect its details.';
+      }
+    });
   }
 
   function renderBotMetadata(bot) {
     if (!bot) {
-      if (botInfoTitle) botInfoTitle.textContent = 'No bot selected';
-      if (botInfoSubtitle) botInfoSubtitle.textContent = 'Select a roster bot to inspect its metadata.';
+      if (botInfoTitle) botInfoTitle.textContent = 'No ML bot selected';
+      if (botInfoSubtitle) botInfoSubtitle.textContent = 'Choose a machine learning bot from CPU Opponent to inspect its metadata.';
       if (botInfoGrid) botInfoGrid.innerHTML = '';
-      if (botInfoNotes) botInfoNotes.textContent = 'No bot is currently selected.';
+      if (botInfoNotes) botInfoNotes.textContent = 'Classic Chill, Spicy, and Ridiculous still use the scripted CPU and do not have bot dossiers.';
       return;
     }
 
@@ -58,6 +105,7 @@
     const rows = [
       ['ID', bot.id],
       ['Name', bot.name],
+      ['Difficulty band', formatDifficultyLabel(bot.difficultyBand)],
       ['Role', metadata.roleName || 'n/a'],
       ['Elo', bot.elo],
       ['Archetype', bot.archetype || 'n/a'],
@@ -73,7 +121,7 @@
     ];
 
     if (botInfoTitle) botInfoTitle.textContent = bot.name;
-    if (botInfoSubtitle) botInfoSubtitle.textContent = `${bot.id} | ${bot.archetype || 'unknown archetype'} | Elo ${Math.round(Number(bot.elo) || 0)}`;
+    if (botInfoSubtitle) botInfoSubtitle.textContent = `${bot.id} | ${formatDifficultyLabel(bot.difficultyBand)} | Elo ${Math.round(Number(bot.elo) || 0)}`;
     if (botInfoGrid) {
       botInfoGrid.innerHTML = rows.map(([label, value]) => (
         `<div class="botInfoRow"><div class="botInfoLabel">${label}</div><div class="botInfoValue">${value}</div></div>`
@@ -101,44 +149,70 @@
     const previousValue = select.value;
     select.innerHTML = '';
 
+    const classicGroup = document.createElement('optgroup');
+    classicGroup.label = 'Classic CPU';
+    for (const difficulty of CLASSIC_DIFFICULTIES) {
+      const option = document.createElement('option');
+      option.value = `classic:${difficulty.key}`;
+      option.textContent = difficulty.label;
+      option.dataset.controllerKind = 'scripted';
+      option.dataset.difficulty = difficulty.key;
+      option.dataset.summary = difficulty.label;
+      classicGroup.appendChild(option);
+    }
+    select.appendChild(classicGroup);
+
     const sortedRoster = botRoster
+      .filter((bot) => !bot.reviewBlocked && !bot.runtimeDisabled)
       .slice()
       .sort((left, right) => {
-        const difficultyOrder = { chill: 0, spicy: 1, absurd: 2 };
-        const bandDelta = (difficultyOrder[left.difficultyBand] ?? 99) - (difficultyOrder[right.difficultyBand] ?? 99);
+        const bandDelta = (DIFFICULTY_ORDER[normalizeDifficultyKey(left.difficultyBand)] ?? 99) - (DIFFICULTY_ORDER[normalizeDifficultyKey(right.difficultyBand)] ?? 99);
         if (bandDelta !== 0) return bandDelta;
         return (Number(right.elo) || 0) - (Number(left.elo) || 0);
       });
 
-    for (const bot of sortedRoster) {
-      const option = document.createElement('option');
-      option.value = bot.id;
-      option.textContent = formatBotOptionLabel(bot);
-      select.appendChild(option);
+    if (sortedRoster.length) {
+      const botGroup = document.createElement('optgroup');
+      botGroup.label = 'ML Bots';
+      for (const bot of sortedRoster) {
+        const option = document.createElement('option');
+        option.value = `bot:${bot.id}`;
+        option.textContent = formatBotOptionLabel(bot);
+        option.dataset.controllerKind = 'bot';
+        option.dataset.botId = bot.id;
+        option.dataset.difficulty = normalizeDifficultyKey(bot.difficultyBand);
+        option.dataset.summary = bot.name;
+        botGroup.appendChild(option);
+      }
+      select.appendChild(botGroup);
     }
 
-    const defaultBot = findBotById(previousValue) || controllers.selectBotForDifficulty(botRoster, config.defaults.difficulty) || sortedRoster[0];
-    if (defaultBot) {
-      select.value = defaultBot.id;
+    const defaultValue = `classic:${normalizeDifficultyKey(config.defaults.difficulty)}`;
+    const hasPreviousValue = Array.from(select.options).some((option) => option.value === previousValue);
+    const preferredValue = hasPreviousValue ? previousValue : defaultValue;
+    select.value = preferredValue;
+    if (select.value !== preferredValue && select.options.length) {
+      select.value = select.options[0].value;
     }
+    syncBotInfoButtons();
   }
 
-  function buildCpuController(botId) {
-    const bot = findBotById(botId) || controllers.selectBotForDifficulty(botRoster, config.defaults.difficulty);
+  function buildCpuController() {
+    const bot = currentSelectedBot();
     if (bot) return controllers.createNeuralController(bot);
-    return controllers.createScriptedController({ difficulty: config.defaults.difficulty });
+    return controllers.createScriptedController({ difficulty: currentSelectedDifficulty() });
   }
 
   function syncControllers() {
     const mode = runtime.ui.modeSelect ? runtime.ui.modeSelect.value : config.defaults.mode;
-    const botId = runtime.ui.difficultySelect ? runtime.ui.difficultySelect.value : '';
+    syncBotInfoButtons();
     if (mode === 'pvp') {
       runtime.setControllers({ left: null, right: null });
       return;
     }
     runtime.setControllers({
       left: null,
-      right: buildCpuController(botId)
+      right: buildCpuController()
     });
   }
 

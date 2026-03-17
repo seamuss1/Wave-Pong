@@ -14,6 +14,13 @@
     absurd: { leadScale: 0.42, deadband: 0.03, fireChance: 0.48, awayFireChance: 0.18, maxAimError: 0.08 }
   };
 
+  function normalizeDifficulty(value) {
+    const difficulty = String(value || '').toLowerCase();
+    if (difficulty === 'ridiculous' || difficulty === 'absurd') return 'absurd';
+    if (difficulty === 'chill' || difficulty === 'spicy') return difficulty;
+    return 'spicy';
+  }
+
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
@@ -98,7 +105,7 @@
   }
 
   function createScriptedController(params = {}) {
-    const difficulty = params.difficulty || 'spicy';
+    const difficulty = normalizeDifficulty(params.difficulty || 'spicy');
     const tuning = { ...DEFAULT_SCRIPTED_BY_DIFFICULTY[difficulty], ...params };
     let fireCooldown = 0;
     return {
@@ -157,13 +164,19 @@
         const moveLeft = sigmoid(outputs[0] || 0);
         const moveRight = sigmoid(outputs[1] || 0);
         const fireScore = sigmoid(outputs[2] || 0);
+        const moveThreshold = Number.isFinite(Number(controllerParams.moveThreshold))
+          ? Number(controllerParams.moveThreshold)
+          : 0.55;
+        const fireThreshold = Number.isFinite(Number(controllerParams.fireThreshold))
+          ? Number(controllerParams.fireThreshold)
+          : 0.58;
         let moveAxis = 0;
-        if (moveLeft > 0.55 || moveRight > 0.55) {
+        if (moveLeft > moveThreshold || moveRight > moveThreshold) {
           moveAxis = moveLeft > moveRight ? -1 : 1;
         }
         return {
           moveAxis,
-          fire: fireScore > (controllerParams.fireThreshold || 0.58)
+          fire: fireScore > fireThreshold
         };
       }
     };
@@ -175,6 +188,7 @@
       return validation ? (Number(validation.totalMovedTicks) || 0) + (Number(validation.totalGoals) || 0) * 100 : 0;
     }
 
+    const normalizedDifficulty = normalizeDifficulty(difficulty);
     const roster = (Array.isArray(bots) ? bots : [])
       .filter((bot) => !bot.reviewBlocked && !bot.runtimeDisabled)
       .slice()
@@ -183,7 +197,7 @@
         if (activityDelta !== 0) return activityDelta;
         return (Number(b.elo) || 0) - (Number(a.elo) || 0);
       });
-    const exact = roster.filter((bot) => bot.difficultyBand === difficulty);
+    const exact = roster.filter((bot) => normalizeDifficulty(bot.difficultyBand) === normalizedDifficulty);
     if (exact.length) return exact[0];
     return roster[0] || null;
   }

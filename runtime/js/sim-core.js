@@ -205,6 +205,37 @@
         right: (options.controllers && options.controllers.right) || null
       };
 
+      function normalizeDifficulty(value) {
+        const difficulty = String(value || '').toLowerCase();
+        if (difficulty === 'ridiculous' || difficulty === 'absurd') return 'absurd';
+        if (difficulty === 'chill' || difficulty === 'spicy') return difficulty;
+        return 'spicy';
+      }
+
+      function formatDifficultyLabel(value) {
+        const difficulty = normalizeDifficulty(value);
+        if (difficulty === 'chill') return 'Chill';
+        if (difficulty === 'spicy') return 'Spicy';
+        return 'Ridiculous';
+      }
+
+      function getSelectedDifficultyOption() {
+        return ui.difficultySelect && ui.difficultySelect.selectedIndex >= 0
+          ? ui.difficultySelect.options[ui.difficultySelect.selectedIndex]
+          : null;
+      }
+
+      function getSelectedDifficulty() {
+        const option = getSelectedDifficultyOption();
+        const optionDifficulty = option && option.dataset ? option.dataset.difficulty : '';
+        return normalizeDifficulty(optionDifficulty || (ui.difficultySelect ? ui.difficultySelect.value : defaults.difficulty));
+      }
+
+      function getDifficultyConfig(difficulty) {
+        const normalized = normalizeDifficulty(difficulty);
+        return difficultyMap[normalized] || difficultyMap.spicy;
+      }
+
       function focusGameCanvas() {
         if (!canvas || typeof canvas.focus !== 'function') return;
         try {
@@ -460,7 +491,7 @@
       }
 
       function createBall(direction = 1, x = W / 2, y = H / 2) {
-        const baseSpeed = difficultyMap[state.difficulty].ballSpeed;
+        const baseSpeed = getDifficultyConfig(state.difficulty).ballSpeed;
         const sign = rng.next() < 0.5 ? -1 : 1;
         const angle = sign * (ballBalance.initialAngleBase + rng.next() * ballBalance.initialAngleRange);
         return {
@@ -1246,7 +1277,7 @@ function startMatch({
 } = {}) {
         initAudio();
         state.mode = mode || (ui.modeSelect ? ui.modeSelect.value : defaults.mode);
-        state.difficulty = difficulty || 'spicy';
+        state.difficulty = normalizeDifficulty(difficulty != null ? difficulty : getSelectedDifficulty());
         state.scoreLimit = sanitizeScoreLimit(scoreLimit != null ? scoreLimit : (ui.scoreLimitSelect ? ui.scoreLimitSelect.value : defaults.scoreLimit));
         if (ui.scoreLimitSelect) ui.scoreLimitSelect.value = state.scoreLimit;
         state.powerupsEnabled = powerupsEnabled != null ? !!powerupsEnabled : (ui.powerupsToggle ? ui.powerupsToggle.checked : defaults.powerupsEnabled);
@@ -1354,15 +1385,16 @@ function updateMenuStats() {
 }
 
 function updateUI() {
-  const selectedBotOption = ui.difficultySelect && ui.difficultySelect.selectedIndex >= 0
-    ? ui.difficultySelect.options[ui.difficultySelect.selectedIndex]
-    : null;
+  const selectedOpponentOption = getSelectedDifficultyOption();
+  const selectedOpponentLabel = selectedOpponentOption && selectedOpponentOption.dataset && selectedOpponentOption.dataset.summary
+    ? selectedOpponentOption.dataset.summary
+    : (selectedOpponentOption ? selectedOpponentOption.textContent : formatDifficultyLabel(state.difficulty));
   if (ui.leftScore) ui.leftScore.textContent = state.leftScore;
   if (ui.rightScore) ui.rightScore.textContent = state.rightScore;
   if (ui.leftName) ui.leftName.textContent = state.demoMode ? 'CPU A' : 'PLAYER';
   if (ui.rightName) ui.rightName.textContent = state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU');
   if (ui.modeLabel) ui.modeLabel.textContent = state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU');
-  if (ui.difficultyLabel) ui.difficultyLabel.textContent = selectedBotOption ? selectedBotOption.textContent : state.difficulty;
+  if (ui.difficultyLabel) ui.difficultyLabel.textContent = selectedOpponentLabel;
   if (ui.rallyLabel) ui.rallyLabel.textContent = state.rally;
   if (ui.bestRallyLabel) ui.bestRallyLabel.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
   if (ui.pauseScoreLine) ui.pauseScoreLine.textContent = state.leftScore + ' : ' + state.rightScore;
@@ -1578,7 +1610,7 @@ function updatePaddle(paddle, upPressed, downPressed, dt) {
       }
 
 function updateAI(paddle, dt, isLeft) {
-        const diff = difficultyMap[state.difficulty];
+        const diff = getDifficultyConfig(state.difficulty);
         const balls = world.balls;
         let targetY = H / 2;
         let chosen = null;
@@ -3198,7 +3230,13 @@ function renderOverlayFX() {
 
         ['change', 'input'].forEach((eventName) => {
           listen(ui.themeSelect, eventName, () => applyTheme(ui.themeSelect.value));
-          listen(ui.difficultySelect, eventName, () => updateStatus('Bot selected: ' + ui.difficultySelect.options[ui.difficultySelect.selectedIndex].text + '.'));
+          listen(ui.difficultySelect, eventName, () => {
+            const option = getSelectedDifficultyOption();
+            if (option) {
+              const label = option.dataset && option.dataset.summary ? option.dataset.summary : option.text;
+              updateStatus('Opponent selected: ' + label + '.');
+            }
+          });
           listen(ui.scoreLimitSelect, eventName, () => {
             const value = sanitizeScoreLimit(ui.scoreLimitSelect.value);
             if (String(value) !== ui.scoreLimitSelect.value) ui.scoreLimitSelect.value = value;
