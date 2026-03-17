@@ -149,19 +149,19 @@ const ROLE_TRAINING_PROFILES = {
       win: 100,
       goalDiff: 16,
       againstGoals: -24,
-      longestRally: 0.25,
-      shots: 0.15,
-      shotRate: 0.12,
-      waveHitRate: 12,
-      ballHitRate: 10,
-      pinkShots: 0.55,
-      pinkShotShare: 28,
-      pinkBallHits: 2.4,
-      pinkThreatHits: 4.0,
-      pinkEmergencyHits: 5.2,
-      pinkWavePowerups: 2.2,
-      nonPinkShots: -0.18,
-      nonPinkShotShare: -9,
+      longestRally: 0.3,
+      shots: -0.08,
+      shotRate: -0.18,
+      waveHitRate: 14,
+      ballHitRate: 14,
+      pinkShots: 0.8,
+      pinkShotShare: 34,
+      pinkBallHits: 3.2,
+      pinkThreatHits: 4.6,
+      pinkEmergencyHits: 5.8,
+      pinkWavePowerups: 2.6,
+      nonPinkShots: -0.35,
+      nonPinkShotShare: -16,
       goldShots: -0.5
     }),
     promotion: {
@@ -210,6 +210,161 @@ const ROLE_TRAINING_PROFILES = {
       }
     }
   }
+};
+
+function mergeControllerTrainingConfig(base, overrides = {}) {
+  return {
+    ...clone(base),
+    ...clone(overrides),
+    mutation: {
+      ...(base && base.mutation ? clone(base.mutation) : {}),
+      ...(overrides && overrides.mutation ? clone(overrides.mutation) : {})
+    },
+    rescueMutation: {
+      ...(base && base.rescueMutation ? clone(base.rescueMutation) : {}),
+      ...(overrides && overrides.rescueMutation ? clone(overrides.rescueMutation) : {})
+    },
+    inactivity: {
+      ...(base && base.inactivity ? clone(base.inactivity) : {}),
+      ...(overrides && overrides.inactivity ? clone(overrides.inactivity) : {})
+    }
+  };
+}
+
+const DEFAULT_CONTROLLER_TRAINING = {
+  moveThreshold: 0.55,
+  fireThreshold: 0.6,
+  lineageBudget: 3,
+  rescueLineageBudget: 5,
+  mutation: {
+    moveChance: 0.7,
+    moveStd: 0.035,
+    fireChance: 0.75,
+    fireStd: 0.045,
+    biasChance: 0.55,
+    biasStd: 0.12,
+    weightChance: 0.22,
+    weightStd: 0.14,
+    randomizeHiddenChance: 0,
+    randomizeOutputChance: 0
+  },
+  rescueMutation: {
+    moveChance: 0.95,
+    moveStd: 0.075,
+    fireChance: 0.95,
+    fireStd: 0.085,
+    biasChance: 0.88,
+    biasStd: 0.24,
+    weightChance: 0.42,
+    weightStd: 0.28,
+    randomizeHiddenChance: 0.08,
+    randomizeOutputChance: 0.22
+  },
+  inactivity: {
+    minActiveMatch: 0.3,
+    minShotsPerMatch: 1.2,
+    minMovedTickRate: 0.04,
+    minWaveHitsPerMatch: 0.2
+  }
+};
+
+const ARCHETYPE_CONTROLLER_TRAINING = {
+  defensive: mergeControllerTrainingConfig(DEFAULT_CONTROLLER_TRAINING, {
+    moveThreshold: 0.53,
+    fireThreshold: 0.64,
+    mutation: {
+      fireChance: 0.7,
+      fireStd: 0.04
+    }
+  }),
+  aggressive: mergeControllerTrainingConfig(DEFAULT_CONTROLLER_TRAINING, {
+    moveThreshold: 0.54,
+    fireThreshold: 0.54,
+    mutation: {
+      fireChance: 0.82,
+      fireStd: 0.05
+    }
+  }),
+  control: mergeControllerTrainingConfig(DEFAULT_CONTROLLER_TRAINING, {
+    moveThreshold: 0.55,
+    fireThreshold: 0.6
+  }),
+  trickster: mergeControllerTrainingConfig(DEFAULT_CONTROLLER_TRAINING, {
+    moveThreshold: 0.54,
+    fireThreshold: 0.58,
+    mutation: {
+      moveChance: 0.76,
+      fireChance: 0.78
+    }
+  })
+};
+
+const ROLE_CONTROLLER_TRAINING = {
+  strategist: mergeControllerTrainingConfig(ARCHETYPE_CONTROLLER_TRAINING.control, {
+    moveThreshold: 0.54,
+    fireThreshold: 0.62,
+    lineageBudget: 3,
+    rescueLineageBudget: 4,
+    mutation: {
+      fireChance: 0.72,
+      fireStd: 0.04
+    },
+    rescueMutation: {
+      randomizeOutputChance: 0.16
+    },
+    inactivity: {
+      minActiveMatch: 0.28,
+      minShotsPerMatch: 2,
+      minMovedTickRate: 0.05,
+      minWaveHitsPerMatch: 0.25
+    }
+  }),
+  defensive_specialist: mergeControllerTrainingConfig(ARCHETYPE_CONTROLLER_TRAINING.control, {
+    moveThreshold: 0.46,
+    fireThreshold: 0.63,
+    lineageBudget: 4,
+    rescueLineageBudget: 6,
+    mutation: {
+      moveChance: 0.9,
+      moveStd: 0.06,
+      fireChance: 0.72,
+      fireStd: 0.05
+    },
+    rescueMutation: {
+      moveChance: 0.98,
+      moveStd: 0.1,
+      fireChance: 0.9,
+      fireStd: 0.085,
+      biasChance: 0.94,
+      biasStd: 0.3,
+      weightChance: 0.58,
+      weightStd: 0.36,
+      randomizeHiddenChance: 0.18,
+      randomizeOutputChance: 0.4
+    },
+    inactivity: {
+      minActiveMatch: 0.42,
+      minShotsPerMatch: 1.5,
+      minMovedTickRate: 0.05,
+      minWaveHitsPerMatch: 0.3
+    }
+  }),
+  sniper: mergeControllerTrainingConfig(ARCHETYPE_CONTROLLER_TRAINING.aggressive, {
+    moveThreshold: 0.53,
+    fireThreshold: 0.52,
+    lineageBudget: 3,
+    rescueLineageBudget: 4,
+    mutation: {
+      fireChance: 0.86,
+      fireStd: 0.055
+    },
+    inactivity: {
+      minActiveMatch: 0.3,
+      minShotsPerMatch: 1.5,
+      minMovedTickRate: 0.04,
+      minWaveHitsPerMatch: 0.2
+    }
+  })
 };
 
 function parseArgs(argv) {
@@ -493,6 +648,96 @@ function normalizeRoleKey(value) {
     .replace(/^_+|_+$/g, '');
 }
 
+function resolveControllerTrainingProfile(subject, fallbackArchetypeId = null) {
+  const roleKey = normalizeRoleKey(
+    subject && typeof subject === 'object'
+      ? ((subject.metadata && subject.metadata.roleName) || subject.name || '')
+      : subject
+  );
+  if (roleKey && ROLE_CONTROLLER_TRAINING[roleKey]) return ROLE_CONTROLLER_TRAINING[roleKey];
+  const archetypeId = subject && typeof subject === 'object'
+    ? (subject.archetype || fallbackArchetypeId || null)
+    : (ARCHETYPE_CONTROLLER_TRAINING[roleKey] ? roleKey : fallbackArchetypeId);
+  if (archetypeId && ARCHETYPE_CONTROLLER_TRAINING[archetypeId]) return ARCHETYPE_CONTROLLER_TRAINING[archetypeId];
+  return DEFAULT_CONTROLLER_TRAINING;
+}
+
+function approximatelyEqual(left, right, epsilon = 1e-6) {
+  return Math.abs((Number(left) || 0) - (Number(right) || 0)) <= epsilon;
+}
+
+function buildTrainingControllerParams(subject, rawParams, fallbackArchetypeId = null) {
+  const roleDefaults = createDefaultControllerParams(subject, fallbackArchetypeId);
+  const archetypeId = subject && typeof subject === 'object'
+    ? (subject.archetype || fallbackArchetypeId || null)
+    : fallbackArchetypeId;
+  const archetypeDefaults = createDefaultControllerParams(archetypeId || subject || fallbackArchetypeId, archetypeId || null);
+  const params = rawParams && typeof rawParams === 'object' ? clone(rawParams) : {};
+  const trainingHours = Number(
+    subject && typeof subject === 'object'
+      ? (subject.trainingHours || (subject.metadata && subject.metadata.trainingHours) || 0)
+      : 0
+  ) || 0;
+  const moveThreshold = Number.isFinite(Number(params.moveThreshold))
+    ? Number(params.moveThreshold)
+    : roleDefaults.moveThreshold;
+  const fireThreshold = Number.isFinite(Number(params.fireThreshold))
+    ? Number(params.fireThreshold)
+    : roleDefaults.fireThreshold;
+  return {
+    moveThreshold: trainingHours <= 0 && approximatelyEqual(moveThreshold, archetypeDefaults.moveThreshold)
+      ? roleDefaults.moveThreshold
+      : moveThreshold,
+    fireThreshold: trainingHours <= 0 && approximatelyEqual(fireThreshold, archetypeDefaults.fireThreshold)
+      ? roleDefaults.fireThreshold
+      : fireThreshold
+  };
+}
+
+function getRescueVariant(index) {
+  return ['balanced', 'move_bias', 'fire_bias'][Math.abs(Number(index) || 0) % 3];
+}
+
+function assessLineageRecovery(bot, seedBot = null) {
+  const subject = bot || seedBot || null;
+  const metrics = bot && bot.metricAverages ? bot.metricAverages : {};
+  const inactivity = resolveControllerTrainingProfile(subject, subject && subject.archetype ? subject.archetype : null).inactivity || {};
+  const checks = [
+    {
+      key: 'active',
+      label: 'active',
+      actual: Number(metrics.activeMatch) || 0,
+      threshold: Number(inactivity.minActiveMatch) || 0
+    },
+    {
+      key: 'shots',
+      label: 'shots',
+      actual: Number(metrics.shots) || 0,
+      threshold: Number(inactivity.minShotsPerMatch) || 0
+    },
+    {
+      key: 'move',
+      label: 'move',
+      actual: Number(metrics.movedTickRate) || 0,
+      threshold: Number(inactivity.minMovedTickRate) || 0
+    },
+    {
+      key: 'waveHits',
+      label: 'waveHits',
+      actual: Number(metrics.waveHits) || 0,
+      threshold: Number(inactivity.minWaveHitsPerMatch) || 0
+    }
+  ].filter((entry) => entry.threshold > 0);
+  const failedChecks = checks.filter((entry) => entry.actual < entry.threshold);
+  return {
+    hasActiveDescendant: failedChecks.length < checks.length,
+    needsRescue: checks.length > 0 && failedChecks.length === checks.length,
+    reasons: failedChecks.map((entry) => `${entry.label} ${formatDecimal(entry.actual, entry.key === 'move' || entry.key === 'active' ? 2 : 1)}/${entry.threshold}`),
+    failedChecks,
+    checks
+  };
+}
+
 function getTrainingProfile(bot) {
   const roleName = normalizeRoleKey(bot && bot.metadata && bot.metadata.roleName);
   if (roleName && ROLE_TRAINING_PROFILES[roleName]) return ROLE_TRAINING_PROFILES[roleName];
@@ -691,6 +936,16 @@ function describePromotionGaps(bot) {
       gaps.push(`${desiredWaveKey}Shots ${formatDecimal(averages[shotsKey], 1)}/${promotion.minDesiredShotsPerMatch}`);
     }
   }
+  for (const [metricKey, threshold] of Object.entries(promotion.minMetrics || {})) {
+    if ((Number(averages[metricKey]) || 0) < Number(threshold)) {
+      gaps.push(`${metricKey} ${formatDecimal(averages[metricKey], 2)}/${threshold}`);
+    }
+  }
+  for (const [metricKey, threshold] of Object.entries(promotion.maxMetrics || {})) {
+    if ((Number(averages[metricKey]) || 0) > Number(threshold)) {
+      gaps.push(`${metricKey} ${formatDecimal(averages[metricKey], 2)}>${threshold}`);
+    }
+  }
   return gaps;
 }
 
@@ -698,6 +953,7 @@ function summarizeSeedTuningLine(seedBot, candidate) {
   const bot = candidate || seedBot;
   const metrics = bot && bot.metricAverages ? bot.metricAverages : {};
   const desiredWaveKey = candidate && candidate.desiredWaveKey ? candidate.desiredWaveKey : null;
+  const recovery = assessLineageRecovery(candidate, seedBot);
   const summary = [
     `${seedBot.id}`,
     `role=${formatBotRoleName(bot)}`,
@@ -707,7 +963,9 @@ function summarizeSeedTuningLine(seedBot, candidate) {
     `move=${formatDecimal(metrics.movedTickRate, 2)}`
   ];
   if (desiredWaveKey) summary.push(`${desiredWaveKey}=${formatDecimal(metrics[`${desiredWaveKey}ShotShare`], 2)}`);
-  if (candidate && (candidate.reviewBlocked || candidate.profileBlocked)) {
+  if (recovery.needsRescue) {
+    summary.push(`no-active-descendant rescue ${recovery.reasons.join(', ') || 'inactive lineage'}`);
+  } else if (candidate && (candidate.reviewBlocked || candidate.profileBlocked)) {
     summary.push(`missing ${describePromotionGaps(candidate).join(', ') || (candidate.promotionBlockReasons || []).join(', ') || 'review gate'}`);
   } else {
     summary.push('ready');
@@ -797,35 +1055,83 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function createDefaultControllerParams(archetypeId) {
+function createDefaultControllerParams(subject, fallbackArchetypeId = null) {
+  const profile = resolveControllerTrainingProfile(subject, fallbackArchetypeId);
   return {
-    moveThreshold: 0.55,
-    fireThreshold: archetypeId === 'aggressive' ? 0.54 : archetypeId === 'defensive' ? 0.66 : 0.6
+    moveThreshold: Number(profile.moveThreshold) || DEFAULT_CONTROLLER_TRAINING.moveThreshold,
+    fireThreshold: Number(profile.fireThreshold) || DEFAULT_CONTROLLER_TRAINING.fireThreshold
   };
 }
 
-function mutateControllerParams(archetype, parentParams, random) {
-  const next = clone(parentParams || createDefaultControllerParams(archetype.id));
-  const defaultParams = createDefaultControllerParams(archetype.id);
-  next.moveThreshold = Number.isFinite(Number(next.moveThreshold)) ? Number(next.moveThreshold) : defaultParams.moveThreshold;
-  next.fireThreshold = Number.isFinite(Number(next.fireThreshold)) ? Number(next.fireThreshold) : defaultParams.fireThreshold;
+function mutateControllerParams(subject, parentParams, random, options = {}) {
+  const defaults = createDefaultControllerParams(subject, options.fallbackArchetypeId || null);
+  const mutationProfile = resolveControllerTrainingProfile(subject, options.fallbackArchetypeId || null)[options.rescue ? 'rescueMutation' : 'mutation'] || {};
+  const next = clone(parentParams || defaults);
+  next.moveThreshold = Number.isFinite(Number(next.moveThreshold)) ? Number(next.moveThreshold) : defaults.moveThreshold;
+  next.fireThreshold = Number.isFinite(Number(next.fireThreshold)) ? Number(next.fireThreshold) : defaults.fireThreshold;
   if (typeof random === 'function') {
-    if (random() < 0.7) next.moveThreshold = clamp(next.moveThreshold + sampleNormal(random) * 0.035, 0.47, 0.63);
-    if (random() < 0.75) next.fireThreshold = clamp(next.fireThreshold + sampleNormal(random) * 0.045, 0.4, 0.78);
+    if (random() < (Number(mutationProfile.moveChance) || 0)) {
+      next.moveThreshold = clamp(
+        next.moveThreshold + sampleNormal(random) * (Number(mutationProfile.moveStd) || 0.035),
+        0.42,
+        0.66
+      );
+    }
+    if (random() < (Number(mutationProfile.fireChance) || 0)) {
+      next.fireThreshold = clamp(
+        next.fireThreshold + sampleNormal(random) * (Number(mutationProfile.fireStd) || 0.045),
+        0.35,
+        0.8
+      );
+    }
+  }
+  if (options.rescueVariant === 'move_bias') {
+    next.moveThreshold = clamp(next.moveThreshold - 0.07, 0.35, 0.66);
+    next.fireThreshold = clamp(next.fireThreshold + 0.04, 0.35, 0.8);
+  } else if (options.rescueVariant === 'fire_bias') {
+    next.moveThreshold = clamp(next.moveThreshold + 0.03, 0.35, 0.66);
+    next.fireThreshold = clamp(next.fireThreshold - 0.08, 0.35, 0.8);
   }
   return next;
 }
 
-function mutateNetwork(network, random) {
+function createLayerLike(layer, random, scale) {
+  const outSize = Array.isArray(layer && layer.biases) ? layer.biases.length : 0;
+  const inSize = Array.isArray(layer && layer.weights) && layer.weights[0] ? layer.weights[0].length : 0;
+  return createLayer(outSize, inSize, random, scale);
+}
+
+function getLayerScale(index, totalLayers) {
+  if (index <= 0) return 0.45;
+  if (index >= totalLayers - 1) return 0.25;
+  return 0.35;
+}
+
+function mutateNetwork(network, random, options = {}) {
   const next = cloneNetwork(network);
+  const totalLayers = next.layers.length;
+  const randomizeHiddenChance = Number(options.randomizeHiddenChance) || 0;
+  const randomizeOutputChance = Number(options.randomizeOutputChance) || 0;
+  if (randomizeHiddenChance > 0 && totalLayers > 1 && random() < randomizeHiddenChance) {
+    const hiddenIndex = totalLayers <= 2 ? 0 : Math.floor(random() * (totalLayers - 1));
+    next.layers[hiddenIndex] = createLayerLike(next.layers[hiddenIndex], random, getLayerScale(hiddenIndex, totalLayers));
+  }
+  if (randomizeOutputChance > 0 && totalLayers > 0 && random() < randomizeOutputChance) {
+    const outputIndex = totalLayers - 1;
+    next.layers[outputIndex] = createLayerLike(next.layers[outputIndex], random, getLayerScale(outputIndex, totalLayers));
+  }
   for (const layer of next.layers) {
     for (let i = 0; i < layer.biases.length; i += 1) {
-      if (random() < 0.55) layer.biases[i] += sampleNormal(random) * 0.12;
+      if (random() < (Number(options.biasChance) || 0.55)) {
+        layer.biases[i] += sampleNormal(random) * (Number(options.biasStd) || 0.12);
+      }
       layer.biases[i] = clamp(layer.biases[i], -3, 3);
     }
     for (const row of layer.weights) {
       for (let i = 0; i < row.length; i += 1) {
-        if (random() < 0.22) row[i] += sampleNormal(random) * 0.14;
+        if (random() < (Number(options.weightChance) || 0.22)) {
+          row[i] += sampleNormal(random) * (Number(options.weightStd) || 0.14);
+        }
         row[i] = clamp(row[i], -3, 3);
       }
     }
@@ -833,9 +1139,12 @@ function mutateNetwork(network, random) {
   return next;
 }
 
-function createGenome(archetype, generation, inputSize, random, parent = null) {
+function createGenome(archetype, generation, inputSize, random, parent = null, options = {}) {
   const baseId = `${archetype.id}-${generation}-${Math.floor(random() * 1e9).toString(36)}`;
-  const network = parent ? mutateNetwork(parent.network, random) : createRandomNetwork(inputSize, random);
+  const subject = parent || options.seedBot || archetype;
+  const controllerTraining = resolveControllerTrainingProfile(subject, archetype.id);
+  const mutationSettings = options.rescue ? controllerTraining.rescueMutation : controllerTraining.mutation;
+  const network = parent ? mutateNetwork(parent.network, random, mutationSettings) : createRandomNetwork(inputSize, random);
   return {
     id: baseId,
     name: parent && parent.name ? parent.name : `${archetype.label} ${baseId.slice(-4)}`,
@@ -856,9 +1165,15 @@ function createGenome(archetype, generation, inputSize, random, parent = null) {
     roleFitScore: 0,
     mutationProfile: {
       source: parent ? parent.id : null,
-      kind: parent ? 'clone-mutate' : 'seed'
+      kind: parent ? (options.rescue ? 'rescue-mutate' : 'clone-mutate') : 'seed'
     },
-    controllerParams: parent ? mutateControllerParams(archetype, parent.controllerParams, random) : createDefaultControllerParams(archetype.id),
+    controllerParams: parent
+      ? mutateControllerParams(subject, parent.controllerParams, random, {
+        rescue: !!options.rescue,
+        rescueVariant: options.rescueVariant || null,
+        fallbackArchetypeId: archetype.id
+      })
+      : createDefaultControllerParams(subject, archetype.id),
     network
   };
 }
@@ -888,7 +1203,7 @@ function normalizeRosterSeed(bot) {
       source: bot.id,
       kind: 'roster-seed'
     },
-    controllerParams: clone(bot.controllerParams || createDefaultControllerParams(archetype.id)),
+    controllerParams: buildTrainingControllerParams(bot, bot.controllerParams, archetype.id),
     network: cloneNetwork(bot.network)
   };
 }
@@ -938,8 +1253,14 @@ function createPopulation(inputSize, populationSize, random, rosterSeeds = [], o
       }
       if (seeded.length) {
         const parent = seeded[seededParentCursor % seeded.length];
+        const shouldRescueSeed = (Number(parent.trainingHours) || 0) <= 0.1;
+        const rescueVariant = shouldRescueSeed ? getRescueVariant(seededParentCursor) : null;
         seededParentCursor += 1;
-        populations[archetype.id].push(createGenome(archetype, 0, inputSize, random, parent));
+        populations[archetype.id].push(createGenome(archetype, 0, inputSize, random, parent, {
+          rescue: shouldRescueSeed,
+          rescueVariant,
+          seedBot: parent
+        }));
         continue;
       }
       populations[archetype.id].push(createGenome(archetype, 0, inputSize, random));
@@ -1240,10 +1561,37 @@ function selectArchetypeElites(ranked, protectedSeedIds) {
   };
 }
 
+function buildTrackedLineagePlans(archetype, ranked, protectedSeedIds, trackedSeedBotsById) {
+  return (protectedSeedIds || [])
+    .filter(Boolean)
+    .map((seedId) => {
+      const seedBot = trackedSeedBotsById && typeof trackedSeedBotsById.get === 'function'
+        ? trackedSeedBotsById.get(seedId) || null
+        : null;
+      const lineageLeader = ranked.find((bot) => (bot.sourceBotId || bot.id) === seedId) || seedBot;
+      if (!lineageLeader) return null;
+      const controllerTraining = resolveControllerTrainingProfile(lineageLeader || seedBot, archetype.id);
+      const recovery = assessLineageRecovery(lineageLeader, seedBot);
+      const targetCount = Math.max(
+        2,
+        Math.round(Number(recovery.needsRescue ? controllerTraining.rescueLineageBudget : controllerTraining.lineageBudget) || 3)
+      );
+      return {
+        seedId,
+        seedBot,
+        lineageLeader,
+        recovery,
+        targetCount
+      };
+    })
+    .filter(Boolean);
+}
+
 function runGeneration(populations, generation, random, settings) {
   const mutableBots = Object.values(populations).flat();
   const staticBots = Array.isArray(settings.staticBots) ? settings.staticBots : [];
   const protectedSeedIdsByArchetype = settings.protectedSeedIdsByArchetype || {};
+  const trackedSeedBotsById = settings.trackedSeedBotsById || new Map();
   const allBots = mutableBots.concat(staticBots);
   const replayBundles = [];
   const totalMatches = allBots.reduce((sum, _, i) => {
@@ -1333,22 +1681,72 @@ function runGeneration(populations, generation, random, settings) {
       topFitness: ranked[0].fitnessScore / Math.max(1, ranked[0].matches),
       topElo: ranked[0].elo
     });
-    const { elites, protectedElites } = selectArchetypeElites(ranked, protectedSeedIdsByArchetype[archetype.id]);
+    const lineagePlans = buildTrackedLineagePlans(
+      archetype,
+      ranked,
+      protectedSeedIdsByArchetype[archetype.id],
+      trackedSeedBotsById
+    );
+    const { elites } = selectArchetypeElites(ranked, protectedSeedIdsByArchetype[archetype.id]);
     nextPopulations[archetype.id] = elites.map((bot) => ({
       ...JSON.parse(JSON.stringify(bot)),
       generation: generation + 1
     }));
 
-    let protectedParentCursor = 0;
-    while (nextPopulations[archetype.id].length < ranked.length) {
-      let parent = null;
-      if (protectedElites.length && protectedParentCursor < protectedElites.length) {
-        parent = protectedElites[protectedParentCursor];
-        protectedParentCursor += 1;
-      } else {
-        parent = elites[Math.floor(random() * elites.length)];
+    const lineageCounts = new Map();
+    for (const bot of nextPopulations[archetype.id]) {
+      const trackedSeedId = bot.sourceBotId || bot.id;
+      if (!trackedSeedId) continue;
+      lineageCounts.set(trackedSeedId, (lineageCounts.get(trackedSeedId) || 0) + 1);
+    }
+    for (const plan of lineagePlans) {
+      while (
+        nextPopulations[archetype.id].length < ranked.length &&
+        (lineageCounts.get(plan.seedId) || 0) < plan.targetCount
+      ) {
+        const lineageIndex = lineageCounts.get(plan.seedId) || 0;
+        nextPopulations[archetype.id].push(createGenome(
+          archetype,
+          generation + 1,
+          settings.inputSize,
+          random,
+          plan.lineageLeader,
+          {
+            rescue: plan.recovery.needsRescue,
+            rescueVariant: plan.recovery.needsRescue ? getRescueVariant(lineageIndex) : null,
+            seedBot: plan.seedBot || plan.lineageLeader
+          }
+        ));
+        lineageCounts.set(plan.seedId, (lineageCounts.get(plan.seedId) || 0) + 1);
       }
-      nextPopulations[archetype.id].push(createGenome(archetype, generation + 1, settings.inputSize, random, parent));
+    }
+    while (nextPopulations[archetype.id].length < ranked.length) {
+      let parent = elites[Math.floor(random() * elites.length)];
+      let genomeOptions = {};
+      if (lineagePlans.length && random() < 0.35) {
+        const plan = lineagePlans[Math.floor(random() * lineagePlans.length)];
+        if (plan && plan.lineageLeader) {
+          const lineageIndex = lineageCounts.get(plan.seedId) || 0;
+          parent = plan.lineageLeader;
+          genomeOptions = {
+            rescue: plan.recovery.needsRescue,
+            rescueVariant: plan.recovery.needsRescue ? getRescueVariant(lineageIndex) : null,
+            seedBot: plan.seedBot || plan.lineageLeader
+          };
+        }
+      }
+      nextPopulations[archetype.id].push(createGenome(
+        archetype,
+        generation + 1,
+        settings.inputSize,
+        random,
+        parent,
+        genomeOptions
+      ));
+      const trackedSeedId = parent && parent.sourceBotId ? parent.sourceBotId : (parent && parent.id ? parent.id : null);
+      if (trackedSeedId) {
+        lineageCounts.set(trackedSeedId, (lineageCounts.get(trackedSeedId) || 0) + 1);
+      }
     }
   }
 
@@ -1439,6 +1837,7 @@ function updateBestRosterSeedCandidates(bestBySeedId, populations, reviewRatings
 function summarizeBestRosterSeedCandidates(bestBySeedId, rosterSeedBots) {
   return (rosterSeedBots || []).map((seedBot) => {
     const candidate = bestBySeedId.get(seedBot.id) || null;
+    const recovery = assessLineageRecovery(candidate, seedBot);
     return {
       seedBotId: seedBot.id,
       seedBotName: seedBot.name,
@@ -1448,6 +1847,9 @@ function summarizeBestRosterSeedCandidates(bestBySeedId, rosterSeedBots) {
       selectedCandidatePromotionScore: Math.round(candidate ? candidate.promotionScore : seedBot.elo),
       selectedCandidateTrainingHours: Number((Number(candidate ? candidate.trainingHours : seedBot.trainingHours) || 0).toFixed(3)),
       selectedCandidateRoleFitScore: Number((Number(candidate ? candidate.roleFitScore : seedBot.roleFitScore) || 0).toFixed(2)),
+      hasActiveDescendant: recovery.hasActiveDescendant,
+      lineageNeedsRescue: recovery.needsRescue,
+      lineageRescueReasons: recovery.needsRescue ? recovery.reasons : [],
       profileBlocked: !!(candidate && candidate.profileBlocked),
       promotionBlockReasons: candidate && candidate.promotionBlockReasons ? candidate.promotionBlockReasons : []
     };
@@ -1688,6 +2090,7 @@ function main() {
       if (!protectedSeedIdsByArchetype[seedBot.archetype]) protectedSeedIdsByArchetype[seedBot.archetype] = [];
       protectedSeedIdsByArchetype[seedBot.archetype].push(seedBot.id);
     }
+    const trackedSeedBotsById = new Map(mutableRosterSeeds.map((bot) => [bot.id, bot]));
 
     const inputSize = getObservationSize();
     const random = createSeededRandom(args.seed);
@@ -1737,6 +2140,7 @@ function main() {
         inputSize,
         staticBots: staticRosterBots,
         protectedSeedIdsByArchetype,
+        trackedSeedBotsById,
         progressEveryMatches: args.progressEveryMatches,
         onProgress(progress) {
           if (progress.processedMatches >= progress.totalMatches) return;
