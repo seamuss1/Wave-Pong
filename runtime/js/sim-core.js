@@ -456,6 +456,7 @@
           right: createPaddle(W - paddleBalance.rightXOffset, H / 2 - paddleBalance.height / 2, 'right')
         },
         balls: [],
+        goalFlashes: [],
         particles: [],
         powerups: [],
         pulses: [],
@@ -514,8 +515,35 @@
           storedVx: 0,
           storedVy: 0,
           blueResistTimer: 0,
-          blueResistStrength: 0
+          blueResistStrength: 0,
+          serveHoldTimer: 0,
+          serveHoldDuration: 0,
+          serveReleaseVx: 0,
+          serveReleaseVy: 0
         };
+      }
+
+      function getBallRenderColor(ball, palette = themes[state.theme]) {
+        if (ball.lastHitSide === 'left') return palette.paddleLeft;
+        if (ball.lastHitSide === 'right') return palette.paddleRight;
+        return palette.ball;
+      }
+
+      function applyServeHold(ball) {
+        const holdSeconds = Math.max(0, Number(matchFlowBalance.serveHoldSeconds) || 0);
+        ball.serveHoldDuration = holdSeconds;
+        ball.serveHoldTimer = holdSeconds;
+        if (holdSeconds <= 0) {
+          ball.serveReleaseVx = 0;
+          ball.serveReleaseVy = 0;
+          return ball;
+        }
+        ball.serveReleaseVx = ball.vx;
+        ball.serveReleaseVy = ball.vy;
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.trail.length = 0;
+        return ball;
       }
 
       function storeBestRally(value) {
@@ -782,8 +810,27 @@
         ball.x = W / 2;
         ball.y = H / 2;
         ball.flash = 1;
+        applyServeHold(ball);
         world.balls.push(ball);
         return ball;
+      }
+
+      function spawnGoalFlash(side, y, color) {
+        const goalLight = matchFlowBalance.goalLight || {};
+        const life = Math.max(0.05, Number(goalLight.durationSeconds) || 0.28);
+        world.goalFlashes.push({
+          side: side === 'right' ? 'right' : 'left',
+          y: clamp(y, 28, H - 28),
+          life,
+          maxLife: life,
+          length: Math.max(40, Number(goalLight.length) || 228),
+          thickness: Math.max(8, Number(goalLight.thickness) || 28),
+          originInset: Math.max(0, Number(goalLight.originInset) || 18),
+          color: color || themes[state.theme].ball
+        });
+        if (world.goalFlashes.length > 6) {
+          world.goalFlashes.splice(0, world.goalFlashes.length - 6);
+        }
       }
 
       function getPulseOrigin(paddle) {
@@ -1216,6 +1263,7 @@ function resetMatch() {
   world.particles.length = 0;
   world.pulses.length = 0;
   world.floatTexts.length = 0;
+  world.goalFlashes.length = 0;
   world.balls.length = 0;
   inputQueue.left.clear();
   inputQueue.right.clear();
@@ -1538,11 +1586,18 @@ function applyPowerup(type, scoredByLeft) {
   emitParticles(W / 2, H / 2, def.kind === 'minion' ? 18 : 24, def.color, 330);
 }
 
-function handleGoal(leftScored) {
+function handleGoal(leftScored, goalMeta = null) {
         const scorer = leftScored ? world.paddles.left : world.paddles.right;
         const scorerName = leftScored
           ? (ui.leftName ? ui.leftName.textContent : 'LEFT')
           : (ui.rightName ? ui.rightName.textContent : 'RIGHT');
+        if (goalMeta) {
+          spawnGoalFlash(
+            goalMeta.side || (leftScored ? 'right' : 'left'),
+            goalMeta.y == null ? H / 2 : goalMeta.y,
+            goalMeta.color || getBallRenderColor(goalMeta.ball || {}, themes[state.theme])
+          );
+        }
         const shouldSpawnReplacementBall = matchFlowBalance.alwaysSpawnReplacementAfterGoal || world.balls.length === 0;
         if (leftScored) {
           state.leftScore += 1;
@@ -1955,6 +2010,16 @@ function updateBalls(dt) {
       ball.hueShift += dt * 8;
     }
 
+    if ((ball.serveHoldTimer || 0) > 0) {
+      ball.x = W / 2;
+      ball.y = H / 2;
+      ball.vx = 0;
+      ball.vy = 0;
+      ball.flash = Math.max(ball.flash, 0.9);
+      ball.trail.length = 0;
+      continue;
+    }
+
     if (state.trailsEnabled) {
       ball.trail.push({
         x: ball.x,
@@ -2008,14 +2073,26 @@ function updateBalls(dt) {
     clampBallSpeed(ball);
 
     if (ball.x + ball.r < 0) {
+      const goalMeta = {
+        side: 'left',
+        y: ball.y,
+        color: getBallRenderColor(ball, themes[state.theme]),
+        ball
+      };
       world.balls.splice(i, 1);
-      handleGoal(false);
+      handleGoal(false, goalMeta);
       if (state.gameOver) return;
       continue;
     }
     if (ball.x - ball.r > W) {
+      const goalMeta = {
+        side: 'right',
+        y: ball.y,
+        color: getBallRenderColor(ball, themes[state.theme]),
+        ball
+      };
       world.balls.splice(i, 1);
-      handleGoal(true);
+      handleGoal(true, goalMeta);
       if (state.gameOver) return;
       continue;
     }
@@ -2337,6 +2414,33 @@ function updateParticles(dt) {
         }
       }
 
+      function updateGoalFlashes(dt) {
+        for (let i = world.goalFlashes.length - 1; i >= 0; i--) {
+          const flash = world.goalFlashes[i];
+          flash.life -= dt;
+          if (flash.life <= 0) world.goalFlashes.splice(i, 1);
+        }
+      }
+
+      function updateServeHolds(dt) {
+        for (const ball of world.balls) {
+          if ((ball.serveHoldTimer || 0) <= 0) continue;
+          ball.serveHoldTimer = Math.max(0, ball.serveHoldTimer - dt);
+          ball.x = W / 2;
+          ball.y = H / 2;
+          ball.vx = 0;
+          ball.vy = 0;
+          ball.flash = Math.max(ball.flash, 0.92);
+          if (ball.serveHoldTimer <= 0) {
+            ball.vx = ball.serveReleaseVx || ball.vx;
+            ball.vy = ball.serveReleaseVy || ball.vy;
+            ball.serveReleaseVx = 0;
+            ball.serveReleaseVy = 0;
+            ball.flash = Math.max(ball.flash, 1);
+          }
+        }
+      }
+
       function updatePowerups(dt) {
         for (let i = world.powerups.length - 1; i >= 0; i--) {
           const p = world.powerups[i];
@@ -2383,9 +2487,13 @@ function updateParticles(dt) {
       }
 
 function update(dt) {
-        if (!state.running || state.paused || state.menuOpen || state.gameOver) return;
+        if (!state.running || state.menuOpen) return;
+
+        updateGoalFlashes(dt);
+        if (state.paused || state.gameOver) return;
 
         updatePlayCountdown(dt);
+        updateServeHolds(dt);
         if (state.countdownActive) {
           updateUI();
           return;
@@ -2453,6 +2561,23 @@ function update(dt) {
         ctx.restore();
       }
 
+      function colorWithAlpha(color, alpha) {
+        const safeAlpha = clamp(alpha, 0, 1);
+        if (typeof color === 'string' && color[0] === '#') {
+          let hex = color.slice(1);
+          if (hex.length === 3) {
+            hex = hex.split('').map((char) => char + char).join('');
+          }
+          if (hex.length === 6) {
+            const r = parseInt(hex.slice(0, 2), 16);
+            const g = parseInt(hex.slice(2, 4), 16);
+            const b = parseInt(hex.slice(4, 6), 16);
+            return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
+          }
+        }
+        return `rgba(255, 255, 255, ${safeAlpha})`;
+      }
+
       function renderBackground() {
         const t = themes[state.theme];
         const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -2488,6 +2613,53 @@ function update(dt) {
         ctx.lineWidth = 3;
         roundedRect(14, 14, W - 28, H - 28, 24);
         ctx.stroke();
+      }
+
+      function renderGoalFlashes() {
+        for (const flash of world.goalFlashes) {
+          const lifeAlpha = clamp(flash.life / flash.maxLife, 0, 1);
+          const progress = 1 - lifeAlpha;
+          const beamLength = flash.length * (0.7 + progress * 0.3);
+          const direction = flash.side === 'left' ? 1 : -1;
+          const originX = flash.side === 'left' ? flash.originInset : W - flash.originInset;
+          const endX = originX + direction * beamLength;
+          const glowAlpha = lifeAlpha * lifeAlpha;
+          const glowGradient = ctx.createLinearGradient(originX, flash.y, endX, flash.y);
+          glowGradient.addColorStop(0, colorWithAlpha(flash.color, 0.7 * glowAlpha));
+          glowGradient.addColorStop(0.35, colorWithAlpha(flash.color, 0.3 * glowAlpha));
+          glowGradient.addColorStop(1, colorWithAlpha(flash.color, 0));
+          const coreGradient = ctx.createLinearGradient(originX, flash.y, endX, flash.y);
+          coreGradient.addColorStop(0, `rgba(255,255,255,${0.92 * glowAlpha})`);
+          coreGradient.addColorStop(0.28, colorWithAlpha(flash.color, 0.45 * glowAlpha));
+          coreGradient.addColorStop(1, 'rgba(255,255,255,0)');
+
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = glowGradient;
+          ctx.lineWidth = flash.thickness;
+          ctx.shadowColor = flash.color;
+          ctx.shadowBlur = flash.thickness * 1.35;
+          ctx.beginPath();
+          ctx.moveTo(originX, flash.y);
+          ctx.lineTo(endX, flash.y);
+          ctx.stroke();
+
+          ctx.strokeStyle = coreGradient;
+          ctx.lineWidth = Math.max(4, flash.thickness * 0.32);
+          ctx.shadowColor = '#ffffff';
+          ctx.shadowBlur = 16 + glowAlpha * 12;
+          ctx.beginPath();
+          ctx.moveTo(originX, flash.y);
+          ctx.lineTo(endX, flash.y);
+          ctx.stroke();
+
+          ctx.fillStyle = `rgba(255,255,255,${0.72 * glowAlpha})`;
+          ctx.beginPath();
+          ctx.arc(originX, flash.y, Math.max(5, flash.thickness * 0.18), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
       }
 
       function renderAimer(paddle) {
@@ -2719,7 +2891,10 @@ function renderPaddle(paddle) {
 
         const t = themes[state.theme];
         for (const ball of world.balls) {
-          const hitColor = ball.lastHitSide === 'left' ? t.paddleLeft : (ball.lastHitSide === 'right' ? t.paddleRight : t.ball);
+          const hitColor = getBallRenderColor(ball, t);
+          const holdAlpha = (ball.serveHoldTimer || 0) > 0 && (ball.serveHoldDuration || 0) > 0
+            ? clamp(ball.serveHoldTimer / ball.serveHoldDuration, 0, 1)
+            : 0;
           if (state.trailsEnabled) {
             for (let i = 0; i < ball.trail.length; i++) {
               const trail = ball.trail[i];
@@ -2735,6 +2910,25 @@ function renderPaddle(paddle) {
             }
           }
           ctx.save();
+          if (holdAlpha > 0) {
+            const pulse = 0.5 + Math.sin((state.presentationTimeMs || 0) * 0.001 * Math.PI * 2 * matchFlowBalance.serveHoldPulseHz + ball.id * 0.55) * 0.5;
+            const haloRadius = ball.r + matchFlowBalance.serveHoldGlowRadius * (0.72 + pulse * 0.48);
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = 0.2 + pulse * 0.22 + holdAlpha * 0.12;
+            ctx.fillStyle = hitColor;
+            ctx.shadowColor = hitColor;
+            ctx.shadowBlur = 20 + pulse * 18;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, haloRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 0.34 + pulse * 0.18;
+            ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, haloRadius + 5 + pulse * 4, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
           const boostStrength = Math.log2(1 + Math.max(0, ball.boostIntensity || 0));
           const boostAlpha = clamp(ball.boostTimer || 0, 0, 0.55) / 0.55;
           const boostOpacity = clamp(boostAlpha * (0.46 + boostStrength * 0.18), 0, 1);
@@ -3062,6 +3256,7 @@ function renderOverlayFX() {
         }
 
         renderBackground();
+        renderGoalFlashes();
         renderPowerups();
         renderPulses();
         renderParticles();
