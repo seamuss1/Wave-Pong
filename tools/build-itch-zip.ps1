@@ -92,6 +92,37 @@ function Get-ZipEntrySha256 {
   }
 }
 
+function New-ZipFromDirectorySnapshot {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$SourcePath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ArchivePath
+  )
+
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $snapshotPath = Join-Path ([System.IO.Path]::GetTempPath()) ("wave-pong-itch-" + [System.Guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path $snapshotPath | Out-Null
+
+  try {
+    Get-ChildItem -Path $SourcePath -Force | ForEach-Object {
+      Copy-Item -Path $_.FullName -Destination $snapshotPath -Recurse -Force
+    }
+
+    [System.IO.Compression.ZipFile]::CreateFromDirectory(
+      $snapshotPath,
+      $ArchivePath,
+      [System.IO.Compression.CompressionLevel]::Optimal,
+      $false
+    )
+  } finally {
+    if (Test-Path $snapshotPath) {
+      Remove-Item $snapshotPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
+
 if (-not $SkipBuild) {
   $nodeExe = Resolve-NodeExe
   $builderPath = Join-Path $PSScriptRoot 'build-itch-html.js'
@@ -121,7 +152,7 @@ if (Test-Path $resolvedZipPath) {
   Remove-Item $resolvedZipPath -Force
 }
 
-Compress-Archive -Path (Join-Path $resolvedBuildPath '*') -DestinationPath $resolvedZipPath -Force
+New-ZipFromDirectorySnapshot -SourcePath $resolvedBuildPath -ArchivePath $resolvedZipPath
 
 $expectedHash = Get-FileSha256 -Path (Join-Path $resolvedBuildPath 'index.html')
 $archivedHash = Get-ZipEntrySha256 -ArchivePath $resolvedZipPath -EntryName 'index.html'

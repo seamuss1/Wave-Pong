@@ -1,4 +1,13 @@
-(function () {
+(function (root, factory) {
+  const config = factory();
+  if (typeof module === 'object' && module.exports) {
+    module.exports = config;
+  }
+  if (root) {
+    root.WavePong = root.WavePong || {};
+    root.WavePong.CONFIG = config;
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   // Primary gameplay tuning surface. Change numbers here before touching js/app.js.
   const balance = {
     // Fixed internal game resolution. Rendering scales this to the browser window.
@@ -287,6 +296,15 @@
     matchFlow: {
       alwaysSpawnReplacementAfterGoal: false, // When true, every goal immediately serves a fresh ball even if others are still active.
       countdownSeconds: 3, // Countdown duration before play begins on match start and after resuming from pause.
+      serveHoldSeconds: 0.75, // How long a newly served ball waits at center before it can move.
+      serveHoldPulseHz: 2.6, // Pulse rate for the glow wrapped around a held serve ball.
+      serveHoldGlowRadius: 18, // Extra radius used by the held-ball glow halo.
+      goalLight: {
+        durationSeconds: 0.28, // Lifetime of the horizontal goal-entry light pillar.
+        length: 228, // How far the goal-entry light stretches into the court.
+        thickness: 28, // Base width of the goal-entry light.
+        originInset: 18 // Horizontal inset used to anchor the goal-entry light just inside the court border.
+      },
       preview: {
         arrowMinLength: 42, // Minimum ghost-arrow length shown while play is stopped.
         arrowMaxLength: 118, // Maximum ghost-arrow length shown while play is stopped.
@@ -483,6 +501,5 @@
     }
   };
 
-  window.WavePong = window.WavePong || {};
-  window.WavePong.CONFIG = config;
-})();
+  return config;
+});
