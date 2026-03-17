@@ -115,7 +115,9 @@ Role-specific training in `tools/evolve-bots.js` is intentionally documented aro
 
 - reuse those normalized metric keys instead of inventing role-only score fields
 - keep role intent in the profile `fitness` weights
+- use generic `promotion.minMetrics` and `promotion.maxMetrics` thresholds when a role needs quality gates like minimum hit rate or maximum spam rate
 - keep promotion safety checks in the profile `promotion` block so archetype fit and roster promotion stay aligned
+- tracked roster seeds now keep a protected lineage slot during selection, so multiple named roles can share one archetype pool without one role deleting the other early
 
 ## itch.io deployment with butler
 

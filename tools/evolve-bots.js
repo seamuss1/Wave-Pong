@@ -111,23 +111,34 @@ const ROLE_TRAINING_PROFILES = {
       goalDiff: 18,
       againstGoals: -18,
       longestRally: 0.2,
-      shotRate: 0.35,
-      blueShots: 0.3,
-      blueShotShare: 24,
-      blueBallHits: 1.4,
-      blueTowardHits: 2.6,
-      blueAwayHits: 1.0,
-      blueResistGrants: 2.2,
-      blueWavePowerups: 1.5,
-      nonBlueShots: -0.12,
-      nonBlueShotShare: -8,
+      shots: -0.08,
+      shotRate: -0.22,
+      waveHitRate: 18,
+      ballHitRate: 26,
+      blueShots: 0.08,
+      blueShotShare: 12,
+      blueBallHits: 2.4,
+      blueTowardHits: 3.2,
+      blueAwayHits: 1.2,
+      blueResistGrants: 1.8,
+      blueWavePowerups: 1.1,
+      nonBlueShots: -0.18,
+      nonBlueShotShare: -6,
       goldShots: -0.5
     }),
     promotion: {
       desiredWaveKey: 'blue',
-      minShotsPerMatch: 8,
-      minDesiredShotShare: 0.55,
-      minMovedTickRate: 0.08
+      minShotsPerMatch: 6,
+      minDesiredShotShare: 0.45,
+      minMovedTickRate: 0.08,
+      minMetrics: {
+        ballHitRate: 0.16,
+        blueBallHits: 6,
+        waveHitRate: 0.22
+      },
+      maxMetrics: {
+        shotRate: 12.5
+      }
     }
   },
   defensive_specialist: {
@@ -139,23 +150,30 @@ const ROLE_TRAINING_PROFILES = {
       goalDiff: 16,
       againstGoals: -24,
       longestRally: 0.25,
-      shotRate: 0.25,
-      pinkShots: 0.45,
-      pinkShotShare: 22,
-      pinkBallHits: 1.6,
-      pinkThreatHits: 3.2,
-      pinkEmergencyHits: 4.2,
-      pinkWavePowerups: 1.8,
-      nonPinkShots: -0.12,
-      nonPinkShotShare: -7,
-      goldShots: -0.4
+      shots: 0.15,
+      shotRate: 0.12,
+      waveHitRate: 12,
+      ballHitRate: 10,
+      pinkShots: 0.55,
+      pinkShotShare: 28,
+      pinkBallHits: 2.4,
+      pinkThreatHits: 4.0,
+      pinkEmergencyHits: 5.2,
+      pinkWavePowerups: 2.2,
+      nonPinkShots: -0.18,
+      nonPinkShotShare: -9,
+      goldShots: -0.5
     }),
     promotion: {
       desiredWaveKey: 'pink',
-      minShotsPerMatch: 4,
-      minDesiredShotShare: 0.4,
-      minMovedTickRate: 0.08,
-      minWaveHitsPerMatch: 1
+      minShotsPerMatch: 3,
+      minDesiredShotShare: 0.45,
+      minMovedTickRate: 0.1,
+      minWaveHitsPerMatch: 1,
+      minMetrics: {
+        ballHitRate: 0.12,
+        pinkBallHits: 0.25
+      }
     }
   },
   sniper: {
@@ -166,23 +184,30 @@ const ROLE_TRAINING_PROFILES = {
       win: 100,
       goalDiff: 24,
       againstGoals: -16,
-      paceScore: 20,
-      shotRate: 0.8,
-      goldShots: 1.4,
-      goldShotShare: 32,
-      goldBallHits: 1.8,
-      goldCenterHits: 3.0,
-      goldPaddleHits: 4.6,
-      goldWavePowerups: 4.0,
-      nonGoldShots: -0.1,
-      nonGoldShotShare: -10
+      paceScore: 18,
+      shotRate: 0.65,
+      ballHitRate: 12,
+      goldShots: 1.8,
+      goldShotShare: 40,
+      goldBallHits: 2.4,
+      goldCenterHits: 3.6,
+      goldPaddleHits: 5.4,
+      goldWavePowerups: 5.0,
+      blueShots: -0.18,
+      blueShotShare: -8,
+      nonGoldShots: -0.12,
+      nonGoldShotShare: -14
     }),
     promotion: {
       desiredWaveKey: 'gold',
       minShotsPerMatch: 3,
-      minDesiredShotShare: 0.35,
+      minDesiredShotShare: 0.4,
       minDesiredShotsPerMatch: 1.5,
-      minMovedTickRate: 0.05
+      minMovedTickRate: 0.08,
+      minMetrics: {
+        ballHitRate: 0.35,
+        goldBallHits: 0.6
+      }
     }
   }
 };
@@ -508,6 +533,16 @@ function assessPromotionReadiness(bot, profile) {
       reasons.push(`${shotsKey}<${promotion.minDesiredShotsPerMatch}`);
     }
   }
+  for (const [metricKey, threshold] of Object.entries(promotion.minMetrics || {})) {
+    if ((Number(averages[metricKey]) || 0) < Number(threshold)) {
+      reasons.push(`${metricKey}<${threshold}`);
+    }
+  }
+  for (const [metricKey, threshold] of Object.entries(promotion.maxMetrics || {})) {
+    if ((Number(averages[metricKey]) || 0) > Number(threshold)) {
+      reasons.push(`${metricKey}>${threshold}`);
+    }
+  }
 
   return {
     blocked: reasons.length > 0,
@@ -762,6 +797,25 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function createDefaultControllerParams(archetypeId) {
+  return {
+    moveThreshold: 0.55,
+    fireThreshold: archetypeId === 'aggressive' ? 0.54 : archetypeId === 'defensive' ? 0.66 : 0.6
+  };
+}
+
+function mutateControllerParams(archetype, parentParams, random) {
+  const next = clone(parentParams || createDefaultControllerParams(archetype.id));
+  const defaultParams = createDefaultControllerParams(archetype.id);
+  next.moveThreshold = Number.isFinite(Number(next.moveThreshold)) ? Number(next.moveThreshold) : defaultParams.moveThreshold;
+  next.fireThreshold = Number.isFinite(Number(next.fireThreshold)) ? Number(next.fireThreshold) : defaultParams.fireThreshold;
+  if (typeof random === 'function') {
+    if (random() < 0.7) next.moveThreshold = clamp(next.moveThreshold + sampleNormal(random) * 0.035, 0.47, 0.63);
+    if (random() < 0.75) next.fireThreshold = clamp(next.fireThreshold + sampleNormal(random) * 0.045, 0.4, 0.78);
+  }
+  return next;
+}
+
 function mutateNetwork(network, random) {
   const next = cloneNetwork(network);
   for (const layer of next.layers) {
@@ -804,9 +858,7 @@ function createGenome(archetype, generation, inputSize, random, parent = null) {
       source: parent ? parent.id : null,
       kind: parent ? 'clone-mutate' : 'seed'
     },
-    controllerParams: parent && parent.controllerParams ? clone(parent.controllerParams) : {
-      fireThreshold: archetype.id === 'aggressive' ? 0.54 : archetype.id === 'defensive' ? 0.66 : 0.6
-    },
+    controllerParams: parent ? mutateControllerParams(archetype, parent.controllerParams, random) : createDefaultControllerParams(archetype.id),
     network
   };
 }
@@ -836,9 +888,7 @@ function normalizeRosterSeed(bot) {
       source: bot.id,
       kind: 'roster-seed'
     },
-    controllerParams: clone(bot.controllerParams || {
-      fireThreshold: archetype.id === 'aggressive' ? 0.54 : archetype.id === 'defensive' ? 0.66 : 0.6
-    }),
+    controllerParams: clone(bot.controllerParams || createDefaultControllerParams(archetype.id)),
     network: cloneNetwork(bot.network)
   };
 }
@@ -1161,9 +1211,39 @@ function makeReplayBundle(match, leftBot, rightBot, seed) {
   };
 }
 
+function selectArchetypeElites(ranked, protectedSeedIds) {
+  const protectedIds = new Set((protectedSeedIds || []).filter(Boolean));
+  const baseEliteCount = Math.max(2, Math.floor(ranked.length / 3));
+  const protectedElites = [];
+  for (const seedId of protectedIds) {
+    const lineageLeader = ranked.find((bot) => (bot.sourceBotId || bot.id) === seedId);
+    if (lineageLeader) protectedElites.push(lineageLeader);
+  }
+
+  const elites = [];
+  const seen = new Set();
+  for (const bot of protectedElites) {
+    if (!bot || seen.has(bot.id)) continue;
+    elites.push(bot);
+    seen.add(bot.id);
+  }
+  for (const bot of ranked) {
+    if (!bot || seen.has(bot.id)) continue;
+    elites.push(bot);
+    seen.add(bot.id);
+    if (elites.length >= Math.max(baseEliteCount, protectedElites.length)) break;
+  }
+
+  return {
+    elites,
+    protectedElites
+  };
+}
+
 function runGeneration(populations, generation, random, settings) {
   const mutableBots = Object.values(populations).flat();
   const staticBots = Array.isArray(settings.staticBots) ? settings.staticBots : [];
+  const protectedSeedIdsByArchetype = settings.protectedSeedIdsByArchetype || {};
   const allBots = mutableBots.concat(staticBots);
   const replayBundles = [];
   const totalMatches = allBots.reduce((sum, _, i) => {
@@ -1253,14 +1333,21 @@ function runGeneration(populations, generation, random, settings) {
       topFitness: ranked[0].fitnessScore / Math.max(1, ranked[0].matches),
       topElo: ranked[0].elo
     });
-    const elites = ranked.slice(0, Math.max(2, Math.floor(ranked.length / 3)));
+    const { elites, protectedElites } = selectArchetypeElites(ranked, protectedSeedIdsByArchetype[archetype.id]);
     nextPopulations[archetype.id] = elites.map((bot) => ({
       ...JSON.parse(JSON.stringify(bot)),
       generation: generation + 1
     }));
 
+    let protectedParentCursor = 0;
     while (nextPopulations[archetype.id].length < ranked.length) {
-      const parent = elites[Math.floor(random() * elites.length)];
+      let parent = null;
+      if (protectedElites.length && protectedParentCursor < protectedElites.length) {
+        parent = protectedElites[protectedParentCursor];
+        protectedParentCursor += 1;
+      } else {
+        parent = elites[Math.floor(random() * elites.length)];
+      }
       nextPopulations[archetype.id].push(createGenome(archetype, generation + 1, settings.inputSize, random, parent));
     }
   }
@@ -1596,6 +1683,11 @@ function main() {
       : (args.rosterMode === 'static'
         ? rosterBots.map((bot) => ({ ...clone(bot), isStaticRosterBot: true }))
         : []);
+    const protectedSeedIdsByArchetype = {};
+    for (const seedBot of mutableRosterSeeds) {
+      if (!protectedSeedIdsByArchetype[seedBot.archetype]) protectedSeedIdsByArchetype[seedBot.archetype] = [];
+      protectedSeedIdsByArchetype[seedBot.archetype].push(seedBot.id);
+    }
 
     const inputSize = getObservationSize();
     const random = createSeededRandom(args.seed);
@@ -1644,6 +1736,7 @@ function main() {
         maxTicks: args.maxTicks,
         inputSize,
         staticBots: staticRosterBots,
+        protectedSeedIdsByArchetype,
         progressEveryMatches: args.progressEveryMatches,
         onProgress(progress) {
           if (progress.processedMatches >= progress.totalMatches) return;
