@@ -23,31 +23,17 @@ function replaceExact(source, search, replacement, label) {
   return source.replace(search, replacement);
 }
 
-function replacePattern(source, pattern, replacement, label) {
-  if (!pattern.test(source)) {
-    throw new Error(`Could not find ${label} while building the itch.io HTML artifact.`);
-  }
-  pattern.lastIndex = 0;
-  return source.replace(pattern, replacement);
-}
-
 function escapeInlineScript(source) {
   return source.replace(/<\/script/gi, '<\\/script');
 }
 
 const htmlPath = path.join(runtimeDir, 'index.html');
 const cssPath = path.join(runtimeDir, 'styles', 'main.css');
-const versionJsPath = path.join(runtimeDir, 'js', 'version.js');
-const configPath = path.join(runtimeDir, 'js', 'config.js');
-const appPath = path.join(runtimeDir, 'js', 'app.js');
 const legacyPath = path.join(runtimeDir, 'wave_pong.html');
 const versionPath = path.join(repoRoot, 'version.json');
 
 let html = read(htmlPath);
 const css = read(cssPath);
-const versionJs = read(versionJsPath);
-const configJs = read(configPath);
-const appJs = read(appPath);
 const legacyHtml = read(legacyPath);
 const versionJson = read(versionPath);
 
@@ -58,12 +44,16 @@ html = replaceExact(
   'the stylesheet link tag'
 );
 
-html = replacePattern(
-  html,
-  /^\s*<script src="\.\/*js\/version\.js"><\/script>\s*\r?\n\s*<script src="\.\/*js\/config\.js"><\/script>\s*\r?\n\s*<script src="\.\/*js\/app\.js"><\/script>/m,
-  `  <script>\n${escapeInlineScript(versionJs)}\n</script>\n  <script>\n${escapeInlineScript(configJs)}\n</script>\n  <script>\n${escapeInlineScript(appJs)}\n</script>`,
-  'the runtime script tags'
-);
+const runtimeScriptTagPattern = /^\s*<script src="\.\/*js\/([^"]+)"><\/script>\s*$/gm;
+if (!runtimeScriptTagPattern.test(html)) {
+  throw new Error('Could not find the runtime script tags while building the itch.io HTML artifact.');
+}
+runtimeScriptTagPattern.lastIndex = 0;
+html = html.replace(runtimeScriptTagPattern, (match, scriptName) => {
+  const scriptPath = path.join(runtimeDir, 'js', scriptName);
+  const scriptContents = read(scriptPath);
+  return `  <script>\n${escapeInlineScript(scriptContents)}\n</script>`;
+});
 
 write(path.join(outputDir, 'index.html'), html);
 write(path.join(outputDir, 'wave_pong.html'), legacyHtml);

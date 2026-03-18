@@ -20,17 +20,23 @@ Open `runtime/index.html` in a modern desktop browser.
 - `version.json` contains the current release/build version.
 - `runtime/index.html` contains the game UI markup and is the local browser entrypoint.
 - `runtime/js/version.js` exposes the current build version to the runtime UI.
+- `runtime/js/config.js` contains the primary gameplay tuning surface and static definitions.
+- `runtime/js/controllers.js` contains the human, scripted CPU, and neural bot controller adapters.
+- `runtime/js/sim-core.js` contains the deterministic simulation, physics, rendering, replay, and UI runtime.
+- `runtime/js/bot-roster.js` contains the published ML bot roster used by the CPU selector.
+- `runtime/js/app.js` bootstraps the browser runtime, wires the menu/bot-info UI, and swaps between classic CPU and ML bots.
 - `runtime/styles/main.css` contains the presentation layer.
-- `runtime/js/app.js` contains the game loop, rendering, input, and gameplay systems.
-- `runtime/js/config.js` contains the tweakable gameplay numbers and static game definitions.
 - `runtime/wave_pong.html` is a legacy entry that redirects to `runtime/index.html`.
+- `tools/evolve-bots.js` runs the offline training pipeline and writes reports, checkpoints, exports, and auto-promotion snapshots.
+- `tools/publish-bots.js` validates and publishes trained candidates into `runtime/js/bot-roster.js`.
+- `tools/promote-live-training.js` snapshots a still-running trainer process and optionally publishes the live candidates.
 - `tools/browser-smoke-test.ps1` launches the Windows smoke test browser and cleans it up.
 - `tools/browser-smoke-test.js` contains the DevTools-driven smoke assertions and can also attach to an already-launched browser.
 - `tools/package.json` contains tooling-only Node metadata.
 
 ## itch.io packaging
 
-Versioning is tracked in `version.json`. The current version is `0.3.3`.
+Versioning is tracked in `version.json`. The current repo version is `0.6.6`.
 
 Version rules:
 
@@ -76,7 +82,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\build-itch-zip.ps1
 That command:
 
 - rebuilds `itch-build/`
-- creates the single current deploy zip as `wave-pong-itchio-v0.3.3.zip`
+- creates the single current deploy zip as `wave-pong-itchio-v<version>.zip`
 - verifies the archived `index.html` matches `itch-build/index.html`
 
 ## Smoke testing
@@ -94,6 +100,288 @@ If you specifically want the raw Node launcher, use:
 ```bash
 npm.cmd run smoke:node
 ```
+
+## Runtime architecture
+
+The browser runtime is split into small layers instead of one giant script:
+
+- `runtime/index.html` loads the version, config, controllers, simulation core, published bot roster, and browser bootstrap in that order.
+- `runtime/js/app.js` creates the runtime, populates the CPU selector with both classic scripted difficulties and published ML bots, and exposes the bot dossier overlay.
+- `runtime/js/sim-core.js` owns the deterministic match simulation. It is the source of truth for world state, tick stepping, controller input queuing, rendering, replay serialization, and state hashing.
+- `runtime/js/controllers.js` turns either player input, scripted heuristics, or a trained neural network into the same `{ moveAxis, fire }` action shape.
+
+### Deterministic simulation
+
+The game simulation runs at a fixed internal tick rate of 120 Hz. Controller decisions are sampled every 2 ticks by default, then queued into the simulation. That matters for both gameplay and training:
+
+- offline training uses the exact same simulation core as the browser runtime
+- replay exports serialize the same action stream and periodic state hashes
+- seeded runs stay reproducible because the runtime uses a deterministic RNG instead of `Math.random()` inside the sim loop
+
+This shared deterministic core is what makes the machine-learning pipeline trustworthy. The trainer is not learning in a toy approximation of the game. It is learning against the real runtime rules.
+
+### CPU controllers
+
+There are two CPU paths in the shipped game:
+
+- classic CPU difficulties (`Chill`, `Spicy`, `Ridiculous`) use the scripted controller in `runtime/js/controllers.js`
+- published ML bots use the neural controller backed by `runtime/js/bot-roster.js`
+
+The scripted controller predicts the closest incoming ball, tracks toward it with a deadband, and probabilistically fires based on distance, charge, and aim alignment. It is still useful as a stable baseline and fallback opponent even though the repo now supports trained bots.
+
+### Neural bot control
+
+ML bots are plain JSON assets with:
+
+- `schemaVersion`
+- `id`, `name`, lineage and metadata
+- `controllerParams`
+- `network`
+
+At runtime, the neural controller:
+
+1. Builds a normalized observation for the chosen side.
+2. Flattens that observation into a 59-value input vector.
+3. Runs a feed-forward MLP with hidden `tanh` activations.
+4. Interprets the 3 output neurons as `moveLeft`, `moveRight`, and `fire`.
+5. Passes those outputs through `sigmoid`.
+6. Applies `controllerParams.moveThreshold` and `controllerParams.fireThreshold`.
+
+If neither move output beats the movement threshold, the bot stays still. If one side wins, the paddle moves up or down by choosing the stronger move output. Firing is a simple thresholded boolean on the third output.
+
+### Observation model
+
+The 59-value neural input vector is intentionally side-relative so the same network shape works on either side of the court. The observation includes:
+
+- self paddle state: vertical position, velocity, size, aim angle, charge, level, cooldown
+- opponent paddle state: mirrored into the same coordinate frame
+- score state: own score, opponent score, score limit ratio
+- match meta: rally length, balls in play, powerups in play, countdown state
+- nearest 4 balls: normalized position, velocity, travel direction relative to the observing side, and radius
+- nearest 4 powerups: normalized position, radius, and remaining life
+
+Because ball and powerup lists are distance-sorted relative to the observing paddle, the network sees the most immediately relevant objects first.
+
+## Bot training
+
+Run bot evolution from the repo root with:
+
+```bash
+node tools/evolve-bots.js --population 20 --generations 900 --update-all-roster --checkpoint-every 25
+```
+
+### What the trainer is optimizing
+
+The trainer does not use gradient descent. It is an evolutionary search loop that repeatedly:
+
+1. Builds or reloads populations of neural bots.
+2. Plays full deterministic matches between bots using `runtime/js/sim-core.js`.
+3. Collects match statistics and role-specific metrics.
+4. Scores each bot with weighted fitness functions.
+5. Updates Elo from match outcomes.
+6. Selects elites plus protected tracked-seed lineages.
+7. Clones and mutates the next generation.
+8. Exports and optionally publishes the best candidates.
+
+This means the learning system is closer to neuroevolution than to backprop-based reinforcement learning.
+
+### Populations, archetypes, and named roles
+
+The base trainer works with four broad archetype pools:
+
+- `defensive`
+- `aggressive`
+- `control`
+- `trickster`
+
+On top of that, the current published roster also uses named role profiles layered over those archetypes:
+
+- `Strategist`
+- `Defensive Specialist`
+- `Sniper`
+
+Named roles can share an archetype pool. For example, both `Strategist` and `Defensive Specialist` are `control` bots, but they use different:
+
+- fitness weights
+- promotion gates
+- controller defaults
+- rescue mutation behavior
+
+That split is intentional. The shared archetype keeps the population broad, while the role profile pushes particular styles such as blue control, pink defense, or gold conversion.
+
+### Training loop details
+
+Each generation:
+
+- creates a round-robin over all mutable bots, plus any static roster opponents
+- runs matches to the configured score limit or max tick budget
+- records movement, shots, powerup pickups, ball hits, wave hits, role-metric counters, rally length, and pace
+- converts those raw metrics into normalized per-match averages
+
+Fitness is not a single opaque reward. It is a weighted sum of readable metrics such as:
+
+- wins and goal differential
+- against-goals pressure
+- longest rally and pace
+- shots and shot rate
+- wave hit rate and ball hit rate
+- wave-color share metrics like `blueShotShare`, `pinkShotShare`, and `goldShotShare`
+- specialized role counters such as `blueTowardHits`, `pinkThreatHits`, or `goldPaddleHits`
+
+Those normalized metric names are documented in `TRAINING_METRIC_GUIDE` inside `tools/evolve-bots.js`, and future roles should reuse those keys instead of inventing new one-off score fields.
+
+### Match evaluation and metrics
+
+Training match evaluation uses the real runtime with these important constraints:
+
+- deterministic seed per match
+- demo mode
+- powerups enabled
+- trails disabled
+- configurable score limit
+- configurable max tick cap to prevent pathological infinite matches
+
+For each side, the trainer builds metrics such as:
+
+- `shots`, `shotRate`
+- `ballHits`, `ballHitRate`
+- `waveHits`, `waveHitRate`
+- `movedTickRate`, `movementRate`
+- `powerups`, `powerupRate`
+- desired-wave counts and shares
+- role-specific contact counters from `matchStats.leftRoleMetrics` and `matchStats.rightRoleMetrics`
+
+The trainer also tracks movement directly by sampling paddle Y every simulation tick during the match. That is how it can distinguish a bot that survives passively from one that is actually moving and playing.
+
+### Networks and mutation
+
+New bots use the same observation shape and MLP structure as runtime bots:
+
+- input size: 59
+- hidden layers: `12 -> 8`
+- output layer: `3`
+- hidden activation: `tanh`
+- output interpretation: left, right, fire logits passed through `sigmoid`
+
+Evolution mutates two things:
+
+- network weights and biases
+- controller thresholds in `controllerParams`
+
+Controller params matter because they control how aggressively the runtime converts output activations into movement and firing. Small threshold changes can produce meaningful playstyle changes even when the network stays similar.
+
+### Tracked-seed fine tuning
+
+When you pass `--update-all-roster` or `--focus-bot-id`, the trainer treats published roster bots as tracked seeds instead of starting from scratch.
+
+The current fine-tuning path does several things to keep those seeds trainable:
+
+- roster seeds are loaded from `runtime/js/bot-roster.js`
+- `--focus-bot-id <botId>` isolates one published bot while keeping the rest of the roster as fixed opponents by default
+- each tracked seed keeps its lineage via `sourceBotId`
+- each tracked lineage gets a guaranteed search budget each generation
+- tracked roles can use role-specific controller defaults even when they share an archetype
+- inert tracked lineages automatically switch into rescue mutation mode
+
+The rescue path is there specifically to avoid the old failure mode where a published seed that never moved would stay frozen forever while the run still looked superficially healthy.
+
+### Rescue mutation mode
+
+If a tracked lineage fails minimum activity checks such as:
+
+- active-match rate
+- shots per match
+- moved-tick rate
+- wave hits per match
+
+the trainer marks it as needing rescue and widens the search:
+
+- more descendants are reserved for that lineage
+- controller threshold mutation gets stronger
+- network mutation gets stronger
+- some rescue children partially re-randomize hidden or output layers
+- rescue variants deliberately explore balanced, move-biased, and fire-biased threshold combinations
+
+This is what allows dead seeds like a non-moving defensive bot to re-enter the search space instead of being preserved unchanged forever.
+
+### Promotion scoring and gates
+
+A bot is not promoted on Elo alone.
+
+The trainer builds a promotion candidate score from:
+
+- Elo
+- role-fit bonus derived from average fitness
+- optional human review score
+- large penalties for review-blocked bots
+- large penalties for profile-blocked bots
+
+Profile blocking comes from the role's promotion gate. A role can require things like:
+
+- minimum shots per match
+- minimum moved-tick rate
+- minimum desired-wave share
+- minimum desired-wave shots
+- generic `promotion.minMetrics`
+- generic `promotion.maxMetrics`
+
+This is how the trainer can reject bots that win games while ignoring the intended style. For example, a strategist can be blocked for blue-spam with weak actual ball control, and a sniper can be blocked for not using enough gold.
+
+### Export, reports, checkpoints, and logs
+
+Every run writes machine-readable artifacts under `tools/reports/`:
+
+- a timestamped training log
+- generation checkpoints
+- `latest-evolution-report.json`
+- replay bundles for selected matches
+- exported candidate bot scripts
+
+Useful flags:
+
+- `--publish-runtime` publishes the final export to the roster file when training completes
+- `--auto-promote-every <N>` snapshots and publishes current best eligible bots every `N` generations
+- `--log-file <path>` pins the run log to a specific file instead of a timestamped default
+- `--roster-file <path>` lets you train and auto-promote against a temporary roster for dry runs
+- omit `--progress-every` to keep the built-in low-noise progress logging
+
+The generation tune line is intentionally short but high signal. It now reports not only role gaps, but also when a lineage still has `no-active-descendant` and is running in rescue mode.
+
+### Publishing bots into the runtime
+
+Publishing is handled by `tools/publish-bots.js`, not by blindly copying exports into the roster.
+
+The publish step:
+
+- normalizes incoming candidates
+- runs quick runtime activity validation samples
+- marks fully inert bots as `runtimeDisabled`
+- adds style tags like `active-mover`, `measured-mover`, or `static-lane`
+- skips redundant candidates that are almost identical to an existing roster bot
+- requires head-to-head promotion wins when replacing an existing bot
+
+Replacement uses a seeded promotion series where candidate and existing bots play from both sides. A candidate only replaces the roster bot if it wins on match points, with goal difference as the tiebreaker.
+
+### Live promotion during a long run
+
+`tools/promote-live-training.js` can attach to a live Node training process, snapshot the current trainer state, export the current best candidates, and optionally publish them without waiting for the full run to finish.
+
+That is useful when:
+
+- a long overnight run is still in progress
+- you want to try the current best bots in the browser immediately
+- you want to inspect live candidates without stopping the trainer
+
+### Guidance for future roles
+
+When adding future archetypes or named roles:
+
+- reuse the normalized metric keys from `TRAINING_METRIC_GUIDE`
+- keep role intent in the role profile `fitness` weights
+- keep style-specific quality gates in the role profile `promotion` block
+- use controller training profiles for role-specific movement/fire defaults
+- avoid hardcoding role-only logic inside the simulation loop
+- assume shared archetype pools need lineage protection, not just a bigger population
 
 ## itch.io deployment with butler
 
@@ -174,14 +462,14 @@ npm.cmd run deploy:test
 npm.cmd run deploy:production
 ```
 
-If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.3.3`.
+If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.6.6`.
 
 You can still override it for a one-off deploy:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
   -Destination test `
-  -UserVersion "0.3.3-hotfix1"
+  -UserVersion "0.6.6-hotfix1"
 ```
 
 ### First-time itch.io setup

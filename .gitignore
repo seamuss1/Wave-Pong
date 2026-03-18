@@ -2,3 +2,6 @@
 tools/node_modules/
 itch-build/
 .env
+tools/reports/**
+!tools/reports/
+!tools/reports/review-ratings.json
