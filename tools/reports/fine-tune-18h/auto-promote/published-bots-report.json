@@ -1,0 +1,44 @@
+{
+  "createdAt": "2026-03-18T00:20:04.038Z",
+  "source": "C:\\Users\\Admin\\Documents\\GitHub\\Wave-Pong\\tools\\reports\\fine-tune-18h\\auto-promote\\exported-bots.js",
+  "destination": "C:\\Users\\Admin\\Documents\\GitHub\\Wave-Pong\\runtime\\js\\bot-roster.js",
+  "publishedCount": 3,
+  "bots": [
+    {
+      "id": "aggressive-0-9aaccq",
+      "name": "Sniper",
+      "archetype": "aggressive",
+      "difficultyBand": "absurd",
+      "elo": 1669,
+      "promotionScore": 1692,
+      "selectedCandidateId": "aggressive-0-9aaccq",
+      "selectedCandidateGeneration": 6,
+      "profileBlocked": false,
+      "reviewBlocked": false
+    },
+    {
+      "id": "control-0-fx20h9",
+      "name": "Strategist",
+      "archetype": "control",
+      "difficultyBand": "absurd",
+      "elo": 1409,
+      "promotionScore": 1409,
+      "selectedCandidateId": "control-0-fx20h9",
+      "selectedCandidateGeneration": 10,
+      "profileBlocked": false,
+      "reviewBlocked": false
+    },
+    {
+      "id": "control-0-94ckep",
+      "name": "Defensive Specialist",
+      "archetype": "control",
+      "difficultyBand": "absurd",
+      "elo": 1050,
+      "promotionScore": 1050,
+      "selectedCandidateId": "control-0-94ckep",
+      "selectedCandidateGeneration": 1,
+      "profileBlocked": false,
+      "reviewBlocked": false
+    }
+  ]
+}
