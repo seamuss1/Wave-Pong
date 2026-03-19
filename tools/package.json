@@ -13,6 +13,7 @@
     "publish:bots": "node publish-bots.js",
     "render:replay": "node render-replay.js",
     "review:replays": "node review-replays.js",
+    "runtime:env": "node write-runtime-env.js",
     "smoke": "powershell -ExecutionPolicy Bypass -File ./browser-smoke-test.ps1",
     "smoke:node": "node browser-smoke-test.js",
     "version:patch": "powershell -ExecutionPolicy Bypass -File ./bump-version.ps1 -Level patch",

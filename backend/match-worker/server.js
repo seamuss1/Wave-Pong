@@ -1,16 +1,18 @@
 const { createMatchWorkerManager } = require('./manager.js');
 const { createMatchWorkerApp } = require('./app.js');
+const { buildRuntimeConfig } = require('../config.js');
 
-const PORT = Number(process.env.PORT || 8788);
-const SECRET = process.env.WAVE_PONG_SECRET || 'wave-pong-local-secret';
+const config = buildRuntimeConfig({
+  serviceName: 'match-worker'
+});
 
 const app = createMatchWorkerApp({
   manager: createMatchWorkerManager({
-    secret: SECRET,
-    workerUrl: process.env.WAVE_PONG_WORKER_URL || `ws://127.0.0.1:${PORT}/ws/match`
+    secret: config.secret,
+    workerUrl: config.worker.internalWsUrl
   })
 });
 
-app.server.listen(PORT, () => {
-  console.log(`Wave Pong match-worker listening on http://127.0.0.1:${PORT}`);
+app.server.listen(config.worker.port, () => {
+  console.log(`Wave Pong match-worker listening on ${config.worker.origin}`);
 });

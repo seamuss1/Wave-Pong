@@ -14,6 +14,7 @@ function createControlPlaneApp(options = {}) {
   const secret = options.secret || 'wave-pong-local-secret';
   const workerManager = options.workerManager;
   const workerUrl = options.workerUrl || 'ws://127.0.0.1:8788/ws/match';
+  const publicWorkerUrl = options.publicWorkerUrl || workerUrl;
   if (!workerManager) {
     throw new Error('createControlPlaneApp requires a workerManager.');
   }
@@ -52,7 +53,8 @@ function createControlPlaneApp(options = {}) {
     multiplayer,
     workerManager,
     broadcastToPlayer,
-    broadcastQueuePresence
+    broadcastQueuePresence,
+    publicWorkerUrl
   });
   const chatService = createChatService({
     store,
@@ -192,7 +194,7 @@ function createControlPlaneApp(options = {}) {
       const ticket = workerManager.issueReconnectTicket(matchId, player.id);
       sendJson(res, 200, {
         matchId,
-        workerUrl,
+        workerUrl: publicWorkerUrl,
         ticket
       });
       return;

@@ -1,18 +1,21 @@
 const { createMatchWorkerManager } = require('../match-worker/manager.js');
 const { createControlPlaneApp } = require('./app.js');
+const { buildRuntimeConfig } = require('../config.js');
 
-const PORT = Number(process.env.PORT || 8787);
-const SECRET = process.env.WAVE_PONG_SECRET || 'wave-pong-local-secret';
+const config = buildRuntimeConfig({
+  serviceName: 'control-plane'
+});
 
 const app = createControlPlaneApp({
   workerManager: createMatchWorkerManager({
-    secret: SECRET,
-    workerUrl: process.env.WAVE_PONG_WORKER_URL || 'ws://127.0.0.1:8788/ws/match'
+    secret: config.secret,
+    workerUrl: config.worker.internalWsUrl
   }),
-  workerUrl: process.env.WAVE_PONG_WORKER_URL || 'ws://127.0.0.1:8788/ws/match',
-  secret: SECRET
+  workerUrl: config.worker.internalWsUrl,
+  publicWorkerUrl: config.worker.publicWsUrl,
+  secret: config.secret
 });
 
-app.server.listen(PORT, () => {
-  console.log(`Wave Pong control-plane listening on http://127.0.0.1:${PORT}`);
+app.server.listen(config.control.port, () => {
+  console.log(`Wave Pong control-plane listening on ${config.control.origin}`);
 });

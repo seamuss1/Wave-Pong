@@ -9,6 +9,16 @@
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (root) {
   const win = root && root.window ? root.window : root;
+  function normalizeUrl(value) {
+    return String(value || '').replace(/\/+$/, '');
+  }
+  function readParam(searchParams, names) {
+    for (const name of names) {
+      const value = searchParams.get(name);
+      if (value) return value;
+    }
+    return '';
+  }
   const searchParams = (() => {
     try {
       return new URLSearchParams((win && win.location && win.location.search) || '');
@@ -17,10 +27,12 @@
     }
   })();
   const injected = (root && root.__WAVE_PONG_ENV__) || {};
-  const apiBaseUrl = searchParams.get('api') || injected.apiBaseUrl || '';
-  const controlWsUrl = searchParams.get('controlWs') || injected.controlWsUrl || '';
-  const workerWsUrl = searchParams.get('workerWs') || injected.workerWsUrl || '';
-  const enabled = !!(apiBaseUrl && controlWsUrl);
+  const apiBaseUrl = normalizeUrl(readParam(searchParams, ['api', 'apiBaseUrl']) || injected.apiBaseUrl || '');
+  const controlWsUrl = normalizeUrl(readParam(searchParams, ['controlWs', 'controlWsUrl']) || injected.controlWsUrl || '');
+  const workerWsUrl = normalizeUrl(readParam(searchParams, ['workerWs', 'workerWsUrl']) || injected.workerWsUrl || '');
+  const enabled = typeof injected.enabled === 'boolean'
+    ? injected.enabled && !!(apiBaseUrl && controlWsUrl)
+    : !!(apiBaseUrl && controlWsUrl);
   return {
     apiBaseUrl,
     controlWsUrl,

@@ -14,10 +14,18 @@ function createQueueService(options) {
   }
 
   function removePlayerFromAllQueues(playerId) {
+    const changedBuckets = [];
     for (const [bucketKey, entries] of store.queueBuckets.entries()) {
       const nextEntries = entries.filter((entry) => entry.playerId !== playerId);
-      store.queueBuckets.set(bucketKey, nextEntries);
+      if (nextEntries.length !== entries.length) {
+        store.queueBuckets.set(bucketKey, nextEntries);
+        changedBuckets.push({
+          bucketKey,
+          queueSize: nextEntries.length
+        });
+      }
     }
+    return changedBuckets;
   }
 
   function maybeCreateMatches(playlistId, region) {
@@ -48,7 +56,7 @@ function createQueueService(options) {
         matchId: created.matchId,
         playlistId,
         region,
-        workerUrl: created.workerUrl,
+        workerUrl: options.publicWorkerUrl || created.workerUrl,
         side: 'left',
         ticket: created.tickets.left,
         opponent: { id: rightPlayer.id, displayName: rightPlayer.displayName, verified: rightPlayer.verified }
@@ -57,7 +65,7 @@ function createQueueService(options) {
         matchId: created.matchId,
         playlistId,
         region,
-        workerUrl: created.workerUrl,
+        workerUrl: options.publicWorkerUrl || created.workerUrl,
         side: 'right',
         ticket: created.tickets.right,
         opponent: { id: leftPlayer.id, displayName: leftPlayer.displayName, verified: leftPlayer.verified }
@@ -75,7 +83,9 @@ function createQueueService(options) {
       if (playlist.requireVerifiedAccount && !player.verified) {
         throw new Error('This queue requires a verified account.');
       }
-      removePlayerFromAllQueues(player.id);
+      for (const changed of removePlayerFromAllQueues(player.id)) {
+        broadcastQueuePresence(changed.bucketKey, changed.queueSize);
+      }
       const bucket = ensureQueueBucket(store, playlist.id, region.id);
       bucket.entries.push({
         playerId: player.id,
@@ -89,7 +99,9 @@ function createQueueService(options) {
       const playlistId = payload.playlistId;
       const region = payload.region;
       if (!playlistId || !region) {
-        removePlayerFromAllQueues(player.id);
+        for (const changed of removePlayerFromAllQueues(player.id)) {
+          broadcastQueuePresence(changed.bucketKey, changed.queueSize);
+        }
         return { playlistId: null, region: null, queueSize: 0, queued: false };
       }
       const bucket = ensureQueueBucket(store, playlistId, region);

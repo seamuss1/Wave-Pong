@@ -6,4 +6,4 @@
     root.WavePong = root.WavePong || {};
     root.WavePong.VERSION = version;
   }
-})(typeof globalThis !== 'undefined' ? globalThis : this, '0.7.0');
+})(typeof globalThis !== 'undefined' ? globalThis : this, '0.8.0');

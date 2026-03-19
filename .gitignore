@@ -2,6 +2,11 @@
 tools/node_modules/
 itch-build/
 .env
+.env.local
+backend/.env
+backend/.env.local
+infra/terraform/generated/
+infra/terraform/.terraform/
 tools/reports/**
 !tools/reports/
 !tools/reports/review-ratings.json

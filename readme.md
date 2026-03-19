@@ -20,6 +20,7 @@ Open `runtime/index.html` in a modern desktop browser.
 - `version.json` contains the current release/build version.
 - `runtime/index.html` contains the game UI markup and is the local browser entrypoint.
 - `runtime/js/version.js` exposes the current build version to the runtime UI.
+- `runtime/js/runtime-env.js` contains the browser-consumed online endpoint config and keeps the client static-host friendly.
 - `runtime/js/config.js` contains the primary gameplay tuning surface and static definitions.
 - `runtime/js/env.js` resolves optional API and WebSocket endpoints for online play without changing the static client deployment model.
 - `runtime/js/shared/` contains browser-loadable shared multiplayer modules that are also re-exported for Node under `shared/`.
@@ -33,10 +34,14 @@ Open `runtime/index.html` in a modern desktop browser.
 - `shared/multiplayer/config.js`, `shared/protocol/index.js`, and `shared/sim/engine.js` expose Node entrypoints for the shared multiplayer modules that still ship inside `runtime/`.
 - `backend/control-plane/` contains the queue, auth, chat, leaderboard, and match-ticket service.
 - `backend/match-worker/` contains the authoritative match host built on the deterministic simulation core.
+- `backend/config.js` centralizes environment loading for local `.env`, cloud env vars, and generated runtime endpoint config.
 - `backend/dev-server.js` runs a local control-plane plus match-worker pair for end-to-end multiplayer testing.
+- `docker-compose.yml` starts local Postgres and Redis for persistence-shaped development.
+- `infra/terraform/` contains the provider-neutral deployment contract that generates backend env files and static runtime config.
 - `tools/evolve-bots.js` runs the offline training pipeline and writes reports, checkpoints, exports, and auto-promotion snapshots.
 - `tools/publish-bots.js` validates and publishes trained candidates into `runtime/js/bot-roster.js`.
 - `tools/promote-live-training.js` snapshots a still-running trainer process and optionally publishes the live candidates.
+- `tools/write-runtime-env.js` writes `runtime/js/runtime-env.js` from the current `.env` values so the static client can follow local or cloud endpoints without query params.
 - `tools/browser-smoke-test.ps1` launches the Windows smoke test browser and cleans it up.
 - `tools/browser-smoke-test.js` contains the DevTools-driven smoke assertions and can also attach to an already-launched browser.
 - `tools/package.json` contains tooling-only Node metadata.
@@ -138,6 +143,53 @@ npm.cmd run dev
 ```
 
 Then open the static client with the query params above from `runtime/index.html`.
+
+## Local online infrastructure
+
+The online stack can now be developed fully locally with the same config contract that cloud deploys use:
+
+1. Copy `.env.example` to `.env` and adjust values if needed.
+2. Start local Postgres and Redis:
+
+```bash
+docker compose up -d
+```
+
+3. Generate browser runtime config from the same `.env` values:
+
+```bash
+cd tools
+npm.cmd run runtime:env
+```
+
+4. Start the local backend:
+
+```bash
+cd backend
+npm.cmd run dev
+```
+
+5. Serve or open `runtime/index.html`. The browser client will pick up `runtime/js/runtime-env.js` automatically, and query params remain available for temporary overrides.
+
+The generated `runtime/js/runtime-env.js` keeps the client browser-only and static. The backend can move between local Node, containers, and cloud hosting without changing the runtime code.
+
+## Terraform deploy contract
+
+`infra/terraform/` is a provider-neutral Terraform scaffold for the multiplayer stack. It does not create Fly, Render, or Railway resources directly yet; instead it generates the artifacts those platforms need:
+
+- a backend env file with canonical service URLs and secrets
+- a static `runtime-env.js` file for the browser client
+- a JSON deployment contract for CI or ops tooling
+
+Typical usage:
+
+```bash
+terraform -chdir=infra/terraform init
+terraform -chdir=infra/terraform plan -var-file=environments/dev.tfvars
+terraform -chdir=infra/terraform apply -var-file=environments/dev.tfvars
+```
+
+Generated files are written to `infra/terraform/generated/<environment>/`.
 
 ### Deterministic simulation
 

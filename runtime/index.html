@@ -29,7 +29,7 @@
       <div class="menuHeader">
         <div class="menuHeaderTop">
           <h1>Wave Pong</h1>
-          <div id="menuVersion" class="menuVersion">v0.7.0</div>
+          <div id="menuVersion" class="menuVersion">v0.8.0</div>
         </div>
         <div class="menuSubtle">Set up the match here, then open Help for controls, rules, and powerups.</div>
       </div>
@@ -92,7 +92,7 @@
           <h2>Online alpha</h2>
           <div id="onlineEnabledPill" class="onlineStatePill">Offline</div>
         </div>
-        <div class="menuSubtle">Point the client at the new control-plane and match-worker with query params like <code>?api=http://127.0.0.1:8787&amp;controlWs=ws://127.0.0.1:8787/ws/control</code>.</div>
+        <div class="menuSubtle">Online mode can come from <code>runtime/js/runtime-env.js</code> or temporary query params like <code>?api=http://127.0.0.1:8787&amp;controlWs=ws://127.0.0.1:8787/ws/control</code>.</div>
         <div class="form">
           <label>
             Display Name
@@ -259,6 +259,7 @@
   </div>
 
   <script src="./js/version.js"></script>
+  <script src="./js/runtime-env.js"></script>
   <script src="./js/config.js"></script>
   <script src="./js/env.js"></script>
   <script src="./js/shared/multiplayer.js"></script>

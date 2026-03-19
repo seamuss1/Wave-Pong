@@ -60,6 +60,7 @@
     const sessionKey = 'wavePongOnlineSessionV1';
     const emitter = createEmitter();
     const maxBatchFrames = ((multiplayer.netcode || {}).maxInputBatchFrames) || 12;
+    const reconnectConfig = (multiplayer && multiplayer.reconnect) || {};
     const state = {
       enabled: !!(env && env.enabled && fetchImpl && WebSocketImpl),
       session: null,
@@ -67,7 +68,7 @@
       matchSocket: null,
       controlConnected: false,
       queue: null,
-      statusText: env && env.enabled ? 'Online ready.' : 'Online disabled. Set api/controlWs query params to enable it.',
+      statusText: env && env.enabled ? 'Online ready.' : 'Online disabled. Configure runtime/js/runtime-env.js or use api/controlWs query params to enable it.',
       currentMatch: null,
       localSide: null,
       remoteSide: null,
@@ -76,7 +77,11 @@
       lastQueuedTick: -1,
       nextSeq: 1,
       lobbyMessages: [],
-      matchMessages: []
+      matchMessages: [],
+      pendingControlConnect: null,
+      matchReconnectTimer: null,
+      matchReconnectAttempts: 0,
+      intentionalMatchSocketClose: false
     };
 
     function persistSession() {
@@ -100,6 +105,61 @@
     function setStatus(text) {
       state.statusText = text;
       emitter.emit('state', snapshotState());
+    }
+
+    function clearSession() {
+      state.session = null;
+      state.controlConnected = false;
+      state.queue = null;
+      state.pendingControlConnect = null;
+      if (state.controlSocket) {
+        try {
+          state.controlSocket.close();
+        } catch (error) {
+          /* noop */
+        }
+      }
+      state.controlSocket = null;
+      persistSession();
+      emitter.emit('state', snapshotState());
+    }
+
+    function decodeTokenPayload(token) {
+      const body = String(token || '').split('.')[0];
+      if (!body) return null;
+      try {
+        const normalized = body.replace(/-/g, '+').replace(/_/g, '/');
+        const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+        const decoded = (windowRef && typeof windowRef.atob === 'function')
+          ? windowRef.atob(normalized + padding)
+          : Buffer.from(normalized + padding, 'base64').toString('utf8');
+        return JSON.parse(decoded);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function hasFreshAccessToken(session) {
+      if (!session || !session.accessToken) return false;
+      const payload = decodeTokenPayload(session.accessToken);
+      return !payload || !payload.exp || Date.now() < Number(payload.exp);
+    }
+
+    function clearMatchReconnectTimer() {
+      if (!state.matchReconnectTimer) return;
+      windowRef.clearTimeout(state.matchReconnectTimer);
+      state.matchReconnectTimer = null;
+    }
+
+    function closeMatchSocket(intentional) {
+      if (!state.matchSocket) return;
+      state.intentionalMatchSocketClose = !!intentional;
+      try {
+        state.matchSocket.close();
+      } catch (error) {
+        /* noop */
+      }
+      state.matchSocket = null;
     }
 
     function snapshotState() {
@@ -182,30 +242,81 @@
       }
     }
 
-    function connectMatchSocket(foundPayload) {
+    async function reconnectCurrentMatch() {
+      if (!state.currentMatch || !state.session || !state.session.accessToken || !fetchImpl) return;
+      const response = await jsonFetch(fetchImpl, `${env.apiBaseUrl}/matches/${state.currentMatch.matchId}/reconnect`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${state.session.accessToken}`
+        },
+        body: JSON.stringify({})
+      });
+      connectMatchSocket({
+        matchId: response.matchId,
+        playlistId: state.currentMatch.playlistId,
+        region: state.currentMatch.region,
+        opponent: state.currentMatch.opponent,
+        side: state.localSide,
+        ticket: response.ticket,
+        workerUrl: response.workerUrl || env.workerWsUrl
+      }, {
+        resume: true
+      });
+    }
+
+    function scheduleMatchReconnect() {
+      clearMatchReconnectTimer();
+      if (!state.currentMatch || !state.session || !state.session.accessToken) return;
+      const reconnectWindowSeconds = reconnectConfig.graceSeconds || reconnectConfig.rankedForfeitSeconds || 15;
+      const maxAttempts = Math.max(1, Math.ceil((reconnectWindowSeconds * 1000) / 2000));
+      if (state.matchReconnectAttempts >= maxAttempts) {
+        setStatus('Match connection lost. Reconnect window expired.');
+        return;
+      }
+      state.matchReconnectAttempts += 1;
+      setStatus(`Match connection lost. Reconnecting (${state.matchReconnectAttempts}/${maxAttempts})...`);
+      state.matchReconnectTimer = windowRef.setTimeout(async () => {
+        try {
+          await reconnectCurrentMatch();
+        } catch (error) {
+          setStatus(error && error.message ? error.message : 'Reconnect attempt failed.');
+          scheduleMatchReconnect();
+        }
+      }, 2000);
+    }
+
+    function connectMatchSocket(foundPayload, options) {
+      const connectOptions = options || {};
       if (!WebSocketImpl) {
         throw new Error('WebSocket is not available in this browser.');
       }
-      if (state.matchSocket) {
-        state.matchSocket.close();
+      if (!connectOptions.resume) {
+        state.currentMatch = {
+          matchId: foundPayload.matchId,
+          playlistId: foundPayload.playlistId,
+          region: foundPayload.region,
+          opponent: foundPayload.opponent
+        };
+        state.localSide = foundPayload.side;
+        state.remoteSide = foundPayload.side === 'left' ? 'right' : 'left';
+        state.remotePredictedAction = { moveAxis: 0, fire: false };
+        state.pendingInputs.clear();
+        state.lastQueuedTick = -1;
+        state.matchMessages = [];
+        state.matchReconnectAttempts = 0;
       }
-      state.currentMatch = {
-        matchId: foundPayload.matchId,
-        playlistId: foundPayload.playlistId,
-        region: foundPayload.region,
-        opponent: foundPayload.opponent
-      };
-      state.localSide = foundPayload.side;
-      state.remoteSide = foundPayload.side === 'left' ? 'right' : 'left';
-      state.remotePredictedAction = { moveAxis: 0, fire: false };
-      state.pendingInputs.clear();
-      state.lastQueuedTick = -1;
+      clearMatchReconnectTimer();
+      if (state.matchSocket) {
+        closeMatchSocket(true);
+      }
       const socket = new WebSocketImpl(foundPayload.workerUrl || env.workerWsUrl);
+      state.intentionalMatchSocketClose = false;
       state.matchSocket = socket;
-      setStatus(`Connecting to ${foundPayload.playlistId} match...`);
+      setStatus(connectOptions.resume ? `Reconnecting to ${foundPayload.playlistId} match...` : `Connecting to ${foundPayload.playlistId} match...`);
 
       socket.addEventListener('open', () => {
-        socket.send(protocol.encodeMessage('hello', {
+        socket.send(protocol.encodeMessage(connectOptions.resume ? 'resume' : 'hello', {
           ticket: foundPayload.ticket
         }));
       });
@@ -233,7 +344,9 @@
         } else if (message.type === 'match.result') {
           setStatus(`Match complete: ${message.payload.reason}.`);
           emitter.emit('match.result', message.payload);
+          clearMatchReconnectTimer();
           state.currentMatch = null;
+          state.matchReconnectAttempts = 0;
           runtime.setInputProvider(null);
         } else if (message.type === 'chat.message') {
           state.matchMessages.push(message.payload);
@@ -244,6 +357,11 @@
       });
 
       socket.addEventListener('close', () => {
+        state.matchSocket = null;
+        if (!state.intentionalMatchSocketClose && state.currentMatch) {
+          scheduleMatchReconnect();
+        }
+        state.intentionalMatchSocketClose = false;
         emitter.emit('state', snapshotState());
       });
     }
@@ -255,12 +373,30 @@
       if (state.controlSocket && state.controlConnected) {
         return Promise.resolve();
       }
+      if (state.pendingControlConnect) {
+        return state.pendingControlConnect;
+      }
       if (!state.session || !state.session.accessToken) {
         return Promise.reject(new Error('No online session is available.'));
       }
-      return new Promise((resolve, reject) => {
+      state.pendingControlConnect = new Promise((resolve, reject) => {
         const socket = new WebSocketImpl(normalizeSocketUrl(env.controlWsUrl));
         state.controlSocket = socket;
+        let settled = false;
+        function finishSuccess() {
+          if (settled) return;
+          settled = true;
+          state.pendingControlConnect = null;
+          resolve();
+        }
+        function finishError(error) {
+          if (settled) return;
+          settled = true;
+          state.pendingControlConnect = null;
+          state.controlConnected = false;
+          state.controlSocket = null;
+          reject(error);
+        }
         socket.addEventListener('open', () => {
           socket.send(protocol.encodeMessage('hello', {
             accessToken: state.session.accessToken
@@ -273,7 +409,7 @@
             state.session.player = message.payload.player;
             persistSession();
             emitter.emit('state', snapshotState());
-            resolve();
+            finishSuccess();
             return;
           }
           if (message.type === 'queue.state') {
@@ -292,24 +428,44 @@
             return;
           }
           if (message.type === 'error') {
-            setStatus(message.payload.message || 'Control socket error.');
+            const errorMessage = message.payload.message || 'Control socket error.';
+            setStatus(errorMessage);
+            if (!state.controlConnected) {
+              if (/expired|token|access/i.test(errorMessage)) {
+                clearSession();
+              }
+              try {
+                socket.close();
+              } catch (error) {
+                /* noop */
+              }
+              finishError(new Error(errorMessage));
+            }
           }
         });
         socket.addEventListener('close', () => {
           state.controlConnected = false;
+          if (!settled) {
+            finishError(new Error('Control websocket connection closed before authentication completed.'));
+            return;
+          }
           emitter.emit('state', snapshotState());
         });
         socket.addEventListener('error', () => {
-          reject(new Error('Control websocket connection failed.'));
+          finishError(new Error('Control websocket connection failed.'));
         });
       });
+      return state.pendingControlConnect;
     }
 
     async function ensureGuestSession(displayName) {
       if (!state.enabled) {
         throw new Error('Online services are disabled for this build.');
       }
-      if (state.session && state.session.accessToken) return state.session;
+      if (hasFreshAccessToken(state.session)) return state.session;
+      if (state.session && !hasFreshAccessToken(state.session)) {
+        clearSession();
+      }
       if (!fetchImpl) {
         throw new Error('Fetch is not available in this browser.');
       }
@@ -401,7 +557,8 @@
           kind: 'quick',
           quickChatId
         }));
-      }
+      },
+      _debugState: state
     };
   }
 
