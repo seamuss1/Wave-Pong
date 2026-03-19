@@ -392,9 +392,7 @@
       scoreLimit: 7,
       theme: 'neon',
       powerupsEnabled: true,
-      trailsEnabled: true,
-      startupMessage: 'Open the match menu and unleash the rectangles.',
-      startupMessageSeconds: 2.1
+      trailsEnabled: true
     },
     balance, // Gameplay tuning numbers.
     // Shape of the persistent history record saved in localStorage.
@@ -442,17 +440,6 @@
       'The left paddle just posted that highlight to its story.',
       'That was not a miss. That was an interpretive choice.',
       'The ball has entered its villain era.'
-    ],
-    // Randomized point-scored callouts.
-    scoreLines: [
-      'Clinical finish.',
-      'That point had paperwork and witnesses.',
-      'An absolute robbery at the netless court.',
-      'Some rectangles simply want it more.',
-      'The ball filed a change of address.',
-      'The crowd goes polite but sustained.',
-      'That one had a sequel budget.',
-      'A point so clean it squeaks.'
     ],
     // Theme color palettes used by CSS variables and canvas rendering.
     themes: {

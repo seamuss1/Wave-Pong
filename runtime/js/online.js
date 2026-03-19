@@ -54,6 +54,9 @@
   function createOnlineService(options) {
     const runtime = options.runtime;
     const windowRef = options.window || (root && root.window) || root;
+    const decorateLocalAction = typeof options.decorateLocalAction === 'function'
+      ? options.decorateLocalAction
+      : ((defaultAction) => defaultAction);
     const fetchImpl = options.fetch || ((windowRef && windowRef.fetch) ? windowRef.fetch.bind(windowRef) : null);
     const WebSocketImpl = options.WebSocket || (windowRef && windowRef.WebSocket);
     const storage = options.storage || (windowRef && windowRef.localStorage) || null;
@@ -204,9 +207,12 @@
 
     function buildRuntimeInputProvider() {
       return function onRuntimeInput(context) {
-        if (!state.currentMatch) return context.defaultAction;
+        const decoratedDefaultAction = context.side === 'left'
+          ? decorateLocalAction(context.defaultAction, context)
+          : context.defaultAction;
+        if (!state.currentMatch) return decoratedDefaultAction;
         if (context.side === state.localSide) {
-          const action = protocol.normalizeActionFrame(context.defaultAction);
+          const action = protocol.normalizeActionFrame(decoratedDefaultAction);
           if (!state.pendingInputs.has(context.tick)) {
             state.pendingInputs.set(context.tick, action);
             state.lastQueuedTick = Math.max(state.lastQueuedTick, context.tick);
@@ -347,7 +353,6 @@
           clearMatchReconnectTimer();
           state.currentMatch = null;
           state.matchReconnectAttempts = 0;
-          runtime.setInputProvider(null);
         } else if (message.type === 'chat.message') {
           state.matchMessages.push(message.payload);
           emitter.emit('state', snapshotState());

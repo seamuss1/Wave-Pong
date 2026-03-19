@@ -51,13 +51,227 @@
   const onlineChatInput = document.getElementById('onlineChatInput');
   const onlineChatSendBtn = document.getElementById('onlineChatSendBtn');
   const quickChatRow = document.getElementById('quickChatRow');
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
+  const pauseFullscreenBtn = document.getElementById('pauseFullscreenBtn');
+  const touchControlsRoot = document.getElementById('touchControls');
+  const touchMoveZone = document.getElementById('touchMoveZone');
+  const touchStick = document.getElementById('touchStick');
+  const touchStickKnob = document.getElementById('touchStickKnob');
 
+  function createTouchController() {
+    const supported = !!(
+      touchControlsRoot &&
+      touchMoveZone &&
+      touchStick &&
+      touchStickKnob &&
+      (
+        (window.navigator && Number(window.navigator.maxTouchPoints) > 0) ||
+        ('ontouchstart' in window) ||
+        (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+      )
+    );
+
+    if (!supported) {
+      return {
+        bind() {},
+        sync() {},
+        decorateAction(defaultAction) {
+          return defaultAction;
+        },
+        getAction(defaultAction) {
+          return defaultAction;
+        }
+      };
+    }
+
+    const state = {
+      movePointerId: null,
+      moveAxis: 0,
+      moveEngaged: false,
+      fireQueued: false,
+      originX: 68,
+      originY: 68,
+      anchorClientX: 0,
+      anchorClientY: 0,
+      knobX: 0,
+      knobY: 0,
+      visible: false
+    };
+    let syncHandle = 0;
+    const MAX_RADIUS = 52;
+    const HORIZONTAL_SWAY = 16;
+    const DEAD_ZONE = 0.16;
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function updateStickVisual() {
+      touchStick.style.left = `${state.originX}px`;
+      touchStick.style.top = `${state.originY}px`;
+      touchStickKnob.style.transform = `translate(${state.knobX}px, ${state.knobY}px)`;
+      touchStick.classList.toggle('active', state.moveEngaged);
+    }
+
+    function resetMoveState() {
+      state.movePointerId = null;
+      state.moveAxis = 0;
+      state.moveEngaged = false;
+      state.knobX = 0;
+      state.knobY = 0;
+      updateStickVisual();
+    }
+
+    function updateMoveState(event) {
+      const offsetX = clamp(event.clientX - state.anchorClientX, -HORIZONTAL_SWAY, HORIZONTAL_SWAY);
+      const offsetY = clamp(event.clientY - state.anchorClientY, -MAX_RADIUS, MAX_RADIUS);
+      const normalizedY = clamp(offsetY / MAX_RADIUS, -1, 1);
+      state.knobX = offsetX;
+      state.knobY = offsetY;
+      state.moveAxis = Math.abs(normalizedY) < DEAD_ZONE ? 0 : normalizedY;
+      updateStickVisual();
+    }
+
+    function beginMove(event) {
+      const rect = touchMoveZone.getBoundingClientRect();
+      const insetX = Math.min(68, rect.width / 2);
+      const insetY = Math.min(68, rect.height / 2);
+      state.movePointerId = event.pointerId;
+      state.moveEngaged = true;
+      state.originX = clamp(event.clientX - rect.left, insetX, rect.width - insetX);
+      state.originY = clamp(event.clientY - rect.top, insetY, rect.height - insetY);
+      state.anchorClientX = event.clientX;
+      state.anchorClientY = event.clientY;
+      state.knobX = 0;
+      state.knobY = 0;
+      state.moveAxis = 0;
+      updateMoveState(event);
+      if (typeof touchMoveZone.setPointerCapture === 'function') {
+        touchMoveZone.setPointerCapture(event.pointerId);
+      }
+    }
+
+    function shouldShow() {
+      const helpOpen = runtime.ui.help && !runtime.ui.help.classList.contains('hidden');
+      return !runtime.state.menuOpen && !runtime.state.paused && !runtime.state.gameOver && !runtime.state.demoMode && !helpOpen;
+    }
+
+    function sync() {
+      const nextVisible = shouldShow();
+      if (nextVisible === state.visible) return;
+      state.visible = nextVisible;
+      touchControlsRoot.classList.toggle('enabled', nextVisible);
+      if (!nextVisible) {
+        resetMoveState();
+      }
+    }
+
+    function shouldCaptureTapFire(event) {
+      if (!state.visible) return false;
+      if (!event || (event.pointerType !== 'touch' && event.pointerType !== 'pen')) return false;
+      if (runtime.state.countdownActive) return false;
+      if (touchMoveZone.contains(event.target)) return false;
+      if (typeof runtime.isPauseButtonPointerEvent === 'function' && runtime.isPauseButtonPointerEvent(event)) return false;
+      return true;
+    }
+
+    function bind() {
+      if (!syncHandle && window.requestAnimationFrame) {
+        const syncLoop = () => {
+          sync();
+          syncHandle = window.requestAnimationFrame(syncLoop);
+        };
+        syncHandle = window.requestAnimationFrame(syncLoop);
+      }
+      touchMoveZone.addEventListener('pointerdown', (event) => {
+        if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+        event.preventDefault();
+        beginMove(event);
+      });
+      touchMoveZone.addEventListener('pointermove', (event) => {
+        if (event.pointerId !== state.movePointerId) return;
+        event.preventDefault();
+        updateMoveState(event);
+      });
+      const releaseMove = (event) => {
+        if (event.pointerId !== state.movePointerId) return;
+        event.preventDefault();
+        resetMoveState();
+      };
+      touchMoveZone.addEventListener('pointerup', releaseMove);
+      touchMoveZone.addEventListener('pointercancel', releaseMove);
+      document.addEventListener('pointerdown', (event) => {
+        if (!shouldCaptureTapFire(event)) return;
+        event.preventDefault();
+        state.fireQueued = true;
+      }, { passive: false });
+
+      updateStickVisual();
+      sync();
+    }
+
+    return {
+      bind,
+      sync,
+      decorateAction(defaultAction) {
+        return this.getAction(defaultAction);
+      },
+      getAction(defaultAction) {
+        sync();
+        if (!state.visible) return defaultAction;
+        const fire = state.fireQueued;
+        state.fireQueued = false;
+        return {
+          moveAxis: state.moveEngaged ? state.moveAxis : defaultAction.moveAxis,
+          fire: defaultAction.fire || fire
+        };
+      }
+    };
+  }
+
+  const touchController = createTouchController();
   const onlineService = multiplayer && onlineApi && typeof onlineApi.createOnlineService === 'function'
     ? onlineApi.createOnlineService({
         runtime,
-        window
+        window,
+        decorateLocalAction(defaultAction) {
+          return touchController.decorateAction(defaultAction);
+        }
       })
     : null;
+
+  function getFullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  async function toggleFullscreen() {
+    const root = document.documentElement;
+    if (!root) return;
+    try {
+      if (getFullscreenElement()) {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      } else if (root.requestFullscreen) {
+        await root.requestFullscreen();
+      } else if (root.webkitRequestFullscreen) {
+        root.webkitRequestFullscreen();
+      }
+    } catch (error) {
+      reportOnlineError(error);
+    }
+    syncFullscreenButtons();
+  }
+
+  function syncFullscreenButtons() {
+    const label = getFullscreenElement() ? 'Exit Fullscreen' : 'Fullscreen';
+    [fullscreenBtn, pauseFullscreenBtn].forEach((button) => {
+      if (!button) return;
+      button.textContent = label;
+    });
+  }
 
   function reportOnlineError(error) {
     if (!onlineStatusText) return;
@@ -360,6 +574,10 @@
   if (menuBotInfoBtn) menuBotInfoBtn.addEventListener('click', openBotInfo);
   if (pauseBotInfoBtn) pauseBotInfoBtn.addEventListener('click', openBotInfo);
   if (closeBotInfoBtn) closeBotInfoBtn.addEventListener('click', closeBotInfo);
+  if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
+  if (pauseFullscreenBtn) pauseFullscreenBtn.addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', syncFullscreenButtons);
+  document.addEventListener('webkitfullscreenchange', syncFullscreenButtons);
   if (botInfoOverlay) {
     botInfoOverlay.addEventListener('click', (event) => {
       if (event.target === botInfoOverlay) closeBotInfo();
@@ -440,7 +658,18 @@
   populateBotSelect();
   populateOnlineSelectors();
   syncControllers();
+  touchController.bind();
+  runtime.setInputProvider(({ side, defaultAction }) => (
+    side === 'left' ? touchController.getAction(defaultAction) : defaultAction
+  ));
   runtime.mountBrowser();
+  if (window.requestAnimationFrame) {
+    const syncUiLoop = () => {
+      syncFullscreenButtons();
+      window.requestAnimationFrame(syncUiLoop);
+    };
+    window.requestAnimationFrame(syncUiLoop);
+  }
   renderOnlineState();
 
   ns.RUNTIME = runtime;

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Wave Pong</title>
   <link rel="stylesheet" href="./styles/main.css" />
 </head>
@@ -20,8 +20,15 @@
       </div>
     </div>
 
-    <div id="message" class="message">Ball deployed.</div>
     <div id="statusPill" class="srOnly">Ready to embarrass a rectangle.</div>
+  </div>
+
+  <div id="touchControls" class="touchControls" aria-hidden="true">
+    <div id="touchMoveZone" class="touchMoveZone">
+      <div id="touchStick" class="touchStick">
+        <div id="touchStickKnob" class="touchStickKnob"></div>
+      </div>
+    </div>
   </div>
 
   <div id="menuOverlay" class="overlay">
@@ -29,7 +36,7 @@
       <div class="menuHeader">
         <div class="menuHeaderTop">
           <h1>Wave Pong</h1>
-          <div id="menuVersion" class="menuVersion">v0.8.0</div>
+          <div id="menuVersion" class="menuVersion">v0.9.3</div>
         </div>
         <div class="menuSubtle">Set up the match here, then open Help for controls, rules, and powerups.</div>
       </div>
@@ -83,6 +90,7 @@
         <div class="btnRow">
           <button id="startBtn" class="primary">Start Match</button>
           <button id="demoBtn" class="secondary">CPU vs CPU Demo</button>
+          <button id="fullscreenBtn" class="secondary">Fullscreen</button>
           <button id="menuHelpBtn" class="ghost">Help</button>
         </div>
       </div>
@@ -152,6 +160,7 @@
           <div class="helpList">
             <div class="controlItem"><strong>Player 1</strong><br>W and S move &bull; F or Space fires a wave</div>
             <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move &bull; Slash fires a wave</div>
+            <div class="controlItem"><strong>Touch</strong><br>Drag the floating joystick up or down to move &bull; tap the fire button to launch a wave</div>
             <div class="controlItem"><strong>Pause</strong><br>P or Escape pauses the match</div>
             <div class="controlItem"><strong>Menu</strong><br>Return to setup from the pause menu</div>
             <div class="controlItem"><strong>Mute</strong><br>M toggles sound</div>
@@ -186,6 +195,7 @@
       <div class="btnRow pauseActions">
         <button id="resumeBtn" class="primary">Resume</button>
         <button id="pauseBotInfoBtn" class="secondary">Bot Info</button>
+        <button id="pauseFullscreenBtn" class="secondary">Fullscreen</button>
         <button id="pauseHelpBtn" class="secondary">Help</button>
         <button id="pauseMenuBtn" class="ghost">Back to Menu</button>
       </div>
