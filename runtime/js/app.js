@@ -5,6 +5,9 @@
   const config = ns.CONFIG;
   const runtimeVersion = ns.VERSION;
   const botRoster = Array.isArray(ns.BOT_ROSTER) ? ns.BOT_ROSTER : [];
+  const multiplayer = ns.Multiplayer || null;
+  const onlineApi = ns.Online || null;
+  const env = ns.ENV || {};
   const CLASSIC_DIFFICULTIES = [
     { key: 'chill', label: 'Chill' },
     { key: 'spicy', label: 'Spicy' },
@@ -22,6 +25,53 @@
     config,
     runtimeVersion
   });
+
+  const botInfoOverlay = document.getElementById('botInfoOverlay');
+  const botInfoTitle = document.getElementById('botInfoTitle');
+  const botInfoSubtitle = document.getElementById('botInfoSubtitle');
+  const botInfoGrid = document.getElementById('botInfoGrid');
+  const botInfoNotes = document.getElementById('botInfoNotes');
+  const menuBotInfoBtn = document.getElementById('menuBotInfoBtn');
+  const pauseBotInfoBtn = document.getElementById('pauseBotInfoBtn');
+  const closeBotInfoBtn = document.getElementById('closeBotInfoBtn');
+
+  const onlineEnabledPill = document.getElementById('onlineEnabledPill');
+  const onlineNameInput = document.getElementById('onlineNameInput');
+  const onlinePlaylistSelect = document.getElementById('onlinePlaylistSelect');
+  const onlineRegionSelect = document.getElementById('onlineRegionSelect');
+  const onlineConnectBtn = document.getElementById('onlineConnectBtn');
+  const onlineVerifyBtn = document.getElementById('onlineVerifyBtn');
+  const onlineQueueBtn = document.getElementById('onlineQueueBtn');
+  const onlineLeaveQueueBtn = document.getElementById('onlineLeaveQueueBtn');
+  const onlineStatusText = document.getElementById('onlineStatusText');
+  const onlineSessionState = document.getElementById('onlineSessionState');
+  const onlineQueueState = document.getElementById('onlineQueueState');
+  const onlineMatchState = document.getElementById('onlineMatchState');
+  const onlineChatLog = document.getElementById('onlineChatLog');
+  const onlineChatInput = document.getElementById('onlineChatInput');
+  const onlineChatSendBtn = document.getElementById('onlineChatSendBtn');
+  const quickChatRow = document.getElementById('quickChatRow');
+
+  const onlineService = multiplayer && onlineApi && typeof onlineApi.createOnlineService === 'function'
+    ? onlineApi.createOnlineService({
+        runtime,
+        window
+      })
+    : null;
+
+  function reportOnlineError(error) {
+    if (!onlineStatusText) return;
+    onlineStatusText.textContent = error && error.message ? error.message : String(error || 'Online action failed.');
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   function findBotById(botId) {
     return botRoster.find((bot) => bot.id === botId) || null;
@@ -54,15 +104,6 @@
     const option = currentOpponentOption();
     return normalizeDifficultyKey(option && option.dataset ? option.dataset.difficulty : config.defaults.difficulty);
   }
-
-  const botInfoOverlay = document.getElementById('botInfoOverlay');
-  const botInfoTitle = document.getElementById('botInfoTitle');
-  const botInfoSubtitle = document.getElementById('botInfoSubtitle');
-  const botInfoGrid = document.getElementById('botInfoGrid');
-  const botInfoNotes = document.getElementById('botInfoNotes');
-  const menuBotInfoBtn = document.getElementById('menuBotInfoBtn');
-  const pauseBotInfoBtn = document.getElementById('pauseBotInfoBtn');
-  const closeBotInfoBtn = document.getElementById('closeBotInfoBtn');
 
   function formatBotOptionLabel(bot) {
     const elo = Number.isFinite(Number(bot.elo)) ? `Elo ${Math.round(bot.elo)}` : 'Elo ?';
@@ -216,6 +257,91 @@
     });
   }
 
+  function populateOnlineSelectors() {
+    if (!multiplayer) return;
+    if (onlinePlaylistSelect) {
+      onlinePlaylistSelect.innerHTML = multiplayer.listPlaylists()
+        .map((playlist) => `<option value="${playlist.id}">${escapeHtml(playlist.label)}</option>`)
+        .join('');
+      const defaultPlaylist = multiplayer.getDefaultPlaylist();
+      if (defaultPlaylist) onlinePlaylistSelect.value = defaultPlaylist.id;
+    }
+    if (onlineRegionSelect) {
+      onlineRegionSelect.innerHTML = multiplayer.listRegions()
+        .map((region) => `<option value="${region.id}">${escapeHtml(region.label)}</option>`)
+        .join('');
+      const defaultRegion = multiplayer.getDefaultRegion();
+      if (defaultRegion) onlineRegionSelect.value = defaultRegion.id;
+    }
+    if (quickChatRow) {
+      quickChatRow.innerHTML = '';
+      for (const quickChat of multiplayer.quickChat || []) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = quickChat.label;
+        button.addEventListener('click', () => {
+          if (!onlineService) return;
+          try {
+            onlineService.sendMatchQuickChat(quickChat.id);
+          } catch (error) {
+            reportOnlineError(error);
+          }
+        });
+        quickChatRow.appendChild(button);
+      }
+    }
+  }
+
+  function renderChatLog(target, entries) {
+    if (!target) return;
+    if (!entries || !entries.length) {
+      target.innerHTML = '<div class="onlineChatEmpty">No messages yet. Queue into a region to populate the lobby feed.</div>';
+      return;
+    }
+    target.innerHTML = entries.map((entry) => {
+      const meta = entry.kind === 'quick' ? `quick chat` : (entry.verified ? 'verified' : 'guest');
+      const body = entry.kind === 'quick' ? escapeHtml(entry.quickChatId || '') : escapeHtml(entry.text || '');
+      return `<div class="onlineChatMessage"><span class="onlineChatMeta">${escapeHtml(entry.displayName || 'player')} · ${escapeHtml(meta)}</span>${body}</div>`;
+    }).join('');
+    target.scrollTop = target.scrollHeight;
+  }
+
+  function renderOnlineState(nextState) {
+    const state = nextState || (onlineService ? onlineService.getState() : {
+      enabled: !!env.enabled,
+      statusText: env.enabled ? 'Online available.' : 'Online disabled. Add runtime env query params to connect.',
+      session: null,
+      queue: null,
+      currentMatch: null,
+      lobbyMessages: [],
+      matchMessages: []
+    });
+    if (onlineEnabledPill) {
+      onlineEnabledPill.textContent = state.enabled ? (state.controlConnected ? 'Live' : 'Ready') : 'Offline';
+      onlineEnabledPill.classList.toggle('live', !!state.controlConnected);
+    }
+    if (onlineStatusText) onlineStatusText.textContent = state.statusText;
+    if (onlineSessionState) {
+      onlineSessionState.textContent = state.session && state.session.player
+        ? `${state.session.player.displayName}${state.session.player.verified ? ' · verified' : ' · guest'}`
+        : 'none';
+    }
+    if (onlineQueueState) {
+      onlineQueueState.textContent = state.queue && state.queue.queued
+        ? `${state.queue.playlistId} · ${state.queue.region}`
+        : 'idle';
+    }
+    if (onlineMatchState) {
+      onlineMatchState.textContent = state.currentMatch
+        ? `${state.currentMatch.playlistId} · ${state.currentMatch.region}`
+        : 'offline';
+    }
+    if (onlineNameInput && state.session && state.session.player && !onlineNameInput.value) {
+      onlineNameInput.value = state.session.player.displayName;
+    }
+    renderChatLog(onlineChatLog, state.lobbyMessages);
+  }
+
   ['change', 'input'].forEach((eventName) => {
     if (runtime.ui.modeSelect) runtime.ui.modeSelect.addEventListener(eventName, syncControllers);
     if (runtime.ui.difficultySelect) runtime.ui.difficultySelect.addEventListener(eventName, syncControllers);
@@ -240,9 +366,82 @@
     });
   }
 
+  if (onlineService) {
+    onlineService.on('state', renderOnlineState);
+
+    if (onlineConnectBtn) {
+      onlineConnectBtn.addEventListener('click', async () => {
+        try {
+          await onlineService.ensureConnected(onlineNameInput ? onlineNameInput.value : '');
+        } catch (error) {
+          reportOnlineError(error);
+        }
+      });
+    }
+
+    if (onlineVerifyBtn) {
+      onlineVerifyBtn.addEventListener('click', async () => {
+        try {
+          await onlineService.upgradeAccount(onlineNameInput ? onlineNameInput.value : '');
+        } catch (error) {
+          reportOnlineError(error);
+        }
+      });
+    }
+
+    if (onlineQueueBtn) {
+      onlineQueueBtn.addEventListener('click', async () => {
+        try {
+          await onlineService.joinQueue({
+            displayName: onlineNameInput ? onlineNameInput.value : '',
+            playlistId: onlinePlaylistSelect ? onlinePlaylistSelect.value : 'unranked_standard',
+            region: onlineRegionSelect ? onlineRegionSelect.value : 'na'
+          });
+        } catch (error) {
+          reportOnlineError(error);
+        }
+      });
+    }
+
+    if (onlineLeaveQueueBtn) {
+      onlineLeaveQueueBtn.addEventListener('click', async () => {
+        try {
+          await onlineService.leaveQueue();
+        } catch (error) {
+          reportOnlineError(error);
+        }
+      });
+    }
+
+    if (onlineChatSendBtn) {
+      onlineChatSendBtn.addEventListener('click', () => {
+        if (!onlineChatInput || !onlineChatInput.value.trim()) return;
+        try {
+          onlineService.sendLobbyChat({
+            playlistId: onlinePlaylistSelect ? onlinePlaylistSelect.value : 'unranked_standard',
+            region: onlineRegionSelect ? onlineRegionSelect.value : 'na',
+            message: {
+              kind: 'free',
+              text: onlineChatInput.value.trim()
+            }
+          });
+          onlineChatInput.value = '';
+        } catch (error) {
+          reportOnlineError(error);
+        }
+      });
+    }
+  } else {
+    [onlineConnectBtn, onlineVerifyBtn, onlineQueueBtn, onlineLeaveQueueBtn, onlineChatSendBtn].forEach((button) => {
+      if (button) button.disabled = true;
+    });
+  }
+
   populateBotSelect();
+  populateOnlineSelectors();
   syncControllers();
   runtime.mountBrowser();
+  renderOnlineState();
 
   ns.RUNTIME = runtime;
 })();

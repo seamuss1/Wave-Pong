@@ -317,12 +317,13 @@
       letter-spacing: 0.06em;
     }
 
-    select, input[type="number"], input[type="checkbox"] + span, button {
+    select, input[type="number"], input[type="text"], input[type="checkbox"] + span, button {
       font: inherit;
     }
 
     select,
-    input[type="number"] {
+    input[type="number"],
+    input[type="text"] {
       color-scheme: dark;
       appearance: none;
       width: 100%;
@@ -368,6 +369,128 @@
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
+    }
+
+    .sectionHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .sectionHeader h2 {
+      margin-bottom: 0;
+    }
+
+    .onlineSection {
+      display: grid;
+      gap: 14px;
+      border-color: rgba(102, 227, 255, 0.18);
+      background:
+        linear-gradient(180deg, rgba(10, 17, 29, 0.92), rgba(8, 14, 24, 0.88)),
+        radial-gradient(circle at top right, rgba(102, 227, 255, 0.08), transparent 32%);
+    }
+
+    .onlineStatePill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 80px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: #d7e5fb;
+    }
+
+    .onlineStatePill.live {
+      color: #08211f;
+      background: linear-gradient(135deg, #7cfecb, #66e3ff);
+      border-color: transparent;
+    }
+
+    .onlineStatusPanel {
+      display: grid;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(12, 19, 31, 0.82);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .onlineStatusText {
+      color: #dce8f8;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .onlineFacts {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .onlineChatBlock {
+      margin-top: 0;
+    }
+
+    .onlineChatLog {
+      min-height: 120px;
+      max-height: 180px;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(5, 10, 18, 0.78);
+      display: grid;
+      gap: 8px;
+    }
+
+    .onlineChatEmpty,
+    .onlineChatMessage {
+      font-size: 13px;
+      line-height: 1.45;
+      color: #d7e4f6;
+    }
+
+    .onlineChatEmpty {
+      color: var(--muted);
+    }
+
+    .onlineChatMeta {
+      display: inline-block;
+      margin-right: 8px;
+      color: #91add6;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .chatComposer {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .quickChatRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .quickChatRow button {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #eef6ff;
+      box-shadow: none;
     }
 
     .helpCard,

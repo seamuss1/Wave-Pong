@@ -21,12 +21,19 @@ Open `runtime/index.html` in a modern desktop browser.
 - `runtime/index.html` contains the game UI markup and is the local browser entrypoint.
 - `runtime/js/version.js` exposes the current build version to the runtime UI.
 - `runtime/js/config.js` contains the primary gameplay tuning surface and static definitions.
+- `runtime/js/env.js` resolves optional API and WebSocket endpoints for online play without changing the static client deployment model.
+- `runtime/js/shared/` contains browser-loadable shared multiplayer modules that are also re-exported for Node under `shared/`.
 - `runtime/js/controllers.js` contains the human, scripted CPU, and neural bot controller adapters.
 - `runtime/js/sim-core.js` contains the deterministic simulation, physics, rendering, replay, and UI runtime.
 - `runtime/js/bot-roster.js` contains the published ML bot roster used by the CPU selector.
-- `runtime/js/app.js` bootstraps the browser runtime, wires the menu/bot-info UI, and swaps between classic CPU and ML bots.
+- `runtime/js/online.js` contains the static-client session, queue, match socket, and reconciliation layer for online play.
+- `runtime/js/app.js` bootstraps the browser runtime, wires the menu/bot-info UI, swaps between classic CPU and ML bots, and owns the multiplayer menu surface.
 - `runtime/styles/main.css` contains the presentation layer.
 - `runtime/wave_pong.html` is a legacy entry that redirects to `runtime/index.html`.
+- `shared/multiplayer/config.js`, `shared/protocol/index.js`, and `shared/sim/engine.js` expose Node entrypoints for the shared multiplayer modules that still ship inside `runtime/`.
+- `backend/control-plane/` contains the queue, auth, chat, leaderboard, and match-ticket service.
+- `backend/match-worker/` contains the authoritative match host built on the deterministic simulation core.
+- `backend/dev-server.js` runs a local control-plane plus match-worker pair for end-to-end multiplayer testing.
 - `tools/evolve-bots.js` runs the offline training pipeline and writes reports, checkpoints, exports, and auto-promotion snapshots.
 - `tools/publish-bots.js` validates and publishes trained candidates into `runtime/js/bot-roster.js`.
 - `tools/promote-live-training.js` snapshots a still-running trainer process and optionally publishes the live candidates.
@@ -36,7 +43,7 @@ Open `runtime/index.html` in a modern desktop browser.
 
 ## itch.io packaging
 
-Versioning is tracked in `version.json`. The current repo version is `0.6.6`.
+Versioning is tracked in `version.json`. The current repo version is `0.7.0`.
 
 Version rules:
 
@@ -105,10 +112,32 @@ npm.cmd run smoke:node
 
 The browser runtime is split into small layers instead of one giant script:
 
-- `runtime/index.html` loads the version, config, controllers, simulation core, published bot roster, and browser bootstrap in that order.
-- `runtime/js/app.js` creates the runtime, populates the CPU selector with both classic scripted difficulties and published ML bots, and exposes the bot dossier overlay.
-- `runtime/js/sim-core.js` owns the deterministic match simulation. It is the source of truth for world state, tick stepping, controller input queuing, rendering, replay serialization, and state hashing.
+- `runtime/index.html` loads the version, config, online env, shared multiplayer helpers, controllers, simulation core, shared engine wrapper, published bot roster, online client layer, and browser bootstrap in that order.
+- `runtime/js/app.js` creates the runtime, populates the CPU selector with both classic scripted difficulties and published ML bots, exposes the bot dossier overlay, and wires the multiplayer control surface.
+- `runtime/js/sim-core.js` owns the deterministic match simulation. It is still the source of truth for world state, tick stepping, controller input queuing, rendering, replay serialization, and state hashing, but it now also supports pluggable live input so the online client can drive prediction and reconciliation.
+- `runtime/js/shared/engine.js` wraps the deterministic runtime with authoritative-match helpers and serializable state snapshots for the backend.
+- `runtime/js/shared/protocol.js` and `runtime/js/shared/multiplayer.js` define the canonical queues, regions, rulesets, and message validation shared by browser and backend.
+- `runtime/js/online.js` manages guest sessions, control-plane and match-worker sockets, queueing, lobby chat, match quick-chat, and snapshot application.
 - `runtime/js/controllers.js` turns either player input, scripted heuristics, or a trained neural network into the same `{ moveAxis, fire }` action shape.
+
+## Multiplayer foundation
+
+Wave Pong now includes the first production-minded multiplayer foundation while keeping the shipped client browser-only and static:
+
+- `backend/control-plane/` exposes guest auth, local-dev account verification, queue joins/leaves, seasons, leaderboards, reconnect tickets, and lobby chat over HTTP plus a minimal WebSocket control channel.
+- `backend/match-worker/` runs authoritative 120 Hz matches using the same deterministic simulation core as the browser and offline bot tooling.
+- `backend/dev-server.js` starts both services locally. With the defaults, the control-plane listens on `http://127.0.0.1:8787` and the match-worker listens on `http://127.0.0.1:8788`.
+- The browser client can opt into online mode by opening `runtime/index.html` with query params like `?api=http://127.0.0.1:8787&controlWs=ws://127.0.0.1:8787/ws/control`.
+- Ranked, standard, and chaos playlists now live in `runtime/js/config.js` under `multiplayer`, so the same canonical ruleset data can be consumed by browser, backend, and future tooling.
+
+Local backend flow:
+
+```bash
+cd backend
+npm.cmd run dev
+```
+
+Then open the static client with the query params above from `runtime/index.html`.
 
 ### Deterministic simulation
 
@@ -462,14 +491,14 @@ npm.cmd run deploy:test
 npm.cmd run deploy:production
 ```
 
-If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.6.6`.
+If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.7.0`.
 
 You can still override it for a one-off deploy:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
   -Destination test `
-  -UserVersion "0.6.6-hotfix1"
+  -UserVersion "0.7.0-hotfix1"
 ```
 
 ### First-time itch.io setup

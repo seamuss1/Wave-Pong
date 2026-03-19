@@ -204,6 +204,8 @@
         left: (options.controllers && options.controllers.left) || null,
         right: (options.controllers && options.controllers.right) || null
       };
+      let inputProvider = typeof options.inputProvider === 'function' ? options.inputProvider : null;
+      let liveInputEnabled = options.liveInputEnabled !== false;
 
       function normalizeDifficulty(value) {
         const difficulty = String(value || '').toLowerCase();
@@ -397,7 +399,9 @@
         w: false,
         s: false,
         up: false,
-        down: false
+        down: false,
+        leftFireQueued: false,
+        rightFireQueued: false
       };
       const controllerActionState = {
         left: { moveAxis: 0, fire: false, lastTick: -1 },
@@ -445,6 +449,13 @@
         countdownTimer: 0,
         countdownDuration: matchFlowBalance.countdownSeconds,
         countdownContext: 'start',
+        longRallyMultiballEnabled: true,
+        playerLabels: {
+          left: null,
+          right: null
+        },
+        modeLabelOverride: '',
+        opponentLabelOverride: '',
         tick: 0,
         simulationTimeMs: 0,
         presentationTimeMs: 0
@@ -1157,7 +1168,8 @@ function firePulse(paddle) {
   return true;
 }
 
-function maybeTriggerLongRallyMultiball() {
+      function maybeTriggerLongRallyMultiball() {
+        if (!state.longRallyMultiballEnabled) return;
         if (world.balls.length >= rallyBalance.stopAddingAtBallCount) return;
         const nextAt = state.nextLongRallySpawnAt || rallyBalance.initialSpawnAtSeconds;
         const rallyThreshold = rallyBalance.thresholdBase + Math.max(0, world.balls.length - 1) * rallyBalance.thresholdPerExtraBall;
@@ -1317,9 +1329,15 @@ function startMatch({
   difficulty = null,
   scoreLimit = null,
   powerupsEnabled = null,
+  longRallyMultiballEnabled = null,
   trailsEnabled = null,
   theme = null,
   skipCountdown = false,
+  leftName = null,
+  rightName = null,
+  modeLabel = null,
+  opponentLabel = null,
+  liveInputEnabled: nextLiveInputEnabled = true,
   leftController = undefined,
   rightController = undefined
 } = {}) {
@@ -1329,9 +1347,15 @@ function startMatch({
         state.scoreLimit = sanitizeScoreLimit(scoreLimit != null ? scoreLimit : (ui.scoreLimitSelect ? ui.scoreLimitSelect.value : defaults.scoreLimit));
         if (ui.scoreLimitSelect) ui.scoreLimitSelect.value = state.scoreLimit;
         state.powerupsEnabled = powerupsEnabled != null ? !!powerupsEnabled : (ui.powerupsToggle ? ui.powerupsToggle.checked : defaults.powerupsEnabled);
+        state.longRallyMultiballEnabled = longRallyMultiballEnabled != null ? !!longRallyMultiballEnabled : true;
         state.trailsEnabled = trailsEnabled != null ? !!trailsEnabled : (ui.trailToggle ? ui.trailToggle.checked : defaults.trailsEnabled);
         state.theme = theme || (ui.themeSelect ? ui.themeSelect.value : defaults.theme);
         state.demoMode = demo;
+        state.playerLabels.left = leftName || null;
+        state.playerLabels.right = rightName || null;
+        state.modeLabelOverride = modeLabel || '';
+        state.opponentLabelOverride = opponentLabel || '';
+        liveInputEnabled = nextLiveInputEnabled !== false;
         state.running = true;
         state.paused = false;
         state.menuOpen = false;
@@ -1371,6 +1395,11 @@ function startMatch({
         state.gameOver = false;
         state.countdownActive = false;
         state.countdownTimer = 0;
+        state.playerLabels.left = null;
+        state.playerLabels.right = null;
+        state.modeLabelOverride = '';
+        state.opponentLabelOverride = '';
+        liveInputEnabled = true;
         if (ui.menu) ui.menu.classList.remove('hidden');
         if (ui.pause) ui.pause.classList.add('hidden');
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
@@ -1437,12 +1466,16 @@ function updateUI() {
   const selectedOpponentLabel = selectedOpponentOption && selectedOpponentOption.dataset && selectedOpponentOption.dataset.summary
     ? selectedOpponentOption.dataset.summary
     : (selectedOpponentOption ? selectedOpponentOption.textContent : formatDifficultyLabel(state.difficulty));
+  const leftLabel = state.playerLabels.left || (state.demoMode ? 'CPU A' : 'PLAYER');
+  const rightLabel = state.playerLabels.right || (state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU'));
+  const modeLabel = state.modeLabelOverride || (state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU'));
+  const opponentLabel = state.opponentLabelOverride || selectedOpponentLabel;
   if (ui.leftScore) ui.leftScore.textContent = state.leftScore;
   if (ui.rightScore) ui.rightScore.textContent = state.rightScore;
-  if (ui.leftName) ui.leftName.textContent = state.demoMode ? 'CPU A' : 'PLAYER';
-  if (ui.rightName) ui.rightName.textContent = state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU');
-  if (ui.modeLabel) ui.modeLabel.textContent = state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU');
-  if (ui.difficultyLabel) ui.difficultyLabel.textContent = selectedOpponentLabel;
+  if (ui.leftName) ui.leftName.textContent = leftLabel;
+  if (ui.rightName) ui.rightName.textContent = rightLabel;
+  if (ui.modeLabel) ui.modeLabel.textContent = modeLabel;
+  if (ui.difficultyLabel) ui.difficultyLabel.textContent = opponentLabel;
   if (ui.rallyLabel) ui.rallyLabel.textContent = state.rally;
   if (ui.bestRallyLabel) ui.bestRallyLabel.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
   if (ui.pauseScoreLine) ui.pauseScoreLine.textContent = state.leftScore + ' : ' + state.rightScore;
@@ -1451,6 +1484,57 @@ function updateUI() {
   if (ui.pauseScoreLimit) ui.pauseScoreLimit.textContent = String(state.scoreLimit);
   renderStatusIcons();
 }
+
+      function consumeQueuedHumanFire(side) {
+        if (side === 'left') {
+          const fire = !!input.leftFireQueued;
+          input.leftFireQueued = false;
+          return fire;
+        }
+        const fire = !!input.rightFireQueued;
+        input.rightFireQueued = false;
+        return fire;
+      }
+
+      function buildKeyboardAction(side) {
+        if (side === 'left') {
+          const up = input.w || (state.mode !== 'pvp' && input.up);
+          const down = input.s || (state.mode !== 'pvp' && input.down);
+          return {
+            moveAxis: up === down ? 0 : (up ? -1 : 1),
+            fire: consumeQueuedHumanFire('left')
+          };
+        }
+        return {
+          moveAxis: input.up === input.down ? 0 : (input.up ? -1 : 1),
+          fire: consumeQueuedHumanFire('right')
+        };
+      }
+
+      function resolveHumanAction(side) {
+        const defaultAction = buildKeyboardAction(side);
+        if (!inputProvider) return defaultAction;
+        const provided = inputProvider({
+          side,
+          tick: state.tick,
+          defaultAction,
+          state,
+          world,
+          runtime: runtimeApi
+        });
+        return normalizeAction(provided || defaultAction);
+      }
+
+      function shouldQueueHumanInput(side) {
+        if (!liveInputEnabled) return false;
+        if (side === 'left') return !controllerSlots.left && !state.demoMode;
+        return !controllerSlots.right && !state.demoMode && state.mode === 'pvp';
+      }
+
+      function maybeQueueHumanInput(side) {
+        if (!shouldQueueHumanInput(side)) return;
+        queueInput(side, state.tick, resolveHumanAction(side));
+      }
 
 function applyTheme(name) {
         const t = themes[name] || themes.neon;
@@ -2503,9 +2587,11 @@ function update(dt) {
 
         maybeRunController('left');
         maybeRunController('right');
+        maybeQueueHumanInput('left');
+        maybeQueueHumanInput('right');
 
-        const leftQueued = controllerSlots.left ? getQueuedAction('left') : null;
-        const rightQueued = controllerSlots.right ? getQueuedAction('right') : null;
+        const leftQueued = (controllerSlots.left || shouldQueueHumanInput('left') || inputQueue.left.has(state.tick)) ? getQueuedAction('left') : null;
+        const rightQueued = (controllerSlots.right || shouldQueueHumanInput('right') || inputQueue.right.has(state.tick)) ? getQueuedAction('right') : null;
 
         if (leftQueued) {
           updatePaddle(world.paddles.left, leftQueued.moveAxis < 0, leftQueued.moveAxis > 0, dt);
@@ -2513,9 +2599,7 @@ function update(dt) {
         } else if (state.demoMode) {
           updateAI(world.paddles.left, dt, true);
         } else {
-          const leftUp = input.w || (state.mode !== 'pvp' && input.up);
-          const leftDown = input.s || (state.mode !== 'pvp' && input.down);
-          updatePaddle(world.paddles.left, leftUp, leftDown, dt);
+          updatePaddle(world.paddles.left, false, false, dt);
         }
 
         if (rightQueued) {
@@ -2524,7 +2608,7 @@ function update(dt) {
         } else if (state.demoMode) {
           updateAI(world.paddles.right, dt, false);
         } else if (state.mode === 'pvp') {
-          updatePaddle(world.paddles.right, input.up, input.down, dt);
+          updatePaddle(world.paddles.right, false, false, dt);
         } else {
           updateAI(world.paddles.right, dt, false);
         }
@@ -3353,6 +3437,14 @@ function renderOverlayFX() {
         }
       }
 
+      function setInputProvider(nextInputProvider) {
+        inputProvider = typeof nextInputProvider === 'function' ? nextInputProvider : null;
+      }
+
+      function setLiveInputEnabled(nextValue) {
+        liveInputEnabled = !!nextValue;
+      }
+
       function flushEvents() {
         return eventQueue.splice(0, eventQueue.length);
       }
@@ -3378,10 +3470,10 @@ function renderOverlayFX() {
           } else if (key === 'f' || e.code === 'Space') {
             e.preventDefault();
             if (skipPlayCountdown()) return;
-            if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver) firePulse(world.paddles.left);
+            if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver) input.leftFireQueued = true;
           } else if (key === '/') {
             if (skipPlayCountdown()) return;
-            if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver && state.mode === 'pvp' && !state.demoMode) firePulse(world.paddles.right);
+            if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver && state.mode === 'pvp' && !state.demoMode) input.rightFireQueued = true;
           } else if (key === 'm') {
             muted = !muted;
             updateStatus(muted ? 'Muted. Silent chaos enabled.' : 'Unmuted. The bleeps have returned.');
@@ -3495,6 +3587,8 @@ function renderOverlayFX() {
         hashSimulationState,
         flushEvents,
         setControllers,
+        setInputProvider,
+        setLiveInputEnabled,
         setMuted,
         mountBrowser,
         unmountBrowser,

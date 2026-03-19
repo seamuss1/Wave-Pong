@@ -29,7 +29,7 @@
       <div class="menuHeader">
         <div class="menuHeaderTop">
           <h1>Wave Pong</h1>
-          <div id="menuVersion" class="menuVersion">v0.6.5</div>
+          <div id="menuVersion" class="menuVersion">v0.7.0</div>
         </div>
         <div class="menuSubtle">Set up the match here, then open Help for controls, rules, and powerups.</div>
       </div>
@@ -84,6 +84,56 @@
           <button id="startBtn" class="primary">Start Match</button>
           <button id="demoBtn" class="secondary">CPU vs CPU Demo</button>
           <button id="menuHelpBtn" class="ghost">Help</button>
+        </div>
+      </div>
+
+      <div class="section onlineSection">
+        <div class="sectionHeader">
+          <h2>Online alpha</h2>
+          <div id="onlineEnabledPill" class="onlineStatePill">Offline</div>
+        </div>
+        <div class="menuSubtle">Point the client at the new control-plane and match-worker with query params like <code>?api=http://127.0.0.1:8787&amp;controlWs=ws://127.0.0.1:8787/ws/control</code>.</div>
+        <div class="form">
+          <label>
+            Display Name
+            <input id="onlineNameInput" type="text" maxlength="20" placeholder="Guest name" />
+          </label>
+
+          <label>
+            Playlist
+            <select id="onlinePlaylistSelect"></select>
+          </label>
+
+          <label>
+            Region
+            <select id="onlineRegionSelect"></select>
+          </label>
+        </div>
+
+        <div class="btnRow">
+          <button id="onlineConnectBtn" class="primary">Connect Guest</button>
+          <button id="onlineVerifyBtn" class="secondary">Verify Account</button>
+          <button id="onlineQueueBtn" class="secondary">Join Queue</button>
+          <button id="onlineLeaveQueueBtn" class="ghost">Leave Queue</button>
+        </div>
+
+        <div class="onlineStatusPanel">
+          <div id="onlineStatusText" class="onlineStatusText">Online disabled. Add runtime env query params to connect.</div>
+          <div class="onlineFacts">
+            <div class="miniStat"><div class="label">Session</div><div class="value" id="onlineSessionState">none</div></div>
+            <div class="miniStat"><div class="label">Queue</div><div class="value" id="onlineQueueState">idle</div></div>
+            <div class="miniStat"><div class="label">Match</div><div class="value" id="onlineMatchState">offline</div></div>
+          </div>
+        </div>
+
+        <div class="section onlineChatBlock">
+          <h2>Lobby chat</h2>
+          <div id="onlineChatLog" class="onlineChatLog"></div>
+          <div class="chatComposer">
+            <input id="onlineChatInput" type="text" maxlength="280" placeholder="Verified accounts can send lobby chat here." />
+            <button id="onlineChatSendBtn" class="secondary">Send</button>
+          </div>
+          <div id="quickChatRow" class="quickChatRow"></div>
         </div>
       </div>
     </div>
@@ -210,9 +260,14 @@
 
   <script src="./js/version.js"></script>
   <script src="./js/config.js"></script>
+  <script src="./js/env.js"></script>
+  <script src="./js/shared/multiplayer.js"></script>
+  <script src="./js/shared/protocol.js"></script>
   <script src="./js/controllers.js"></script>
   <script src="./js/sim-core.js"></script>
+  <script src="./js/shared/engine.js"></script>
   <script src="./js/bot-roster.js"></script>
+  <script src="./js/online.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>

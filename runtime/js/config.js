@@ -498,6 +498,116 @@
       chill: { aiSpeed: 740, aiError: 92, reaction: 0.12, ballSpeed: 600 },
       spicy: { aiSpeed: 950, aiError: 36, reaction: 0.22, ballSpeed: 690 },
       absurd: { aiSpeed: 1210, aiError: 14, reaction: 0.32, ballSpeed: 770 }
+    },
+    // Canonical multiplayer and competitive configuration shared by browser and backend.
+    multiplayer: {
+      regions: {
+        na: { id: 'na', label: 'North America', matchHostRegion: 'iad', strictRegionLock: true },
+        eu: { id: 'eu', label: 'Europe', matchHostRegion: 'ams', strictRegionLock: true }
+      },
+      netcode: {
+        serverTickRate: 120,
+        inputBufferTicks: 4,
+        rollbackWindowTicks: 16,
+        snapshotRateHz: 24,
+        maxInputBatchFrames: 12
+      },
+      reconnect: {
+        snapshotRingSeconds: 10,
+        graceSeconds: 30,
+        rankedForfeitSeconds: 15
+      },
+      auth: {
+        guestDisplayNamePrefix: 'Guest',
+        accessTokenTtlSeconds: 60 * 20,
+        refreshTokenTtlSeconds: 60 * 60 * 24 * 30
+      },
+      moderation: {
+        lobbyMessageMaxLength: 280,
+        matchMessageMaxLength: 140,
+        duplicateWindowSeconds: 12,
+        duplicateLimit: 3,
+        lobbyRateLimitBurst: 4,
+        lobbyRateLimitWindowSeconds: 8,
+        quickChatRateLimitBurst: 4,
+        quickChatRateLimitWindowSeconds: 4,
+        profanityFilterEnabled: true,
+        urlFilterEnabled: true
+      },
+      seasons: {
+        seasonLengthWeeks: 8,
+        placementMatches: 5,
+        visibleDivisions: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master'],
+        softResetFactor: 0.35
+      },
+      antiCheat: {
+        maxClockSkewTicks: 6,
+        maxFutureInputTicks: 24,
+        versionMismatchBlocksRanked: true,
+        impossibleInputAuditEnabled: true,
+        replayAuditEnabled: true
+      },
+      quickChat: [
+        { id: 'gg', label: 'GG' },
+        { id: 'nice', label: 'Nice shot' },
+        { id: 'close', label: 'Close one' },
+        { id: 'rematch', label: 'Rematch?' },
+        { id: 'lag', label: 'Lag spike' },
+        { id: 'ready', label: 'Ready' }
+      ],
+      playlists: {
+        ranked_duel: {
+          id: 'ranked_duel',
+          label: 'Ranked Duel',
+          queueLabel: 'Ranked',
+          modeLabel: 'RANKED ONLINE',
+          requireVerifiedAccount: true,
+          strictRegionLock: true,
+          rated: true,
+          scoreLimit: 11,
+          mode: 'pvp',
+          powerupsEnabled: false,
+          longRallyMultiballEnabled: false,
+          trailsEnabled: true,
+          theme: 'neon',
+          fullReplayRetention: true,
+          matchChatMode: 'quick'
+        },
+        unranked_standard: {
+          id: 'unranked_standard',
+          label: 'Unranked Standard',
+          queueLabel: 'Standard',
+          modeLabel: 'ONLINE STANDARD',
+          requireVerifiedAccount: false,
+          strictRegionLock: true,
+          rated: false,
+          scoreLimit: 11,
+          mode: 'pvp',
+          powerupsEnabled: false,
+          longRallyMultiballEnabled: false,
+          trailsEnabled: true,
+          theme: 'neon',
+          fullReplayRetention: false,
+          matchChatMode: 'free'
+        },
+        unranked_chaos: {
+          id: 'unranked_chaos',
+          label: 'Unranked Chaos',
+          queueLabel: 'Chaos',
+          modeLabel: 'ONLINE CHAOS',
+          requireVerifiedAccount: false,
+          strictRegionLock: false,
+          rated: false,
+          scoreLimit: 7,
+          mode: 'pvp',
+          powerupsEnabled: true,
+          longRallyMultiballEnabled: true,
+          trailsEnabled: true,
+          theme: 'neon',
+          fullReplayRetention: false,
+          matchChatMode: 'free'
+        }
+      }
     }
   };
 
