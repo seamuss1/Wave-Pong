@@ -1,0 +1,14 @@
+{
+  "name": "wave-pong-training",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Training, replay, review, and live workbench tooling for Wave Pong",
+  "scripts": {
+    "evolve": "node evolve-bots.js",
+    "promote:live": "node promote-live-training.js",
+    "publish:bots": "node publish-bots.js",
+    "render:replay": "node render-replay.js",
+    "review:replays": "node review-replays.js",
+    "workbench": "node workbench/server.js"
+  }
+}

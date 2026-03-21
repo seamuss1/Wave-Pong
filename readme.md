@@ -38,10 +38,13 @@ Open `runtime/index.html` in a modern desktop browser.
 - `backend/dev-server.js` runs a local control-plane plus match-worker pair for end-to-end multiplayer testing.
 - `docker-compose.yml` starts local Postgres and Redis for persistence-shaped development.
 - `infra/terraform/` contains the provider-neutral deployment contract that generates backend env files and static runtime config.
-- `tools/evolve-bots.js` runs the offline training pipeline and writes reports, checkpoints, exports, and auto-promotion snapshots.
-- `tools/publish-bots.js` validates and publishes trained candidates into `runtime/js/bot-roster.js`.
-- `tools/promote-live-training.js` snapshots a still-running trainer process and optionally publishes the live candidates.
+- `training/evolve-bots.js` runs the offline training pipeline and writes reports, checkpoints, exports, and auto-promotion snapshots.
+- `training/publish-bots.js` validates and publishes trained candidates into `runtime/js/bot-roster.js`.
+- `training/promote-live-training.js` snapshots a still-running trainer process and optionally publishes the live candidates.
+- `training/workbench/` contains the interactive training workbench server and browser UI for live run control, replay browsing, and ratings persistence.
+- `training/readme.md` documents the training workspace layout and leaves room for future standalone training runtime code.
 - `tools/write-runtime-env.js` writes `runtime/js/runtime-env.js` from the current `.env` values so the static client can follow local or cloud endpoints without query params.
+- `tools/serve-runtime.js` serves the static runtime locally on `http://127.0.0.1:8080/runtime/index.html` and writes request plus browser debug logs under `logging/`.
 - `tools/browser-smoke-test.ps1` launches the Windows smoke test browser and cleans it up.
 - `tools/browser-smoke-test.js` contains the DevTools-driven smoke assertions and can also attach to an already-launched browser.
 - `tools/package.json` contains tooling-only Node metadata.
@@ -112,6 +115,15 @@ If you specifically want the raw Node launcher, use:
 ```bash
 npm.cmd run smoke:node
 ```
+
+For local multiplayer debugging, you can also serve the runtime through the repo-local webserver:
+
+```bash
+cd tools
+npm.cmd run serve:runtime
+```
+
+That serves `runtime/index.html` from `http://127.0.0.1:8080/runtime/index.html` and writes access logs plus browser-reported fetch/websocket errors to `logging/`.
 
 ## Runtime architecture
 
@@ -248,7 +260,7 @@ Because ball and powerup lists are distance-sorted relative to the observing pad
 Run bot evolution from the repo root with:
 
 ```bash
-node tools/evolve-bots.js --population 20 --generations 900 --update-all-roster --checkpoint-every 25
+node training/evolve-bots.js --population 20 --generations 900 --update-all-roster --checkpoint-every 25
 ```
 
 ### What the trainer is optimizing
@@ -257,8 +269,8 @@ The trainer does not use gradient descent. It is an evolutionary search loop tha
 
 1. Builds or reloads populations of neural bots.
 2. Plays full deterministic matches between bots using `runtime/js/sim-core.js`.
-3. Collects match statistics and role-specific metrics.
-4. Scores each bot with weighted fitness functions.
+3. Collects match statistics and runtime-derived metrics.
+4. Scores each bot with the same weighted fitness function.
 5. Updates Elo from match outcomes.
 6. Selects elites plus protected tracked-seed lineages.
 7. Clones and mutates the next generation.
@@ -266,29 +278,17 @@ The trainer does not use gradient descent. It is an evolutionary search loop tha
 
 This means the learning system is closer to neuroevolution than to backprop-based reinforcement learning.
 
-### Populations, archetypes, and named roles
+### Open populations and optional labels
 
-The base trainer works with four broad archetype pools:
+The trainer now evolves one shared population instead of splitting search into archetype pools.
 
-- `defensive`
-- `aggressive`
-- `control`
-- `trickster`
+Published bots can still carry metadata such as:
 
-On top of that, the current published roster also uses named role profiles layered over those archetypes:
+- `archetype`
+- display names like `Strategist` or `Sniper`
+- style tags in published roster metadata
 
-- `Strategist`
-- `Defensive Specialist`
-- `Sniper`
-
-Named roles can share an archetype pool. For example, both `Strategist` and `Defensive Specialist` are `control` bots, but they use different:
-
-- fitness weights
-- promotion gates
-- controller defaults
-- rescue mutation behavior
-
-That split is intentional. The shared archetype keeps the population broad, while the role profile pushes particular styles such as blue control, pink defense, or gold conversion.
+Those labels are descriptive only. They do not change fitness weights, promotion logic, controller defaults, or mutation behavior.
 
 ### Training loop details
 
@@ -296,7 +296,7 @@ Each generation:
 
 - creates a round-robin over all mutable bots, plus any static roster opponents
 - runs matches to the configured score limit or max tick budget
-- records movement, shots, powerup pickups, ball hits, wave hits, role-metric counters, rally length, and pace
+- records movement, shots, powerup pickups, ball hits, wave hits, rally length, and pace
 - converts those raw metrics into normalized per-match averages
 
 Fitness is not a single opaque reward. It is a weighted sum of readable metrics such as:
@@ -306,10 +306,13 @@ Fitness is not a single opaque reward. It is a weighted sum of readable metrics 
 - longest rally and pace
 - shots and shot rate
 - wave hit rate and ball hit rate
-- wave-color share metrics like `blueShotShare`, `pinkShotShare`, and `goldShotShare`
-- specialized role counters such as `blueTowardHits`, `pinkThreatHits`, or `goldPaddleHits`
+- fast-win bonus for closing out victories quickly
+- creativity bonus for productive variety, powerup usage, ball control, and lively exchanges
+- penalties for reckless quick losses, wasteful firing, and slow low-event stalls
 
-Those normalized metric names are documented in `TRAINING_METRIC_GUIDE` inside `tools/evolve-bots.js`, and future roles should reuse those keys instead of inventing new one-off score fields.
+The goal is now a little more opinionated: reward bots for winning quickly, doing interesting productive things on the way there, staying active, and avoiding both passive survival and reckless self-sabotage.
+
+Those normalized metric names are documented in `TRAINING_METRIC_GUIDE` inside `training/evolve-bots.js`.
 
 ### Match evaluation and metrics
 
@@ -329,8 +332,8 @@ For each side, the trainer builds metrics such as:
 - `waveHits`, `waveHitRate`
 - `movedTickRate`, `movementRate`
 - `powerups`, `powerupRate`
-- desired-wave counts and shares
-- role-specific contact counters from `matchStats.leftRoleMetrics` and `matchStats.rightRoleMetrics`
+- `fastWinScore`, `quickLossPenalty`
+- `creativityScore`, `shotWastePenalty`, `stallPenalty`
 
 The trainer also tracks movement directly by sampling paddle Y every simulation tick during the match. That is how it can distinguish a bot that survives passively from one that is actually moving and playing.
 
@@ -361,7 +364,6 @@ The current fine-tuning path does several things to keep those seeds trainable:
 - `--focus-bot-id <botId>` isolates one published bot while keeping the rest of the roster as fixed opponents by default
 - each tracked seed keeps its lineage via `sourceBotId`
 - each tracked lineage gets a guaranteed search budget each generation
-- tracked roles can use role-specific controller defaults even when they share an archetype
 - inert tracked lineages automatically switch into rescue mutation mode
 
 The rescue path is there specifically to avoid the old failure mode where a published seed that never moved would stay frozen forever while the run still looked superficially healthy.
@@ -385,32 +387,20 @@ the trainer marks it as needing rescue and widens the search:
 
 This is what allows dead seeds like a non-moving defensive bot to re-enter the search space instead of being preserved unchanged forever.
 
-### Promotion scoring and gates
+### Promotion scoring
 
-A bot is not promoted on Elo alone.
+A bot is not promoted on Elo alone, but it is no longer style-gated.
 
 The trainer builds a promotion candidate score from:
 
 - Elo
-- role-fit bonus derived from average fitness
+- average fitness bonus
 - optional human review score
 - large penalties for review-blocked bots
-- large penalties for profile-blocked bots
-
-Profile blocking comes from the role's promotion gate. A role can require things like:
-
-- minimum shots per match
-- minimum moved-tick rate
-- minimum desired-wave share
-- minimum desired-wave shots
-- generic `promotion.minMetrics`
-- generic `promotion.maxMetrics`
-
-This is how the trainer can reject bots that win games while ignoring the intended style. For example, a strategist can be blocked for blue-spam with weak actual ball control, and a sniper can be blocked for not using enough gold.
 
 ### Export, reports, checkpoints, and logs
 
-Every run writes machine-readable artifacts under `tools/reports/`:
+Every run writes machine-readable artifacts under `training/reports/`:
 
 - a timestamped training log
 - generation checkpoints
@@ -426,11 +416,27 @@ Useful flags:
 - `--roster-file <path>` lets you train and auto-promote against a temporary roster for dry runs
 - omit `--progress-every` to keep the built-in low-noise progress logging
 
-The generation tune line is intentionally short but high signal. It now reports not only role gaps, but also when a lineage still has `no-active-descendant` and is running in rescue mode.
+The generation tune line is intentionally short but high signal. It reports when a lineage still has `no-active-descendant` and is running in rescue mode.
+
+### Training workbench
+
+Run the local workbench server from the repo root with:
+
+```bash
+npm --prefix training run workbench
+```
+
+Then open `http://127.0.0.1:8936/` to:
+
+- start and stop training runs
+- monitor checkpoints, progress traces, top candidates, and recent logs
+- inspect replay bundles from recent runs
+- review matches with either rendered clips or live replay rendering
+- save review ratings back to `training/reports/review-ratings.json`
 
 ### Publishing bots into the runtime
 
-Publishing is handled by `tools/publish-bots.js`, not by blindly copying exports into the roster.
+Publishing is handled by `training/publish-bots.js`, not by blindly copying exports into the roster.
 
 The publish step:
 
@@ -445,7 +451,7 @@ Replacement uses a seeded promotion series where candidate and existing bots pla
 
 ### Live promotion during a long run
 
-`tools/promote-live-training.js` can attach to a live Node training process, snapshot the current trainer state, export the current best candidates, and optionally publish them without waiting for the full run to finish.
+`training/promote-live-training.js` can attach to a live Node training process, snapshot the current trainer state, export the current best candidates, and optionally publish them without waiting for the full run to finish.
 
 That is useful when:
 
@@ -453,16 +459,15 @@ That is useful when:
 - you want to try the current best bots in the browser immediately
 - you want to inspect live candidates without stopping the trainer
 
-### Guidance for future roles
+### Guidance for future roster labels
 
-When adding future archetypes or named roles:
+When adding future roster identities:
 
 - reuse the normalized metric keys from `TRAINING_METRIC_GUIDE`
-- keep role intent in the role profile `fitness` weights
-- keep style-specific quality gates in the role profile `promotion` block
-- use controller training profiles for role-specific movement/fire defaults
-- avoid hardcoding role-only logic inside the simulation loop
-- assume shared archetype pools need lineage protection, not just a bigger population
+- keep training objective changes generic unless you intentionally want guided evolution again
+- treat archetype and role labels as optional metadata
+- avoid hardcoding label-specific logic inside the simulation loop
+- keep lineage protection tied to tracked seed ids, not metadata labels
 
 ## itch.io deployment with butler
 

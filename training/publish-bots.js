@@ -10,9 +10,9 @@ const controllers = require(path.join(repoRoot, 'runtime/js/controllers.js'));
 
 function parseArgs(argv) {
   const args = {
-    source: path.join(repoRoot, 'tools', 'reports', 'candidates', 'latest-candidate-bot.js'),
+    source: path.join(repoRoot, 'training', 'reports', 'candidates', 'latest-candidate-bot.js'),
     destination: path.join(repoRoot, 'runtime', 'js', 'bot-roster.js'),
-    report: path.join(repoRoot, 'tools', 'reports', 'published-bots-report.json'),
+    report: path.join(repoRoot, 'training', 'reports', 'published-bots-report.json'),
     replaceId: null,
     forceAdd: false,
     promotionSeeds: 4,
@@ -81,6 +81,7 @@ function cosineSimilarity(left, right) {
 function inferStyleTags(bot) {
   const tags = [];
   if (bot.archetype) tags.push(bot.archetype);
+  else tags.push('unguided');
   if (bot.difficultyBand) tags.push(bot.difficultyBand);
   if ((bot.runtimeValidation && bot.runtimeValidation.totalMovedTicks >= 120)) tags.push('active-mover');
   else if ((bot.runtimeValidation && bot.runtimeValidation.totalMovedTicks > 0)) tags.push('measured-mover');
@@ -187,7 +188,7 @@ function findRedundantRosterMatch(candidate, roster) {
   for (const rosterBot of roster) {
     const similarity = cosineSimilarity(candidate, rosterBot);
     const sameLineage = candidate.lineageId && rosterBot.lineageId && candidate.lineageId === rosterBot.lineageId;
-    const sameRole = candidate.archetype === rosterBot.archetype && candidate.difficultyBand === rosterBot.difficultyBand;
+    const sameRole = !!candidate.archetype && candidate.archetype === rosterBot.archetype && candidate.difficultyBand === rosterBot.difficultyBand;
     const eloDelta = Math.abs((Number(candidate.elo) || 0) - (Number(rosterBot.elo) || 0));
     const redundant = (sameLineage && similarity > 0.97) || (sameRole && similarity > 0.992 && eloDelta <= 30);
     if (!best || similarity > best.similarity) {

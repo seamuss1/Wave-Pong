@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wave Pong Training Workbench</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="appShell">
+    <header class="hero">
+      <div class="heroCopy">
+        <span class="eyebrow">Wave Pong</span>
+        <h1>Training Workbench</h1>
+        <p>Monitor live evolution, tune training inputs, start and stop runs, inspect checkpoints and logs, then review recent matches with either rendered video clips or fully simulated replay playback.</p>
+      </div>
+      <div class="heroActions">
+        <button id="refreshButton" type="button">Refresh</button>
+        <button id="saveRatingsButton" type="button" class="primary">Save ratings to repo</button>
+        <button id="downloadRatingsButton" type="button">Download ratings</button>
+        <label class="fieldButton">Import ratings<input id="ratingsInput" type="file" accept=".json,application/json" /></label>
+        <label class="fieldButton">Load clips<input id="clipsInput" type="file" accept=".webm,video/webm" multiple webkitdirectory /></label>
+      </div>
+      <div class="statusStrip">
+        <span class="statusPill" id="serverStatus">Server offline</span>
+        <span class="statusPill" id="runStatus">No active run</span>
+        <span class="statusPill" id="ratingsStatus">Ratings ready</span>
+        <span class="statusPill" id="replayStatus">Replay studio idle</span>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      <aside class="rail">
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Run Controls</h2>
+              <p class="muted">Configure a run visually, then start or stop it from here.</p>
+            </div>
+          </div>
+          <div class="panelBody controlStack">
+            <div class="presetRow">
+              <button type="button" data-preset="smoke">Quick smoke</button>
+              <button type="button" data-preset="tune">Tune batch</button>
+              <button type="button" data-preset="overnight">Long run</button>
+            </div>
+
+            <div class="fieldGrid">
+              <label>
+                <span>Generations</span>
+                <div class="inputPair">
+                  <input id="generationsRange" type="range" min="20" max="3000" step="10" value="400" />
+                  <input id="generationsInput" type="number" min="1" step="1" value="400" />
+                </div>
+              </label>
+              <label>
+                <span>Population</span>
+                <div class="inputPair">
+                  <input id="populationRange" type="range" min="4" max="48" step="1" value="16" />
+                  <input id="populationInput" type="number" min="2" step="1" value="16" />
+                </div>
+              </label>
+              <label>
+                <span>Seed</span>
+                <input id="seedInput" type="number" min="1" step="1" value="1337" />
+              </label>
+              <label>
+                <span>Score limit</span>
+                <input id="scoreLimitInput" type="number" min="1" step="1" value="5" />
+              </label>
+              <label>
+                <span>Max ticks</span>
+                <input id="maxTicksInput" type="number" min="120" step="120" value="10800" />
+              </label>
+              <label>
+                <span>Checkpoint every</span>
+                <input id="checkpointEveryInput" type="number" min="1" step="1" value="25" />
+              </label>
+              <label>
+                <span>Auto-promote every</span>
+                <input id="autoPromoteEveryInput" type="number" min="0" step="1" value="0" />
+              </label>
+              <label>
+                <span>Progress log cadence</span>
+                <input id="progressEveryInput" type="number" min="0" step="1" value="0" />
+              </label>
+            </div>
+
+            <div class="toggleGrid">
+              <label class="toggleRow"><input id="updateAllRosterInput" type="checkbox" checked /> Update all tracked roster slots</label>
+              <label class="toggleRow"><input id="publishRuntimeInput" type="checkbox" /> Publish runtime roster on completion</label>
+            </div>
+
+            <div class="parameterSummary" id="parameterSummary"></div>
+
+            <div class="buttonRow">
+              <button id="startTrainingButton" type="button" class="primary">Start training</button>
+              <button id="stopTrainingButton" type="button" class="danger">Stop selected run</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Runs</h2>
+              <p class="muted">Active and recent report directories.</p>
+            </div>
+            <span class="muted" id="runsCount">0 runs</span>
+          </div>
+          <div class="panelBody">
+            <div class="runList" id="runList"></div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2 id="overviewTitle">Live Overview</h2>
+              <p class="muted" id="overviewSubtitle">Select a run to inspect progress, logs, and checkpoints.</p>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="statGrid" id="overviewStats"></div>
+            <div class="chartCard">
+              <div class="chartHeader">
+                <h3>Progress Trace</h3>
+                <span class="muted" id="chartHint">Waiting for run data</span>
+              </div>
+              <svg id="progressChart" viewBox="0 0 900 220" preserveAspectRatio="none" aria-label="Training progress chart"></svg>
+            </div>
+            <div class="insightGrid">
+              <div class="infoCard">
+                <h3>Top Candidates</h3>
+                <div id="topCandidates"></div>
+              </div>
+              <div class="infoCard">
+                <h3>Lineage Diagnostics</h3>
+                <div id="tuningDiagnostics"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Run Log</h2>
+              <p class="muted">Recent stdout, stderr, and tailed log lines from the selected run.</p>
+            </div>
+          </div>
+          <div class="panelBody">
+            <pre class="logConsole" id="logConsole"></pre>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Replay Studio</h2>
+              <p class="muted" id="studioSubtitle">Pick a replay to view either a rendered clip or a fully simulated playback.</p>
+            </div>
+            <div class="tabRow">
+              <button id="liveReplayTab" type="button" class="is-active">Live replay</button>
+              <button id="clipReplayTab" type="button">Rendered clip</button>
+            </div>
+          </div>
+          <div class="panelBody studioBody">
+            <div class="playerShell">
+              <div class="canvasStage mode-live" id="canvasStage">
+                <canvas id="replayCanvas" width="1280" height="720" aria-label="Wave Pong replay canvas"></canvas>
+                <div class="emptyOverlay" id="replayEmpty">Select a replay from the queue to render it here.</div>
+              </div>
+              <div class="videoStage hidden" id="videoStage">
+                <video id="clipPlayer" controls preload="metadata" playsinline></video>
+                <div class="emptyOverlay" id="clipEmpty">No clip selected. Load a replay or drop in clip files.</div>
+              </div>
+            </div>
+
+            <div class="transportBar">
+              <button id="replayPlayPauseButton" type="button">Play</button>
+              <button id="replayRestartButton" type="button">Restart</button>
+              <label class="transportField">
+                <span>Speed</span>
+                <select id="replaySpeedInput">
+                  <option value="0.5">0.5x</option>
+                  <option value="1" selected>1x</option>
+                  <option value="1.5">1.5x</option>
+                  <option value="2">2x</option>
+                  <option value="4">4x</option>
+                </select>
+              </label>
+              <input id="replayScrubber" type="range" min="0" max="1" step="1" value="0" />
+              <span class="mono" id="replayTickLabel">tick 0 / 0</span>
+            </div>
+
+            <div class="metaGrid" id="replayMeta"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Replay Queue</h2>
+              <p class="muted">Recent match bundles for the selected run.</p>
+            </div>
+            <span class="muted" id="queueCount">0 replays</span>
+          </div>
+          <div class="panelBody">
+            <div class="filters">
+              <input id="searchInput" type="search" placeholder="Search replay id or bot id" />
+              <select id="decisionFilter">
+                <option value="all">All review states</option>
+                <option value="unrated">Unrated only</option>
+                <option value="accept">Accepted</option>
+                <option value="watch">Watch</option>
+                <option value="reject">Rejected</option>
+              </select>
+            </div>
+            <div class="replayList" id="replayList"></div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="detail">
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Run Details</h2>
+              <p class="muted">Useful file paths, counts, and selected-run context.</p>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="detailList" id="runDetails"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Human Review</h2>
+              <p class="muted">Score matches for fun, fairness, skill, pace, and exploit risk.</p>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="ratingGrid">
+              <div class="ratingCard">
+                <div class="ratingRow"><strong>Fun</strong><output id="funValue">3</output></div>
+                <input id="funInput" type="range" min="1" max="5" step="1" value="3" />
+              </div>
+              <div class="ratingCard">
+                <div class="ratingRow"><strong>Fairness</strong><output id="fairnessValue">3</output></div>
+                <input id="fairnessInput" type="range" min="1" max="5" step="1" value="3" />
+              </div>
+              <div class="ratingCard">
+                <div class="ratingRow"><strong>Skill expression</strong><output id="skillExpressionValue">3</output></div>
+                <input id="skillExpressionInput" type="range" min="1" max="5" step="1" value="3" />
+              </div>
+              <div class="ratingCard">
+                <div class="ratingRow"><strong>Pace</strong><output id="paceValue">3</output></div>
+                <input id="paceInput" type="range" min="1" max="5" step="1" value="3" />
+              </div>
+              <div class="ratingCard">
+                <div class="ratingRow"><strong>Exploit risk</strong><output id="exploitRiskValue">1</output></div>
+                <input id="exploitRiskInput" type="range" min="0" max="5" step="1" value="1" />
+              </div>
+            </div>
+
+            <div class="decisionStack">
+              <label for="decisionInput">Decision</label>
+              <select id="decisionInput">
+                <option value="accept">Accept</option>
+                <option value="watch">Watch</option>
+                <option value="reject">Reject</option>
+              </select>
+              <label for="notesInput">Review notes</label>
+              <textarea id="notesInput" placeholder="Why is this match good, risky, suspicious, or worth revisiting?"></textarea>
+            </div>
+
+            <div class="buttonRow">
+              <button id="saveReplayRatingButton" type="button" class="primary">Save current rating</button>
+              <button id="clearReplayRatingButton" type="button" class="danger">Clear current rating</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHeader">
+            <div>
+              <h2>Bot Review Summary</h2>
+              <p class="muted">Aggregated review outcomes across the current ratings set.</p>
+            </div>
+          </div>
+          <div class="panelBody">
+            <div class="botSummary" id="botSummary"></div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div class="dialogBackdrop hidden" id="errorDialog">
+    <div class="dialogCard" role="dialog" aria-modal="true" aria-labelledby="errorDialogTitle">
+      <div class="panelHeader">
+        <div>
+          <h2 id="errorDialogTitle">Workbench Error</h2>
+          <p class="muted" id="errorDialogSubtitle">The full message below can be selected and copied.</p>
+        </div>
+      </div>
+      <div class="panelBody controlStack">
+        <textarea id="errorDialogBody" class="errorDialogBody" readonly></textarea>
+        <div class="buttonRow">
+          <button id="copyErrorButton" type="button" class="primary">Copy message</button>
+          <button id="closeErrorButton" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../runtime/js/version.js"></script>
+  <script src="../../runtime/js/config.js"></script>
+  <script src="../../runtime/js/controllers.js"></script>
+  <script src="../../runtime/js/sim-core.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

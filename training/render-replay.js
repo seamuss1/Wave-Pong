@@ -185,7 +185,7 @@ async function main() {
   const browser = findBrowser(args.browser);
   const port = await reservePort();
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wave-pong-replay-'));
-  const renderUrl = pathToFileURL(path.join(repoRoot, 'tools', 'replay-render.html')).href;
+  const renderUrl = pathToFileURL(path.join(repoRoot, 'training', 'replay-render.html')).href;
   const replayBundle = JSON.parse(fs.readFileSync(args.replay, 'utf8'));
 
   const browserHandle = await launchBrowser(browser, [
