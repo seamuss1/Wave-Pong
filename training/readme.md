@@ -24,6 +24,12 @@ npm --prefix training run workbench
 
 Then open `http://127.0.0.1:8936/`.
 
+Smoke-test the workbench with Playwright from the repo root:
+
+```bash
+npm --prefix training run smoke:workbench
+```
+
 ## Future structure
 
 This folder is intentionally organized so it can expand into a separate runtime code base later. A good next split would be:

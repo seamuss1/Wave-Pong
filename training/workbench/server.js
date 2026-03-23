@@ -12,6 +12,7 @@ const reviewRatingsPath = path.join(reportsRoot, 'review-ratings.json');
 const workbenchLogDir = path.join(reportsRoot, '_workbench');
 const workbenchLogPath = path.join(workbenchLogDir, 'server.log');
 const activeRuns = new Map();
+const activeClipRenders = new Map();
 
 function createTimestampSlug(date = new Date()) {
   const pad = (value) => String(value).padStart(2, '0');
@@ -95,12 +96,17 @@ function getReplayDir(runId) {
   return path.join(getRunDir(runId), 'replays');
 }
 
+function getClipDir(runId) {
+  return path.join(getRunDir(runId), 'clips');
+}
+
 function getRunFiles(runId) {
   return {
     runDir: getRunDir(runId),
     checkpointPath: getCheckpointPath(runId),
     reportPath: getReportPath(runId),
-    replayDir: getReplayDir(runId)
+    replayDir: getReplayDir(runId),
+    clipDir: getClipDir(runId)
   };
 }
 
@@ -317,6 +323,62 @@ function buildTrainingArgs(runId, config) {
   return { args, merged, runDir };
 }
 
+function renderReplayClip(runId, replayId) {
+  const renderKey = `${runId}:${replayId}`;
+  if (activeClipRenders.has(renderKey)) return activeClipRenders.get(renderKey);
+
+  const replayPath = path.join(getReplayDir(runId), `${replayId}.json`);
+  const clipDir = getClipDir(runId);
+  const outputPath = path.join(clipDir, `${replayId}.webm`);
+  if (!fs.existsSync(replayPath)) {
+    return Promise.reject(new Error(`Replay bundle not found: ${replayPath}`));
+  }
+
+  ensureDir(clipDir);
+  const renderScript = path.join(trainingRoot, 'render-replay.js');
+  const task = new Promise((resolve, reject) => {
+    logWorkbench('info', 'Starting replay clip render', { runId, replayId, replayPath, outputPath });
+    const child = spawn(process.execPath, [renderScript, '--replay', replayPath, '--output', outputPath], {
+      cwd: repoRoot,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    let stderr = '';
+    let stdout = '';
+
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk || '');
+      if (stdout.length > 4000) stdout = stdout.slice(-4000);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk || '');
+      if (stderr.length > 4000) stderr = stderr.slice(-4000);
+    });
+    child.on('error', (error) => {
+      logWorkbench('error', 'Replay clip render process error', {
+        runId,
+        replayId,
+        message: String(error && error.stack ? error.stack : error)
+      });
+      reject(error);
+    });
+    child.on('exit', (code) => {
+      if (code === 0 && fs.existsSync(outputPath)) {
+        logWorkbench('info', 'Replay clip render complete', { runId, replayId, outputPath });
+        resolve({ outputPath, stdout: stdout.trim() });
+        return;
+      }
+      const message = stderr.trim() || stdout.trim() || `Replay clip render failed with exit code ${code}`;
+      logWorkbench('error', 'Replay clip render failed', { runId, replayId, outputPath, exitCode: code, message });
+      reject(new Error(message));
+    });
+  }).finally(() => {
+    activeClipRenders.delete(renderKey);
+  });
+
+  activeClipRenders.set(renderKey, task);
+  return task;
+}
+
 function startTrainingRun(config) {
   const runId = `workbench-${createTimestampSlug()}`;
   const { args, merged, runDir } = buildTrainingArgs(runId, config);
@@ -481,6 +543,26 @@ function routeApi(request, response, url) {
     return true;
   }
 
+  const renderClipMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/replays\/([^/]+)\/render-clip$/);
+  if (request.method === 'POST' && renderClipMatch) {
+    const runId = safeRunId(renderClipMatch[1]);
+    const replayId = decodeURIComponent(renderClipMatch[2]);
+    renderReplayClip(runId, replayId)
+      .then(({ outputPath }) => {
+        sendJson(response, 200, {
+          ok: true,
+          runId,
+          replayId,
+          outputPath,
+          clipUrl: `/training/reports/${encodeURIComponent(runId)}/clips/${encodeURIComponent(replayId)}.webm`
+        });
+      })
+      .catch((error) => {
+        sendJson(response, 500, { ok: false, error: String(error.message || error), logFile: workbenchLogPath });
+      });
+    return true;
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/review/ratings') {
     sendJson(response, 200, { ok: true, payload: readJson(reviewRatingsPath, { schemaVersion: 1, items: [] }) });
     return true;
@@ -513,12 +595,17 @@ function main() {
   const server = http.createServer((request, response) => {
     try {
       const url = new URL(request.url, `http://${request.headers.host || '127.0.0.1'}`);
+      const quietPollRequest = request.method === 'GET' && (
+        url.pathname === '/api/state' ||
+        /^\/api\/runs\/[^/]+\/replays$/.test(url.pathname) ||
+        /^\/api\/runs\/[^/]+\/replays\/[^/]+$/.test(url.pathname)
+      );
       if (request.method === 'GET' && url.pathname === '/') {
         logWorkbench('info', 'Redirecting root request', { location: '/training/workbench/index.html' });
         redirect(response, '/training/workbench/index.html');
         return;
       }
-      if (request.method !== 'GET' || url.pathname.startsWith('/api/')) {
+      if ((request.method !== 'GET' || url.pathname.startsWith('/api/')) && !quietPollRequest) {
         logWorkbench('info', 'HTTP request', { method: request.method, path: url.pathname });
       }
       if (routeApi(request, response, url)) return;

@@ -5,6 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Wave Pong Replay Renderer</title>
   <link rel="stylesheet" href="../runtime/styles/main.css" />
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    body {
+      display: grid;
+      place-items: stretch;
+    }
+
+    #gameCanvas {
+      display: block;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw;
+      max-height: 100vh;
+    }
+  </style>
 </head>
 <body>
   <canvas id="gameCanvas" tabindex="0" aria-label="Replay renderer canvas"></canvas>
@@ -31,6 +54,7 @@
 
       async function renderBundle(bundle, options = {}) {
         const fps = options.fps || 60;
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const runtime = simCore.createRuntime({
           document,
           window,
@@ -46,6 +70,10 @@
             // Headless browsers may ignore window resizing.
           }
         }
+        document.documentElement.style.width = `${width}px`;
+        document.documentElement.style.height = `${height}px`;
+        document.body.style.width = `${width}px`;
+        document.body.style.height = `${height}px`;
         runtime.startMatch({
           ...bundle.matchOptions,
           skipCountdown: true,
@@ -56,7 +84,10 @@
           runtime.queueInput(action.side, action.tick, action.action);
         }
         runtime.resize();
+        runtime.canvas.style.width = `${width}px`;
+        runtime.canvas.style.height = `${height}px`;
         runtime.render();
+        await sleep(100);
 
         const stream = runtime.canvas.captureStream(fps);
         const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
@@ -66,6 +97,7 @@
         };
 
         const ticksPerFrame = Math.max(1, Math.round(runtime.fixedTickRate / fps));
+        const frameDelayMs = Math.max(1, Math.round((ticksPerFrame / runtime.fixedTickRate) * 1000));
         const finished = new Promise((resolve) => {
           recorder.onstop = async () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
@@ -80,7 +112,7 @@
         while (runtime.state.tick < bundle.durationTicks) {
           runtime.stepSimulation(ticksPerFrame);
           runtime.render();
-          await new Promise((resolve) => requestAnimationFrame(resolve));
+          await sleep(frameDelayMs);
         }
         recorder.stop();
         return finished;

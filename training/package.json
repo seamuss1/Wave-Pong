@@ -9,6 +9,11 @@
     "publish:bots": "node publish-bots.js",
     "render:replay": "node render-replay.js",
     "review:replays": "node review-replays.js",
+    "smoke:workbench": "node workbench-smoke-test.js",
+    "smoke:replay-viewer": "node workbench-smoke-test.js",
     "workbench": "node workbench/server.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.58.2"
   }
 }
