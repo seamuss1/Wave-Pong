@@ -37,6 +37,7 @@
 
   const onlineEnabledPill = document.getElementById('onlineEnabledPill');
   const onlineNameInput = document.getElementById('onlineNameInput');
+  const onlineNameRerollBtn = document.getElementById('onlineNameRerollBtn');
   const onlineQueueBtn = document.getElementById('onlineQueueBtn');
   const onlineLeaveQueueBtn = document.getElementById('onlineLeaveQueueBtn');
   const onlineStatusText = document.getElementById('onlineStatusText');
@@ -502,6 +503,63 @@
     if (ui.trailToggle && typeof saved.trails === 'boolean') ui.trailToggle.checked = saved.trails;
   }
 
+  const GUEST_NAME_KEY = 'wavePongGuestNameV1';
+  // Kept short so adjective + noun + a 3-digit number always fits the 20-char input cap.
+  const GUEST_NAME_ADJECTIVES = [
+    'Swift', 'Turbo', 'Neon', 'Cosmic', 'Rapid', 'Blazing', 'Mighty', 'Sneaky',
+    'Wavy', 'Radical', 'Zippy', 'Jolly', 'Vivid', 'Frosty', 'Nimble', 'Lunar',
+    'Solar', 'Groovy', 'Spicy', 'Bouncy', 'Gnarly', 'Rowdy', 'Bold', 'Wild',
+    'Epic', 'Funky', 'Quick', 'Snappy', 'Plucky', 'Electric'
+  ];
+  const GUEST_NAME_NOUNS = [
+    'Paddle', 'Comet', 'Falcon', 'Tiger', 'Volt', 'Rocket', 'Pixel', 'Yeti',
+    'Phoenix', 'Otter', 'Hawk', 'Ninja', 'Wizard', 'Rogue', 'Panda', 'Shark',
+    'Wave', 'Bolt', 'Dragon', 'Viper', 'Raptor', 'Nova', 'Blitz', 'Puma',
+    'Lynx', 'Cobra', 'Gecko', 'Mantis', 'Orbit', 'Legend'
+  ];
+
+  function randomFrom(list) {
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  function generateGuestName() {
+    const number = Math.floor(100 + Math.random() * 900); // always three digits
+    return `${randomFrom(GUEST_NAME_ADJECTIVES)}${randomFrom(GUEST_NAME_NOUNS)}${number}`;
+  }
+
+  function storeGuestName(name) {
+    try {
+      if (name && name.trim()) window.localStorage.setItem(GUEST_NAME_KEY, name.trim());
+    } catch (err) {
+      // Storage unavailable (private mode / blocked iframe); the name just won't persist.
+    }
+  }
+
+  function loadStoredGuestName() {
+    try {
+      const stored = window.localStorage.getItem(GUEST_NAME_KEY);
+      return stored && stored.trim() ? stored.trim() : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function setGuestName(name, persist) {
+    if (!onlineNameInput) return;
+    onlineNameInput.value = name;
+    if (persist !== false) storeGuestName(name);
+  }
+
+  // Give returning players a stable random identity, but generate a fresh one the first time.
+  function ensureGuestName() {
+    const stored = loadStoredGuestName();
+    if (stored) {
+      setGuestName(stored, false);
+    } else {
+      setGuestName(generateGuestName(), true);
+    }
+  }
+
   function renderOnlineState(nextState) {
     const state = nextState || (onlineService ? onlineService.getState() : {
       enabled: !!env.enabled,
@@ -567,6 +625,8 @@
   if (menuBotInfoBtn) menuBotInfoBtn.addEventListener('click', openBotInfo);
   if (pauseBotInfoBtn) pauseBotInfoBtn.addEventListener('click', openBotInfo);
   if (closeBotInfoBtn) closeBotInfoBtn.addEventListener('click', closeBotInfo);
+  if (onlineNameRerollBtn) onlineNameRerollBtn.addEventListener('click', () => setGuestName(generateGuestName(), true));
+  if (onlineNameInput) onlineNameInput.addEventListener('change', () => storeGuestName(onlineNameInput.value));
   if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
   if (pauseFullscreenBtn) pauseFullscreenBtn.addEventListener('click', toggleFullscreen);
   document.addEventListener('fullscreenchange', syncFullscreenButtons);
@@ -621,6 +681,7 @@
   populateBotSelect();
   applySavedMenuSettings();
   applyModeVisibility();
+  ensureGuestName();
   syncControllers();
   touchController.bind();
   runtime.setInputProvider(offlineInputProvider);
