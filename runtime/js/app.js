@@ -91,6 +91,20 @@
     const MAX_RADIUS = 52;
     const HORIZONTAL_SWAY = 16;
     const DEAD_ZONE = 0.16;
+    // Fire is a tap gesture, never a press: the first finger that lands on the
+    // play area is a steering touch and must NOT fire. Active non-joystick
+    // touches are tracked here so we can distinguish a quick tap-release (fire)
+    // from a drag-to-steer (no fire), and fire immediately when a second finger
+    // lands while one is already steering.
+    const firePointers = new Map();
+    const TAP_MAX_MS = 250;
+    const TAP_MOVE_PX = 14;
+
+    function touchNowMs() {
+      return (window.performance && typeof window.performance.now === 'function')
+        ? window.performance.now()
+        : Date.now();
+    }
 
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
@@ -153,6 +167,8 @@
       touchControlsRoot.classList.toggle('enabled', nextVisible);
       if (!nextVisible) {
         resetMoveState();
+        firePointers.clear();
+        state.fireQueued = false;
       }
     }
 
@@ -163,6 +179,49 @@
       if (touchMoveZone.contains(event.target)) return false;
       if (typeof runtime.isPauseButtonPointerEvent === 'function' && runtime.isPauseButtonPointerEvent(event)) return false;
       return true;
+    }
+
+    // A touch that lands while the paddle is already being steered (joystick
+    // engaged, or another play-area finger already down) is a deliberate second
+    // touch and fires at once. The very first steering touch does not.
+    function isSteeringActive() {
+      return state.moveEngaged || firePointers.size > 0;
+    }
+
+    function onFirePointerDown(event) {
+      if (!shouldCaptureTapFire(event)) return;
+      event.preventDefault();
+      const fireNow = isSteeringActive();
+      firePointers.set(event.pointerId, {
+        startX: event.clientX,
+        startY: event.clientY,
+        startMs: touchNowMs(),
+        moved: false,
+        fired: fireNow
+      });
+      if (fireNow) state.fireQueued = true;
+    }
+
+    function onFirePointerMove(event) {
+      const tracked = firePointers.get(event.pointerId);
+      if (!tracked) return;
+      if (Math.abs(event.clientX - tracked.startX) > TAP_MOVE_PX ||
+          Math.abs(event.clientY - tracked.startY) > TAP_MOVE_PX) {
+        tracked.moved = true;
+      }
+    }
+
+    function onFirePointerUp(event) {
+      const tracked = firePointers.get(event.pointerId);
+      if (!tracked) return;
+      firePointers.delete(event.pointerId);
+      if (event.type === 'pointercancel') return;
+      // A quick, near-stationary tap-and-release fires. A held or dragged touch
+      // (steering) does not, and a touch that already fired as a second touch
+      // does not fire again on release.
+      if (!tracked.fired && !tracked.moved && (touchNowMs() - tracked.startMs) <= TAP_MAX_MS) {
+        state.fireQueued = true;
+      }
     }
 
     function bind() {
@@ -190,11 +249,10 @@
       };
       touchMoveZone.addEventListener('pointerup', releaseMove);
       touchMoveZone.addEventListener('pointercancel', releaseMove);
-      document.addEventListener('pointerdown', (event) => {
-        if (!shouldCaptureTapFire(event)) return;
-        event.preventDefault();
-        state.fireQueued = true;
-      }, { passive: false });
+      document.addEventListener('pointerdown', onFirePointerDown, { passive: false });
+      document.addEventListener('pointermove', onFirePointerMove, { passive: true });
+      document.addEventListener('pointerup', onFirePointerUp, { passive: true });
+      document.addEventListener('pointercancel', onFirePointerUp, { passive: true });
 
       updateStickVisual();
       sync();
