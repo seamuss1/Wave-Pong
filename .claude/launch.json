@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wave-pong-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/preview-static-server.js"],
+      "port": 8977,
+      "env": { "PREVIEW_PORT": "8977" }
+    }
+  ]
+}

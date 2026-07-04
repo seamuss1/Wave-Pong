@@ -27,13 +27,13 @@
     // Base ball size and launch envelope.
     ball: {
       radius: 11, // Collision/render radius.
-      speedCap: 920, // Global maximum ball speed clamp.
+      speedCap: 980, // Global maximum ball speed clamp.
       boost: {
         overCapDecayPerSecond: 220, // How quickly an over-speed ball settles back down toward the normal cap after a temporary boost ends.
         accelerationPerLog2Unit: 32 // Extra ball speed gained per second for each log2 unit of boost intensity while a boost timer is active.
       },
       initialAngleBase: 0.35, // Minimum serve angle away from horizontal.
-      initialAngleRange: 0.40 // Extra randomized serve angle range.
+      initialAngleRange: 0.50 // Extra randomized serve angle range.
     },
     // Shared wave resource costs and recharge behavior.
     charge: {
@@ -42,7 +42,7 @@
       goldCost: 0.9, // Charge spent by the gold wave.
       baseMax: 1, // Normal maximum charge bar value.
       overcapMax: 1.5, // Temporary maximum when Cap Bank is active.
-      rechargeBasePerSecond: 0.152, // Passive recharge before level scaling.
+      rechargeBasePerSecond: 0.17, // Passive recharge before level scaling.
       rechargePerLevelPerSecond: 0.016, // Extra recharge gained per wave level.
       rapidMultiplier: 1.9, // Recharge multiplier while Rapid Charge is active.
       concededChargeBonus: 0.25 // Instant charge granted to the side that just conceded a goal.
@@ -131,18 +131,18 @@
       pink: {
         thicknessBase: 32, // Starting visual width.
         thicknessPerLevel: 2.4, // Width gained per level.
-        rangeBase: 208, // Base travel range.
+        rangeBase: 222, // Base travel range.
         rangePerLevel: 10, // Extra range per level.
-        rangeChargeScale: 42, // Extra range from charge above the pink threshold.
-        strengthBase: 138, // Base defensive force.
+        rangeChargeScale: 56, // Extra range from charge above the pink threshold.
+        strengthBase: 150, // Base defensive force.
         strengthPerLevel: 14, // Extra force per level.
         strengthChargeScale: 18, // Extra force from current charge.
         coneBase: 0.86, // Base spread arc.
         conePerLevel: 0.018, // Extra spread per level.
         cooldown: 0.052, // Post-fire cooldown.
-        lifeBase: 0.35, // Minimum pulse lifetime.
+        lifeBase: 0.45, // Minimum pulse lifetime.
         lifeBonusBase: 0.04, // Starting bonus lifetime once pink is unlocked.
-        lifeBonusCap: 0.08, // Maximum additional lifetime from charge.
+        lifeBonusCap: 0.1, // Maximum additional lifetime from charge.
         lifeChargeScale: 0.08, // Rate that extra charge adds lifetime.
         color: '#ff7cd7', // Primary render color.
         glow: '#ffb3ec', // Glow color.
@@ -234,15 +234,27 @@
     // Gold-wave-only interaction tuning: center sweet spot, paddle disruption, and post-hit growth.
     goldWaveInteraction: {
       paddleHit: {
-        nudgeMax: 230, // Maximum vertical displacement force applied to a paddle struck by the gold wave.
+        nudgeMax: 190, // Maximum vertical displacement force applied to a paddle struck by the gold wave.
         velocityScale: 20, // Multiplier used when converting paddle nudge into paddle vertical velocity.
-        hitScale: 1.26, // Temporary paddle squash/stretch scale when the gold wave lands.
-        slowDurationSeconds: 1.85, // Slow duration applied to a paddle struck by the gold wave.
+        hitScale: 1.32, // Temporary paddle squash/stretch scale when the gold wave lands.
+        slowDurationSeconds: 1.4, // Slow duration applied to a paddle struck by the gold wave.
         chargeCeilingOffset: 0.02 // Amount below pink-ready charge that a struck paddle gets clamped to.
       },
       ballHit: {
         sweetSpotExponent: 1.7, // Higher values make the gold-wave center sweet spot narrower.
         centerSweetThreshold: 0.74, // Sweet-spot threshold that triggers the strongest center-hit behavior.
+        // Tiny bullseye at the exact arc center: returns ANY ball regardless of its
+        // speed (even over-cap boosted shots), piercing blue resistance.
+        deadCenter: {
+          angularThreshold: 0.94, // Angular closeness to the arc center (1 = exact) required for a bullseye.
+          incomingSpeedScale: 1.04, // Outgoing speed multiplier applied to the reflected incoming speed.
+          minSpeed: 640, // Floor for the outgoing bullseye speed.
+          speedPerLevel: 12, // Extra floor speed per wave level.
+          angleOffsetScale: 0.08, // Vertical impact offset influence on the outgoing angle.
+          boostDuration: 0.6, // Boost timer applied to a bullseye return.
+          boostIntensity: 1.4, // Boost intensity (drives streak visuals and boost acceleration).
+          boostMaxSpeedCapMultiplier: 1.18 // Fraction of the global speed cap the bullseye boost may sustain.
+        },
         center: {
           speedCapMultiplier: 0.97, // Ball speed cap used for strong center hits.
           incomingSpeedScale: 1.02, // Multiplier on incoming ball speed for strong center hits.
@@ -289,23 +301,23 @@
     },
     // Long-rally multiball escalation.
     rally: {
-      initialSpawnAtSeconds: 10, // Earliest time/rally checkpoint for the first extra ball.
-      thresholdBase: 5, // Base rally length needed before extra-ball checks.
-      thresholdPerExtraBall: 6, // Extra rally requirement per current additional ball.
-      repeatDelayBaseSeconds: 6, // Delay before the next long-rally spawn check.
-      repeatDelayPerBallSeconds: 1.8, // Additional delay per ball already on the field.
-      stopAddingAtBallCount: 4, // Hard limit after which rally spawns stop.
+      initialSpawnAtSeconds: 8, // Earliest time/rally checkpoint for the first extra ball.
+      thresholdBase: 4, // Base rally length needed before extra-ball checks.
+      thresholdPerExtraBall: 9, // Extra rally requirement per current additional ball.
+      repeatDelayBaseSeconds: 10, // Delay before the next long-rally spawn check.
+      repeatDelayPerBallSeconds: 3.4, // Additional delay per ball already on the field.
+      stopAddingAtBallCount: 3, // Hard limit after which rally spawns stop.
       cloneVxScale: -0.9, // Horizontal velocity multiplier for spawned rally clones.
       cloneVyScale: 0.92, // Vertical velocity multiplier for spawned rally clones.
       cloneMinVy: 220, // Minimum vertical speed for spawned rally clones.
-      cloneCapMultiplier: 0.96 // Speed cap multiplier applied to rally clones.
+      cloneCapMultiplier: 0.8 // Speed cap multiplier applied to rally clones (slower clones stay answerable by good defense).
     },
     // Match flow toggles that change when new balls are introduced.
     matchFlow: {
       alwaysSpawnReplacementAfterGoal: false, // When true, every goal immediately serves a fresh ball even if others are still active.
       countdownSeconds: 3, // Countdown duration before play begins on match start and after resuming from pause.
-      serveHoldSeconds: 0.75, // How long a newly served ball waits at its serve point before it can move.
-      serveYJitter: 110, // Max vertical offset applied to replacement serves so serves stop being identical.
+      serveHoldSeconds: 0.55, // How long a newly served ball waits at its serve point before it can move.
+      serveYJitter: 150, // Max vertical offset applied to replacement serves so serves stop being identical.
       matchEndCeremonySeconds: 1.4, // Presentation delay between the winning goal and the game-over overlay.
       serveHoldPulseHz: 2.6, // Pulse rate for the glow wrapped around a held serve ball.
       serveHoldGlowRadius: 18, // Extra radius used by the held-ball glow halo.
@@ -357,16 +369,16 @@
         shrinkHeightPenalty: 26, // Height removed by Shrink Hex.
         shrinkMinHeight: 92, // Minimum paddle height after shrinking.
         shrinkDurationSeconds: 5.8, // Shrink Hex duration.
-        slowDurationSeconds: 3.8, // Drag Field duration.
-        jamDurationSeconds: 3.1, // Aim Jam duration.
+        slowDurationSeconds: 3.2, // Drag Field duration.
+        jamDurationSeconds: 2.6, // Aim Jam duration.
         drainChargeLoss: 0.34 // Charge removed by XP Drain.
       }
     },
     // How direct paddle hits reshape the ball when a paddle already has charge.
     paddleHit: {
-      speedScale: 1.028, // Base speed multiplier on a paddle hit.
-      speedBonus: 22, // Flat speed added on a paddle hit.
-      angleScale: 1.05, // Maximum deflection angle from vertical offset.
+      speedScale: 1.065, // Base speed multiplier on a paddle hit.
+      speedBonus: 34, // Flat speed added on a paddle hit.
+      angleScale: 1.12, // Maximum deflection angle from vertical offset.
       carryVyScale: 0.16, // How much paddle movement adds vertical speed.
       fullChargeCapMultiplier: 0.98, // Speed cap multiplier for full-charge paddle hits.
       fullChargeSpeedScale: 0.98, // Multiplier on incoming speed for full-charge hits.
@@ -492,9 +504,9 @@
     },
     // AI tuning and base ball serve speed per difficulty.
     difficultyMap: {
-      chill: { aiSpeed: 740, aiError: 92, reaction: 0.12, ballSpeed: 600 },
-      spicy: { aiSpeed: 950, aiError: 36, reaction: 0.22, ballSpeed: 690 },
-      absurd: { aiSpeed: 1210, aiError: 14, reaction: 0.32, ballSpeed: 770 }
+      chill: { aiSpeed: 740, aiError: 100, reaction: 0.12, ballSpeed: 730 },
+      spicy: { aiSpeed: 950, aiError: 36, reaction: 0.22, ballSpeed: 720 },
+      absurd: { aiSpeed: 1300, aiError: 10, reaction: 0.38, ballSpeed: 760 }
     },
     // Minimal multiplayer configuration shared by browser and backend: one quick-play
     // queue, no ranked ladder, no chat.
