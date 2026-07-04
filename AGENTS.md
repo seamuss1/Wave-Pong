@@ -18,7 +18,8 @@
 - `tools/browser-smoke-test.ps1`: Windows launcher for the headless browser smoke test with process cleanup.
 - `tools/browser-smoke-test.js`: DevTools smoke assertions and browser-attach logic.
 - `tools/build-itch-html.js`: builds the single-file itch.io HTML artifact under `itch-build/`.
-- `tools/deploy-itch.ps1`: local butler helper that builds and pushes the itch.io artifact.
+- `tools/deploy-itch.ps1`: local butler helper that builds and pushes the itch.io artifact. By default it first redeploys the backend server (see `tools/deploy-server.ps1`) and verifies it live, so the pushed build's online play always targets current server code; pass `-SkipServerDeploy` to push an itch artifact only.
+- `tools/deploy-server.ps1`: redeploys `backend/`, `shared/`, `runtime/`, and `version.json` to the production host (VM 107, see hosting notes) over `tar | ssh` and restarts the `wave-pong` systemd service, then verifies it with `backend/tests/online-e2e.js` against the public URL. Host/path/URL defaults can be overridden via `.env` (`WAVE_PONG_DEPLOY_*`) or parameters.
 - `tools/package.json`: tooling-only package manifest.
 - `readme.md`: player-facing documentation.
 

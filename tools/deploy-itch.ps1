@@ -11,7 +11,21 @@ param(
 
   [string]$ButlerPath,
 
-  [switch]$SkipBuild
+  [switch]$SkipBuild,
+
+  # By default every itch.io deploy first redeploys the backend server (VM 107)
+  # and verifies it live, so the itch build's online play always talks to
+  # current server code. Pass this to build/push an itch artifact only.
+  [switch]$SkipServerDeploy,
+
+  # Skip the post-redeploy online-e2e verification (passed through to deploy-server.ps1).
+  [switch]$SkipServerVerify,
+
+  # Build the itch artifact with online play disabled instead of pointing it at
+  # the public server URL.
+  [switch]$DisableOnline,
+
+  [string]$PublicUrl
 )
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -60,6 +74,22 @@ Import-DotEnvFile -Path (Join-Path $repoRoot '.env')
 
 if (-not $ButlerPath -and $env:BUTLER_PATH) {
   $ButlerPath = $env:BUTLER_PATH
+}
+
+if (-not $PublicUrl) {
+  $PublicUrl = if ($env:WAVE_PONG_DEPLOY_PUBLIC_URL) { $env:WAVE_PONG_DEPLOY_PUBLIC_URL } else { 'https://wave-pong.seamusgallagher.org' }
+}
+
+if (-not $SkipServerDeploy) {
+  Write-Host "Redeploying backend server before pushing to itch.io (pass -SkipServerDeploy to push without redeploying the server)..."
+  # Splatting named parameters requires a hashtable; an array splats positionally.
+  $deployServerArgs = @{ PublicUrl = $PublicUrl }
+  if ($SkipServerVerify) {
+    $deployServerArgs.SkipVerify = $true
+  }
+  & (Join-Path $PSScriptRoot 'deploy-server.ps1') @deployServerArgs
+} else {
+  Write-Host "Skipping backend server redeploy (-SkipServerDeploy)."
 }
 
 if (-not $Target) {
@@ -159,6 +189,26 @@ function Get-RepoVersion {
 }
 
 if (-not $SkipBuild) {
+  # itch.io is served over https, so the build only wires up online play when it
+  # can point at an https/wss endpoint. Default that to the just-redeployed public
+  # server unless the caller already set ITCH_RUNTIME_ENV_JSON or asked to disable it.
+  if ($DisableOnline) {
+    Write-Host "Building itch.io artifact with online play disabled (-DisableOnline)."
+    Remove-Item Env:\ITCH_RUNTIME_ENV_JSON -ErrorAction SilentlyContinue
+  } elseif ($env:ITCH_RUNTIME_ENV_JSON) {
+    Write-Host "Building itch.io artifact with ITCH_RUNTIME_ENV_JSON override from environment/.env."
+  } else {
+    $wsBaseUrl = $PublicUrl -replace '^http', 'ws'
+    $defaultRuntimeEnv = [ordered]@{
+      apiBaseUrl   = $PublicUrl
+      controlWsUrl = "$wsBaseUrl/ws/control"
+      workerWsUrl  = "$wsBaseUrl/ws/match"
+      enabled      = $true
+    }
+    $env:ITCH_RUNTIME_ENV_JSON = $defaultRuntimeEnv | ConvertTo-Json -Compress
+    Write-Host "Building itch.io artifact with online play pointed at $PublicUrl"
+  }
+
   $nodeExe = Resolve-NodeExe
   $builderPath = Join-Path $PSScriptRoot 'build-itch-html.js'
   Write-Host "Building itch.io artifact with: $nodeExe $builderPath"
