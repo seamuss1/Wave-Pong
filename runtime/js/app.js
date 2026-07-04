@@ -216,9 +216,70 @@
     });
   }
 
+  const SETTINGS_KEY = 'gameWavePongSettingsV1';
+
+  function saveMenuSettings() {
+    try {
+      const ui = runtime.ui;
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+        mode: ui.modeSelect ? ui.modeSelect.value : undefined,
+        opponent: ui.difficultySelect ? ui.difficultySelect.value : undefined,
+        scoreLimit: ui.scoreLimitSelect ? ui.scoreLimitSelect.value : undefined,
+        theme: ui.themeSelect ? ui.themeSelect.value : undefined,
+        powerups: ui.powerupsToggle ? ui.powerupsToggle.checked : undefined,
+        trails: ui.trailToggle ? ui.trailToggle.checked : undefined
+      }));
+    } catch (err) {
+      // Storage unavailable (private mode / blocked iframe); settings just won't persist.
+    }
+  }
+
+  function applySavedMenuSettings() {
+    const ui = runtime.ui;
+    let saved = null;
+    try {
+      const raw = window.localStorage.getItem(SETTINGS_KEY);
+      saved = raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      saved = null;
+    }
+    if (!saved) {
+      // First session: start against the gentlest CPU so the wave system can be
+      // learned before the harder opponents and the full score-limit grind.
+      const hasChill = ui.difficultySelect && Array.from(ui.difficultySelect.options).some((o) => o.value === 'classic:chill');
+      if (hasChill) ui.difficultySelect.value = 'classic:chill';
+      if (ui.scoreLimitSelect) ui.scoreLimitSelect.value = 5;
+      return;
+    }
+    const setSelectValue = (el, value) => {
+      if (!el || value == null) return;
+      const hasOption = Array.from(el.options || []).some((o) => o.value === String(value));
+      if (hasOption) el.value = String(value);
+    };
+    if (ui.modeSelect && saved.mode) setSelectValue(ui.modeSelect, saved.mode);
+    setSelectValue(ui.difficultySelect, saved.opponent);
+    if (ui.scoreLimitSelect && saved.scoreLimit != null) ui.scoreLimitSelect.value = saved.scoreLimit;
+    if (ui.themeSelect && saved.theme) {
+      setSelectValue(ui.themeSelect, saved.theme);
+      ui.themeSelect.dispatchEvent(new Event('change'));
+    }
+    if (ui.powerupsToggle && typeof saved.powerups === 'boolean') ui.powerupsToggle.checked = saved.powerups;
+    if (ui.trailToggle && typeof saved.trails === 'boolean') ui.trailToggle.checked = saved.trails;
+  }
+
   ['change', 'input'].forEach((eventName) => {
     if (runtime.ui.modeSelect) runtime.ui.modeSelect.addEventListener(eventName, syncControllers);
     if (runtime.ui.difficultySelect) runtime.ui.difficultySelect.addEventListener(eventName, syncControllers);
+    [
+      runtime.ui.modeSelect,
+      runtime.ui.difficultySelect,
+      runtime.ui.scoreLimitSelect,
+      runtime.ui.themeSelect,
+      runtime.ui.powerupsToggle,
+      runtime.ui.trailToggle
+    ].forEach((el) => {
+      if (el) el.addEventListener(eventName, saveMenuSettings);
+    });
   });
 
   if (runtime.ui.difficultySelect) {
@@ -241,6 +302,7 @@
   }
 
   populateBotSelect();
+  applySavedMenuSettings();
   syncControllers();
   runtime.mountBrowser();
 

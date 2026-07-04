@@ -36,7 +36,7 @@ Open `runtime/index.html` in a modern desktop browser.
 
 ## itch.io packaging
 
-Versioning is tracked in `version.json`. The current repo version is `0.6.6`.
+Versioning is tracked in `version.json`. The current repo version is `0.7.0`.
 
 Version rules:
 
@@ -462,14 +462,14 @@ npm.cmd run deploy:test
 npm.cmd run deploy:production
 ```
 
-If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.6.6`.
+If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.7.0`.
 
 You can still override it for a one-off deploy:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
   -Destination test `
-  -UserVersion "0.6.6-hotfix1"
+  -UserVersion "0.7.0-hotfix1"
 ```
 
 ### First-time itch.io setup
@@ -485,14 +485,19 @@ After the first push:
 #### Single player
 - **W / S** move your paddle
 - **Up / Down** also move your paddle
-- **F or Space** fire your wave
+- **Mouse hover or touch drag** also steers the paddle
+- **F or Space** fire your wave (Slash, Right Ctrl, and Numpad Enter also work)
+- **Tap fire = blue, hold ~0.25s = pink, hold ~0.5s = gold.** A charge ring at your paddle shows which tier will fire on release.
+- **Mouse button / second finger** fires with the same hold-to-charge rules
+- **Gamepad:** left stick or D-pad moves, A or right trigger fires, Start pauses
 - **P** pause
 - **M** mute
 - **Esc** open menu
 
 #### Two player
-- **Player 1:** W / S move, F or Space fire
-- **Player 2:** Up / Down move, / fire
+- **Player 1:** W / S move, F or Space fire (hold to charge)
+- **Player 2:** Up / Down move, Slash / Right Ctrl / Numpad 0 fire (hold to charge)
+- Keys are matched by physical position, so non-QWERTY layouts work.
 - **P** pause
 - **M** mute
 - **Esc** open menu
@@ -501,7 +506,8 @@ After the first push:
 
 - Score by sending a ball past the opponent into their goal.
 - The score limit is configurable in settings.
-- When a ball scores, the point is awarded and **a new ball is added**. The field is not wiped, so existing balls, waves, and powerups can keep the match chaotic.
+- When a ball scores, the point is awarded and the scored ball is removed. A fresh ball is served **only when the field is empty** — other live balls, waves, and powerups stay put, so multiball exchanges keep their momentum.
+- Serves launch from varied heights and angles, and conceding a goal grants the conceder bonus XP plus an instant charge top-up so the trailing side re-enters the rally armed.
 - Long rallies can still add more balls over time, but at a moderated pace.
 - Matches end when one side reaches the selected goal total.
 - The game tracks match stats and browser-saved historical totals.
@@ -522,19 +528,22 @@ Every paddle has a shared **wave charge bar**.
 
 ### Wave costs
 
-- **Blue wave:** 15% charge
+- **Blue wave:** 10% charge
 - **Pink wave:** 50% charge
-- **Gold wave:** 100% charge
+- **Gold wave:** 90% charge
+
+Human players pick the tier with the fire button: a quick tap fires blue, a short hold releases pink, and a long hold releases gold (you can only fire a tier you can afford — the notches on the charge bar mark the pink and gold thresholds). CPU and ML bot opponents auto-select the strongest tier their charge allows, which is also what happens if you simply hold to maximum.
 
 Some powerups can temporarily increase max charge to **150%** and speed up recharge.
 
 ## Wave XP and leveling
 
-Wave power scales with XP.
+Wave power scales with XP. The curve is tuned so a normal match spans several level-ups, and each level-up refunds a burst of charge on the spot.
 
 You gain XP from:
 - passive gain over time
 - scoring goals
+- conceding goals (a smaller comeback share)
 - hitting your opponent with offensive wave pressure
 - breaking XP minions
 - XP-related powerups
@@ -590,10 +599,10 @@ Pink is the solid defensive wave. It has a wider angle but a shorter reach than 
 
 **Role:** offense, disruption, and precision power plays
 
-Gold is the full-bar super wave.
+Gold is the top-tier super wave, fired from a nearly full bar.
 
 ### What it does
-- consumes the full charge bar
+- consumes almost the entire charge bar (90%)
 - travels as a broad offensive arc
 - is strongest in the **center sweet spot** and weaker at the edges
 - rewards accurate aim instead of random spraying
@@ -614,7 +623,7 @@ Gold is the full-bar super wave.
 
 The ball changes color based on **who hit it last**, making possession and control easier to read.
 
-Boosted balls also get a speed visual effect so you can tell when a wave has added extra pace.
+Boosted balls keep that owner color and add a speed streak effect on top, so you can read both possession and extra pace at the same time. Only an un-owned (freshly served) ball tints toward the wave color while boosted.
 
 # Powerups
 
@@ -683,8 +692,10 @@ Historic stats are stored locally in your browser.
 
 # Strategy guide
 
+The fire button picks your wave: **tap for blue, hold briefly for pink, hold longer for gold** (you can only fire a tier you can afford). The notches on your charge bar mark the pink and gold thresholds, so tier selection is a live decision rather than an automatic one.
+
 ## 1. Use blue constantly
-Blue is your general-purpose tool. Because it is cheap, fast, and flexible, it should be part of your normal rhythm rather than something you save forever.
+Blue is your general-purpose tool. Because it is cheap, fast, and flexible, it should be part of your normal rhythm rather than something you save forever. A quick tap always fires blue even on a full bar, so you never have to spend pink or gold just to poke.
 
 ## 2. Use pink like a shield, not a snipe
 Pink is best when the ball is threatening your goal or when you need broad short-range coverage. It is about reliability, not reach.
@@ -699,23 +710,27 @@ XP minions and XP powerups are valuable, but chasing them blindly can give up po
 As more balls arrive, court control matters more than raw aggression. Blue helps steer the chaos, pink saves emergencies, and yellow should be used to create a clean scoring opening rather than random noise.
 
 ## 6. Watch the charge bar, not just the ball
-Because blue, pink, and gold all spend from the same resource, smart timing matters. A full bar is pressure. A half bar is still dangerous. An empty bar means you are back to pure paddle fundamentals.
+Because blue, pink, and gold all spend from the same resource, smart timing matters. A full bar is options: you can still tap for blue, hold for a pink wall, or release a gold finisher. A half bar keeps blue and pink available. An empty bar means you are back to pure paddle fundamentals. Conceding a goal refunds some charge, so a fresh point never starts you empty.
 
 # Feature summary
 
 - Static browser game with itch.io-ready entrypoint
 - Single player, local two player, and demo options
+- Keyboard, mouse, touch, and gamepad control, with layout-independent key matching
+- Player-chosen wave tier: tap for blue, hold for pink, hold longer for gold
 - Smooth paddle aiming
-- Shared wave charge system
+- Shared wave charge system with tier notches on the bar
 - Three wave types with different roles
-- XP leveling for wave power
+- XP leveling for wave power, with a felt level-up (charge refund, burst, chime)
+- Comeback support: conceding a goal refunds XP and charge
 - Instant powerups and debuffs
 - XP minions
 - Multiball escalation
-- Ball ownership color feedback
+- Ball ownership color feedback that persists through boosts
 - Boost visuals on fast balls
-- Match stats and persistent history
-- Neon arcade presentation with sound and effects
+- Match-point tension and a match-end winner ceremony
+- Match stats and persistent history, with saved menu settings
+- Neon arcade presentation with layered synth audio and effects
 
 # Recommended play styles
 
@@ -731,3 +746,11 @@ Prioritize positioning and pink defense first. Then use blue to tame the most da
 # Notes
 
 This README describes the current Game Wave Pong build and its intended gameplay loop. If you continue tuning the game, update this README alongside the code so the strategy and powerup sections stay accurate. Gameplay balance now lives in `runtime/js/config.js`.
+
+## ML bot compatibility note (v0.7.0)
+
+The v0.7.0 gameplay update changed the sim environment the published bots were trained in: XP thresholds and per-level wave gains were rescaled, serves gained angle/height variety, conceding a goal now grants comeback XP/charge, gold arcs live 4.5s instead of 7s, and the state-hash format moved to a lean gameplay-only v2 (old replay hashes are not comparable). The roster bots still play — their observation and action interfaces are unchanged, and hold-to-charge tier selection is human-input-only — but their Elo ratings were earned under the old rules. Run a refresh when convenient:
+
+```bash
+node tools/evolve-bots.js --population 20 --generations 300 --update-all-roster --checkpoint-every 25
+```

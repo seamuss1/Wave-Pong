@@ -188,7 +188,7 @@
       const initialSeed = normalizeSeed(options.seed);
       const rng = createSeededRandom(initialSeed);
       const replay = {
-        version: 1,
+        version: 2,
         seed: initialSeed,
         configHash: hashString(stableSerialize(config.balance || config)),
         actions: [],
@@ -299,6 +299,7 @@
       const WAVE_LEVEL_XP = waveLevelBalance.xpThresholds;
       const PASSIVE_XP_PER_SEC = xpBalance.passivePerSecond;
       const GOAL_XP = xpBalance.goal;
+      const CONCEDED_GOAL_XP = xpBalance.concededGoal || 0;
       const OPPONENT_HIT_XP = xpBalance.opponentHit;
       const PULSE_POWERUP_XP = xpBalance.powerupSurge;
       const MINION_XP = xpBalance.minion;
@@ -403,6 +404,105 @@
         left: { moveAxis: 0, fire: false, lastTick: -1 },
         right: { moveAxis: 0, fire: false, lastTick: -1 }
       };
+
+      // Presentation-only state. Never read by the simulation, never hashed, never replayed.
+      const fx = {
+        hitStopSeconds: 0,
+        scorePopLeft: 0,
+        scorePopRight: 0,
+        wallFlash: null,
+        winnerBanner: null,
+        confetti: [],
+        heartbeatTimer: 0,
+        countdownLastSecond: 0,
+        gameOverRevealHandle: null,
+        hintStage: 0
+      };
+      const fireHoldBalance = balance.fireHold || { pinkAtSeconds: 0.22, goldAtSeconds: 0.5 };
+      // Live human fire-hold tracking per side (hold to charge up the requested tier).
+      const fireHold = { left: null, right: null };
+      // Live pointer steering for the left paddle (mouse hover / touch drag).
+      const pointerControl = { targetY: null, atMs: -Infinity, steerPointerId: null };
+      // Live gamepad state polled once per frame in loop().
+      const gamepadControl = {
+        left: { up: false, down: false, fireDownMs: null },
+        right: { up: false, down: false, fireDownMs: null },
+        pausePressed: false
+      };
+
+      function nowMs() {
+        return windowRef && windowRef.performance ? windowRef.performance.now() : Date.now();
+      }
+
+      function humanFireAllowed() {
+        return state.running && !state.menuOpen && !state.paused && !state.gameOver && !state.countdownActive;
+      }
+
+      function tierForHoldDuration(seconds) {
+        if (seconds >= fireHoldBalance.goldAtSeconds) return null; // no cap: fire the best affordable tier
+        if (seconds >= fireHoldBalance.pinkAtSeconds) return 'pink';
+        return 'blue';
+      }
+
+      function beginFireHold(side) {
+        if (!humanFireAllowed()) return;
+        if (state.demoMode) return;
+        fireHold[side] = nowMs();
+      }
+
+      function releaseFireHold(side) {
+        const startedAt = fireHold[side];
+        fireHold[side] = null;
+        if (startedAt == null) return;
+        if (!humanFireAllowed() || state.demoMode) return;
+        const heldSeconds = Math.max(0, (nowMs() - startedAt) / 1000);
+        firePulse(getPaddleBySide(side), tierForHoldDuration(heldSeconds));
+      }
+
+      function clearFireHolds() {
+        fireHold.left = null;
+        fireHold.right = null;
+        gamepadControl.left.fireDownMs = null;
+        gamepadControl.right.fireDownMs = null;
+      }
+
+      // Confetti is presentation-only, so plain Math.random is fine here (same precedent
+      // as the render-side screen shake jitter).
+      function spawnConfetti(leftWon) {
+        fx.confetti.length = 0;
+        const t = themes[state.theme];
+        const originX = leftWon ? W * 0.22 : W * 0.78;
+        const palette = [t.paddleLeft, t.paddleRight, t.power, '#ffffff'];
+        for (let i = 0; i < 110; i++) {
+          fx.confetti.push({
+            x: originX + (Math.random() - 0.5) * 180,
+            y: H * 0.7,
+            vx: (Math.random() - 0.5) * 540,
+            vy: -340 - Math.random() * 480,
+            size: 3 + Math.random() * 5,
+            spin: Math.random() * Math.PI * 2,
+            spinSpeed: (Math.random() - 0.5) * 12,
+            life: 1.5 + Math.random() * 0.9,
+            color: palette[(Math.random() * palette.length) | 0]
+          });
+        }
+      }
+
+      function resetPresentationFx() {
+        fx.hitStopSeconds = 0;
+        fx.scorePopLeft = 0;
+        fx.scorePopRight = 0;
+        fx.wallFlash = null;
+        fx.winnerBanner = null;
+        fx.confetti.length = 0;
+        fx.heartbeatTimer = 0;
+        fx.countdownLastSecond = 0;
+        if (fx.gameOverRevealHandle != null && windowRef && typeof windowRef.clearTimeout === 'function') {
+          windowRef.clearTimeout(fx.gameOverRevealHandle);
+        }
+        fx.gameOverRevealHandle = null;
+        clearFireHolds();
+      }
 
       const REDUCED_WAVE_FX = (() => {
         try {
@@ -519,7 +619,9 @@
           serveHoldTimer: 0,
           serveHoldDuration: 0,
           serveReleaseVx: 0,
-          serveReleaseVy: 0
+          serveReleaseVy: 0,
+          serveAnchorX: null,
+          serveAnchorY: null
         };
       }
 
@@ -533,6 +635,8 @@
         const holdSeconds = Math.max(0, Number(matchFlowBalance.serveHoldSeconds) || 0);
         ball.serveHoldDuration = holdSeconds;
         ball.serveHoldTimer = holdSeconds;
+        ball.serveAnchorX = ball.x;
+        ball.serveAnchorY = ball.y;
         if (holdSeconds <= 0) {
           ball.serveReleaseVx = 0;
           ball.serveReleaseVy = 0;
@@ -559,6 +663,25 @@
 
       function makeStatusIcon(symbol, tone, title) {
         return '<span class="statusIcon ' + tone + '" title="' + title + '">' + symbol + '</span>';
+      }
+
+      // DOM write guards: updateUI runs once per rendered frame, so skip writes
+      // (and the layout invalidation they cause) when nothing changed.
+      function setText(el, value) {
+        if (!el) return;
+        const text = String(value);
+        if (el.__wpLastText !== text) {
+          el.__wpLastText = text;
+          el.textContent = text;
+        }
+      }
+
+      function setHtml(el, html) {
+        if (!el) return;
+        if (el.__wpLastHtml !== html) {
+          el.__wpLastHtml = html;
+          el.innerHTML = html;
+        }
       }
 
       function chargeIconFor(paddle) {
@@ -596,9 +719,9 @@
         }
         if (!globalIcons.length) globalIcons.push(makeStatusIcon('·', 'neutral empty', 'No global effects'));
 
-        if (ui.leftStatusIcons) ui.leftStatusIcons.innerHTML = iconsForPaddle(left);
-        if (ui.rightStatusIcons) ui.rightStatusIcons.innerHTML = iconsForPaddle(right);
-        if (ui.globalStatusIcons) ui.globalStatusIcons.innerHTML = globalIcons.join('');
+        setHtml(ui.leftStatusIcons, iconsForPaddle(left));
+        setHtml(ui.rightStatusIcons, iconsForPaddle(right));
+        setHtml(ui.globalStatusIcons, globalIcons.join(''));
       }
 
       function spawnFloatText(x, y, text, kind = 'buff') {
@@ -794,8 +917,20 @@
         const before = paddle.pulseLevel || 1;
         paddle.waveXP = Math.max(0, (paddle.waveXP || 0) + delta);
         const after = syncPaddleLevel(paddle);
-        if (!opts.silent && after !== before) {
-          spawnFloatText(paddle.x + paddle.w / 2, paddle.y - 14, after > before ? 'Wave L' + after : 'Wave Down', after > before ? 'buff' : 'debuff');
+        if (after > before) {
+          // Level-ups are always a moment, even when the XP came from the passive drip:
+          // float text, an instant charge kick, particles, and a rising chime.
+          spawnFloatText(paddle.x + paddle.w / 2, paddle.y - 14, 'Wave L' + after + '!', 'buff');
+          refreshPaddleChargeState(paddle);
+          paddle.pulseCharge = clamp(
+            (paddle.pulseCharge || 0) + (waveLevelBalance.levelUpChargeBonus || 0),
+            0,
+            getPaddleMaxCharge(paddle)
+          );
+          emitParticles(paddle.x + paddle.w / 2, paddle.y + paddle.h / 2, 20 + after * 2, '#a66bff', 340);
+          playTone(520 + after * 60, 0.12, 'triangle', 0.04);
+        } else if (!opts.silent && after < before) {
+          spawnFloatText(paddle.x + paddle.w / 2, paddle.y - 14, 'Wave Down', 'debuff');
         }
         return after;
       }
@@ -807,8 +942,9 @@
 
       function createReplacementBall(direction) {
         const ball = createBall(direction);
+        const serveJitter = Math.max(0, Number(matchFlowBalance.serveYJitter) || 0);
         ball.x = W / 2;
-        ball.y = H / 2;
+        ball.y = clamp(H / 2 + (rng.next() * 2 - 1) * serveJitter, 90, H - 90);
         ball.flash = 1;
         applyServeHold(ball);
         world.balls.push(ball);
@@ -988,11 +1124,13 @@ function getPulseRenderRadius(pulse) {
         return pointSegmentDistance(centerX, centerY, edge.x1, edge.y1, edge.x2, edge.y2) <= halfThickness + Math.max(paddle.w, paddle.h) * 0.08;
       }
 
-      function getPulseStats(paddle) {
+      // tierCap limits the auto-selected wave tier: 'blue' forces blue, 'pink' allows up to pink,
+      // null keeps the classic auto selection (used by all CPU/ML controllers).
+      function getPulseStats(paddle, tierCap = null) {
         const level = clamp(syncPaddleLevel(paddle) || 1, 1, MAX_WAVE_LEVEL);
         const charge = clamp(paddle.pulseCharge || 0, 0, getPaddleMaxCharge(paddle));
-        const solidReady = charge >= SOLID_CHARGE_THRESHOLD;
-        const fullReady = charge >= FULL_CHARGE_THRESHOLD;
+        const solidReady = charge >= SOLID_CHARGE_THRESHOLD && tierCap !== 'blue';
+        const fullReady = charge >= FULL_CHARGE_THRESHOLD && tierCap !== 'blue' && tierCap !== 'pink';
 
         if (fullReady) {
           const thickness = waveBalance.gold.thicknessBase + level * waveBalance.gold.thicknessPerLevel;
@@ -1071,12 +1209,12 @@ function updatePaddleAim(paddle, dt) {
         paddle.aimAngle += angleDiff(paddle.targetAimAngle, paddle.aimAngle) * Math.min(1, dt * waveAimBalance.smoothing);
       }
 
-function firePulse(paddle) {
+function firePulse(paddle, tierCap = null) {
   refreshPaddleChargeState(paddle);
   if (paddle.cooldown > 0 || paddle.jamTimer > waveAimBalance.jamFireLockSeconds || (paddle.pulseCharge || 0) < MIN_FIRE_CHARGE) return false;
   const origin = getPulseOrigin(paddle);
   const currentCharge = clamp(paddle.pulseCharge || 0, 0, getPaddleMaxCharge(paddle));
-  const stats = getPulseStats(paddle);
+  const stats = getPulseStats(paddle, tierCap);
   const usedCharge = Math.min(currentCharge, stats.chargeCost || currentCharge);
   paddle.cooldown = Math.max(paddle.cooldown, stats.cooldown);
   paddle.pulseCharge = Math.max(0, currentCharge - (stats.chargeCost || currentCharge));
@@ -1124,7 +1262,6 @@ function firePulse(paddle) {
       hitBallIds: new Set(),
       hitPaddleIds: new Set()
     });
-    showMessage('Full charge force arc deployed. The whole bar just cashed out.', 1.02);
   } else {
       world.pulses.push({
         mode: stats.mode,
@@ -1207,20 +1344,83 @@ function maybeTriggerLongRallyMultiball() {
         replay.events.push(entry);
       }
 
-      function playTone(freq, duration = 0.08, type = 'square', volume = 0.03) {
-        emitRuntimeEvent('tone', { freq, duration, type, volume });
+      let audioBus = null;
+      let noiseBuffer = null;
+
+      function getAudioBus() {
+        if (!audioCtx) return null;
+        if (!audioBus) {
+          const compressor = audioCtx.createDynamicsCompressor();
+          const master = audioCtx.createGain();
+          master.gain.value = 0.9;
+          master.connect(compressor);
+          compressor.connect(audioCtx.destination);
+          audioBus = master;
+        }
+        return audioBus;
+      }
+
+      function getNoiseBuffer() {
+        if (!audioCtx) return null;
+        if (!noiseBuffer) {
+          const length = Math.floor(audioCtx.sampleRate * 0.15);
+          noiseBuffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+          const data = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+        }
+        return noiseBuffer;
+      }
+
+      // Raw synth voice: attack ramp + pitch drop + optional noise layer.
+      // Presentation-only helper — safe to call from the render/input layer without
+      // polluting the deterministic runtime event stream.
+      function playToneRaw(freq, duration = 0.08, type = 'square', volume = 0.03, delay = 0) {
         if (muted || !audioCtx) return;
-        const now = audioCtx.currentTime;
+        const bus = getAudioBus();
+        if (!bus) return;
+        const now = audioCtx.currentTime + Math.max(0, delay);
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, now);
-        gain.gain.setValueAtTime(volume, now);
+        // Impact-style tones get a downward pitch envelope so they read as thuds, not beeps.
+        if (type === 'square' || type === 'triangle') {
+          osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq * 0.58), now + duration);
+        }
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(volume, now + 0.005);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        gain.connect(bus);
         osc.start(now);
-        osc.stop(now + duration + 0.01);
+        osc.stop(now + duration + 0.02);
+
+        // Short percussive tones also fire a filtered noise burst for body.
+        if (type !== 'sine' && duration <= 0.12 && volume >= 0.03) {
+          const noise = getNoiseBuffer();
+          if (noise) {
+            const src = audioCtx.createBufferSource();
+            src.buffer = noise;
+            const bandpass = audioCtx.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.setValueAtTime(Math.min(6000, freq * 2.2), now);
+            bandpass.Q.value = 1;
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.0001, now);
+            noiseGain.gain.linearRampToValueAtTime(volume * 0.55, now + 0.004);
+            noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(0.09, duration + 0.03));
+            src.connect(bandpass);
+            bandpass.connect(noiseGain);
+            noiseGain.connect(bus);
+            src.start(now);
+            src.stop(now + 0.12);
+          }
+        }
+      }
+
+      function playTone(freq, duration = 0.08, type = 'square', volume = 0.03) {
+        emitRuntimeEvent('tone', { freq, duration, type, volume });
+        playToneRaw(freq, duration, type, volume, 0);
       }
 
       function showMessage(text, duration = 2.2) {
@@ -1350,6 +1550,7 @@ function startMatch({
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
         if (ui.help) ui.help.classList.add('hidden');
         state.helpReturnToPause = false;
+        resetPresentationFx();
         applyTheme(state.theme);
         resetMatch();
         if (skipCountdown || headless) {
@@ -1371,6 +1572,7 @@ function startMatch({
         state.gameOver = false;
         state.countdownActive = false;
         state.countdownTimer = 0;
+        resetPresentationFx();
         if (ui.menu) ui.menu.classList.remove('hidden');
         if (ui.pause) ui.pause.classList.add('hidden');
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
@@ -1392,6 +1594,7 @@ function startMatch({
         if (state.paused) {
           state.countdownActive = false;
           state.countdownTimer = 0;
+          clearFireHolds();
           updateStatus('Paused. The ball is thinking about its choices.');
           playTone(260, 0.08, 'sine', 0.03);
         } else if (wasPaused) {
@@ -1419,7 +1622,24 @@ function endMatch(leftWon) {
   if (ui.gameOverMatchStats && ui.gameOverHistoryStats && ui.gameOverScoreLine) renderGameOverStats();
   if (ui.help) ui.help.classList.add('hidden');
   state.helpReturnToPause = false;
-  if (ui.gameOver) ui.gameOver.classList.remove('hidden');
+  const ceremonySeconds = Math.max(0, Number(matchFlowBalance.matchEndCeremonySeconds) || 0);
+  if (!headless && ui.gameOver && windowRef && typeof windowRef.setTimeout === 'function' && ceremonySeconds > 0) {
+    // Let the winning moment breathe: winner banner + confetti on the canvas first,
+    // then the stats overlay. Sim is already stopped, so this is pure presentation.
+    fx.winnerBanner = { name, leftWon, t: 0, dur: ceremonySeconds };
+    spawnConfetti(leftWon);
+    playToneRaw(523, 0.1, 'sawtooth', 0.032, 0.05);
+    playToneRaw(659, 0.1, 'sawtooth', 0.032, 0.15);
+    playToneRaw(784, 0.22, 'sawtooth', 0.038, 0.25);
+    if (fx.gameOverRevealHandle != null) windowRef.clearTimeout(fx.gameOverRevealHandle);
+    fx.gameOverRevealHandle = windowRef.setTimeout(() => {
+      fx.gameOverRevealHandle = null;
+      if (state.gameOver && ui.gameOver) ui.gameOver.classList.remove('hidden');
+    }, ceremonySeconds * 1000);
+  } else if (ui.gameOver) {
+    ui.gameOver.classList.remove('hidden');
+  }
+  clearFireHolds();
   updateMenuStats();
   updateStatus(name + ' won. The scoreboard has receipts.');
   playTone(leftWon ? 560 : 430, 0.12, 'triangle', 0.05);
@@ -1437,18 +1657,18 @@ function updateUI() {
   const selectedOpponentLabel = selectedOpponentOption && selectedOpponentOption.dataset && selectedOpponentOption.dataset.summary
     ? selectedOpponentOption.dataset.summary
     : (selectedOpponentOption ? selectedOpponentOption.textContent : formatDifficultyLabel(state.difficulty));
-  if (ui.leftScore) ui.leftScore.textContent = state.leftScore;
-  if (ui.rightScore) ui.rightScore.textContent = state.rightScore;
-  if (ui.leftName) ui.leftName.textContent = state.demoMode ? 'CPU A' : 'PLAYER';
-  if (ui.rightName) ui.rightName.textContent = state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU');
-  if (ui.modeLabel) ui.modeLabel.textContent = state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU');
-  if (ui.difficultyLabel) ui.difficultyLabel.textContent = selectedOpponentLabel;
-  if (ui.rallyLabel) ui.rallyLabel.textContent = state.rally;
-  if (ui.bestRallyLabel) ui.bestRallyLabel.textContent = Math.max(state.bestRally || 0, history.bestRally || 0);
-  if (ui.pauseScoreLine) ui.pauseScoreLine.textContent = state.leftScore + ' : ' + state.rightScore;
-  if (ui.pauseBallCount) ui.pauseBallCount.textContent = String(world.balls.length);
-  if (ui.pausePowerCount) ui.pausePowerCount.textContent = String(world.powerups.length);
-  if (ui.pauseScoreLimit) ui.pauseScoreLimit.textContent = String(state.scoreLimit);
+  setText(ui.leftScore, state.leftScore);
+  setText(ui.rightScore, state.rightScore);
+  setText(ui.leftName, state.demoMode ? 'CPU A' : 'PLAYER');
+  setText(ui.rightName, state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU'));
+  setText(ui.modeLabel, state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU'));
+  setText(ui.difficultyLabel, selectedOpponentLabel);
+  setText(ui.rallyLabel, state.rally);
+  setText(ui.bestRallyLabel, Math.max(state.bestRally || 0, history.bestRally || 0));
+  setText(ui.pauseScoreLine, state.leftScore + ' : ' + state.rightScore);
+  setText(ui.pauseBallCount, String(world.balls.length));
+  setText(ui.pausePowerCount, String(world.powerups.length));
+  setText(ui.pauseScoreLimit, String(state.scoreLimit));
   renderStatusIcons();
 }
 
@@ -1461,19 +1681,27 @@ function applyTheme(name) {
         documentRef.documentElement.style.setProperty('--accent-2', t.accent2);
       }
 
+      const MAX_PARTICLES = 250;
+
       function emitParticles(x, y, count, color, speed = 260) {
-        if (!state.trailsEnabled) return;
+        // Always consume the rng, even when particles are not stored: the seeded stream
+        // feeds gameplay code downstream, so the cosmetic Trails toggle (and the particle
+        // cap) must never change how many rng values this function draws.
         for (let i = 0; i < count; i++) {
           const a = rng.next() * Math.PI * 2;
           const s = speed * (0.2 + rng.next() * 0.8);
+          const life = 0.45 + rng.next() * 0.35;
+          const maxLife = 0.45 + rng.next() * 0.35;
+          const size = 2 + rng.next() * 4;
+          if (!state.trailsEnabled || world.particles.length >= MAX_PARTICLES) continue;
           world.particles.push({
             x,
             y,
             vx: Math.cos(a) * s,
             vy: Math.sin(a) * s,
-            life: 0.45 + rng.next() * 0.35,
-            maxLife: 0.45 + rng.next() * 0.35,
-            size: 2 + rng.next() * 4,
+            life,
+            maxLife,
+            size,
             color
           });
         }
@@ -1608,6 +1836,16 @@ function handleGoal(leftScored, goalMeta = null) {
         }
 
         adjustWaveXP(scorer, GOAL_XP);
+        // Comeback valve: conceding a goal grants partial XP and an instant charge top-up,
+        // so the trailing side re-enters the rally with tools instead of an empty bar.
+        const conceder = leftScored ? world.paddles.right : world.paddles.left;
+        if (CONCEDED_GOAL_XP > 0) adjustWaveXP(conceder, CONCEDED_GOAL_XP, { silent: false });
+        refreshPaddleChargeState(conceder);
+        conceder.pulseCharge = clamp(
+          (conceder.pulseCharge || 0) + (chargeBalance.concededChargeBonus || 0),
+          0,
+          getPaddleMaxCharge(conceder)
+        );
         emitRuntimeEvent('goal', {
           leftScored,
           leftScore: state.leftScore,
@@ -1625,9 +1863,23 @@ function handleGoal(leftScored, goalMeta = null) {
         updateUI();
         showMessage(scoreLines[(rng.next() * scoreLines.length) | 0], 1.25);
         updateStatus(shouldSpawnReplacementBall ? scorerName + ' scores. New ball deployed immediately.' : scorerName + ' scores. Existing balls stay live.');
-        playTone(leftScored ? 510 : 390, 0.09, 'square', 0.05);
+        playTone(leftScored ? 660 : 620, 0.09, 'square', 0.05);
         emitParticles(leftScored ? 110 : W - 110, H / 2, 30, leftScored ? themes[state.theme].paddleLeft : themes[state.theme].paddleRight, 370);
         screenShake = Math.max(screenShake, 10);
+        if (!headless) {
+          // Goal ceremony (presentation only): descending motif, digit punch, wall flash, hit-stop.
+          playToneRaw(leftScored ? 524 : 494, 0.09, 'square', 0.04, 0.09);
+          playToneRaw(leftScored ? 392 : 370, 0.13, 'triangle', 0.04, 0.18);
+          playToneRaw(78, 0.24, 'sine', 0.05, 0);
+          if (leftScored) fx.scorePopLeft = 1; else fx.scorePopRight = 1;
+          fx.wallFlash = {
+            side: leftScored ? 'right' : 'left',
+            t: 0,
+            dur: 0.5,
+            color: goalMeta && goalMeta.color ? goalMeta.color : themes[state.theme].ball
+          };
+          fx.hitStopSeconds = Math.max(fx.hitStopSeconds, 0.12);
+        }
 
         if (state.leftScore >= state.scoreLimit || state.rightScore >= state.scoreLimit) {
           endMatch(state.leftScore > state.rightScore);
@@ -1848,12 +2100,57 @@ function updateAI(paddle, dt, isLeft) {
         queueInput(side, state.tick + delay, action || { moveAxis: 0, fire: false });
       }
 
+      // Hash only gameplay-relevant fields. Cosmetic arrays (trails, particles, float
+      // texts, diffraction ribbons) and presentation values (presentationTimeMs,
+      // lowPerfEffects, bestRally) must stay out: they vary between environments
+      // (iframe/headless/top-level) without affecting the actual game.
       function hashSimulationState() {
+        const paddleCore = (p) => ({
+          x: p.x, y: p.y, w: p.w, h: p.h, baseH: p.baseH, vy: p.vy, speed: p.speed,
+          aimAngle: p.aimAngle, targetAimAngle: p.targetAimAngle,
+          cooldown: p.cooldown, jamTimer: p.jamTimer, slowTimer: p.slowTimer,
+          pulseLevel: p.pulseLevel, waveXP: p.waveXP, pulseCharge: p.pulseCharge,
+          maxCharge: p.maxCharge, overcapTimer: p.overcapTimer, chargeBoostTimer: p.chargeBoostTimer
+        });
+        const ballCore = (b) => ({
+          id: b.id, x: b.x, y: b.y, r: b.r, vx: b.vx, vy: b.vy,
+          lastHitSide: b.lastHitSide,
+          boostTimer: b.boostTimer, boostAcceleration: b.boostAcceleration, boostMaxSpeed: b.boostMaxSpeed,
+          stunTimer: b.stunTimer, storedVx: b.storedVx, storedVy: b.storedVy,
+          blueResistTimer: b.blueResistTimer, blueResistStrength: b.blueResistStrength,
+          serveHoldTimer: b.serveHoldTimer, serveReleaseVx: b.serveReleaseVx, serveReleaseVy: b.serveReleaseVy,
+          serveAnchorX: b.serveAnchorX, serveAnchorY: b.serveAnchorY
+        });
+        const pulseCore = (p) => ({
+          mode: p.mode, waveType: p.waveType, side: p.side,
+          x: p.x, y: p.y, vx: p.vx, vy: p.vy, angle: p.angle, cone: p.cone,
+          life: p.life, maxLife: p.maxLife, range: p.range, radius: p.radius,
+          strength: p.strength, level: p.level, arcRadius: p.arcRadius,
+          waveThickness: p.waveThickness, renderThickness: p.renderThickness,
+          endLingerTimer: p.endLingerTimer,
+          hitBallIds: Array.from(p.hitBallIds || []).sort((a, b) => a - b),
+          hitPaddleIds: Array.from(p.hitPaddleIds || []).sort()
+        });
+        const stateCore = {
+          tick: state.tick, simulationTimeMs: state.simulationTimeMs,
+          running: state.running, paused: state.paused, gameOver: state.gameOver,
+          leftScore: state.leftScore, rightScore: state.rightScore, scoreLimit: state.scoreLimit,
+          rally: state.rally, roundSeconds: state.roundSeconds, serveDirection: state.serveDirection,
+          powerSpawnTimer: state.powerSpawnTimer, powerDurationTimer: state.powerDurationTimer,
+          lastPowerType: state.lastPowerType,
+          leftBoostTimer: state.leftBoostTimer, rightBoostTimer: state.rightBoostTimer,
+          slowmoTimer: state.slowmoTimer,
+          nextLongRallySpawnAt: state.nextLongRallySpawnAt,
+          countdownActive: state.countdownActive, countdownTimer: state.countdownTimer
+        };
         return hashString(stableSerialize({
-          tick: state.tick,
+          v: 2,
           rng: rng.getState(),
-          state,
-          world,
+          state: stateCore,
+          paddles: { left: paddleCore(world.paddles.left), right: paddleCore(world.paddles.right) },
+          balls: world.balls.map(ballCore),
+          pulses: world.pulses.map(pulseCore),
+          powerups: world.powerups.map((p) => ({ type: p.type, x: p.x, y: p.y, r: p.r, life: p.life })),
           matchStats
         }));
       }
@@ -1938,6 +2235,8 @@ function updateAI(paddle, dt, isLeft) {
             emitParticles(ball.x, ball.y, 20 + paddle.pulseLevel * 2, forceColor, 340);
             playTone(340 + paddle.pulseLevel * 38, 0.06, 'triangle', 0.05);
             screenShake = Math.max(screenShake, fullChargeHit ? 6 : 4);
+            state.comboFlash = Math.max(state.comboFlash, fullChargeHit ? 0.22 : 0.16);
+            if (!headless && fullChargeHit) fx.hitStopSeconds = Math.max(fx.hitStopSeconds, 0.08);
           }
 
           ball.lastHitSide = paddle.side;
@@ -1947,7 +2246,8 @@ function updateAI(paddle, dt, isLeft) {
           else matchStats.rightBallHits += 1;
           paddle.flash = 1;
           paddle.hitScale = 1.16;
-          state.comboFlash = 0.22;
+          // Only milestone rallies flash the whole screen — flashing on every hit was a strobe.
+          if (state.rally > 0 && state.rally % 6 === 0) state.comboFlash = Math.max(state.comboFlash, 0.18);
           matchStats.longestRally = Math.max(matchStats.longestRally, state.rally);
           if (state.rally > state.bestRally) {
             storeBestRally(state.rally);
@@ -2011,8 +2311,8 @@ function updateBalls(dt) {
     }
 
     if ((ball.serveHoldTimer || 0) > 0) {
-      ball.x = W / 2;
-      ball.y = H / 2;
+      ball.x = ball.serveAnchorX != null ? ball.serveAnchorX : W / 2;
+      ball.y = ball.serveAnchorY != null ? ball.serveAnchorY : H / 2;
       ball.vx = 0;
       ball.vy = 0;
       ball.flash = Math.max(ball.flash, 0.9);
@@ -2109,13 +2409,17 @@ function updatePulses(dt) {
             pulse.prevY = pulse.y;
             pulse.x += pulse.vx * dt;
             pulse.y += pulse.vy * dt;
+            // Cosmetic trail/diffraction bookkeeping must NOT branch on lowPerfEffects:
+            // this code runs inside the deterministic sim, so quality settings here would
+            // make iframe/headless runs diverge from top-level browser runs. The render
+            // layer decides how much of these arrays to actually draw.
             pulse.trailSpawnTimer = (pulse.trailSpawnTimer || 0) - dt;
-            const trailInterval = state.lowPerfEffects ? 0.055 : 0.02;
+            const trailInterval = 0.02;
             if (pulse.trailSpawnTimer <= 0) {
               pulse.trailSpawnTimer = trailInterval;
-              pulse.trail.push({ x: pulse.x, y: pulse.y, angle: pulse.angle, life: state.lowPerfEffects ? 0.16 : 0.24 });
+              pulse.trail.push({ x: pulse.x, y: pulse.y, angle: pulse.angle, life: 0.24 });
             }
-            const maxTrail = state.lowPerfEffects ? 4 : 10;
+            const maxTrail = 10;
             if (pulse.trail.length > maxTrail) pulse.trail.splice(0, pulse.trail.length - maxTrail);
             for (let t = pulse.trail.length - 1; t >= 0; t--) {
               pulse.trail[t].life -= dt;
@@ -2123,7 +2427,7 @@ function updatePulses(dt) {
             }
             for (let d = pulse.diffraction.length - 1; d >= 0; d--) {
               pulse.diffraction[d].life -= dt;
-              pulse.diffraction[d].phase += dt * (state.lowPerfEffects ? 5.2 : 7.5);
+              pulse.diffraction[d].phase += dt * 7.5;
               if (pulse.diffraction[d].life <= 0) pulse.diffraction.splice(d, 1);
             }
 
@@ -2137,10 +2441,10 @@ function updatePulses(dt) {
               const normal = topContact ? 1 : -1;
               pulse.vy *= -1;
               pulse.angle = Math.atan2(pulse.vy, pulse.vx);
-              pulse.diffraction.push({ x: pulse.x, y: clamp(pulse.y + normal * pulse.arcRadius, 24, H - 24), normal, life: state.lowPerfEffects ? 0.34 : 0.64, phase: 0 });
-              const maxDiffraction = state.lowPerfEffects ? 1 : 4;
+              pulse.diffraction.push({ x: pulse.x, y: clamp(pulse.y + normal * pulse.arcRadius, 24, H - 24), normal, life: 0.64, phase: 0 });
+              const maxDiffraction = 4;
               if (pulse.diffraction.length > maxDiffraction) pulse.diffraction.splice(0, pulse.diffraction.length - maxDiffraction);
-              emitParticles(pulse.x, pulse.y, state.lowPerfEffects ? 4 : 8, pulse.color, 180);
+              emitParticles(pulse.x, pulse.y, 8, pulse.color, 180);
             }
 
             const goalMargin = (pulse.arcRadius || 0) + getPulseHalfThickness(pulse) + 24;
@@ -2266,6 +2570,7 @@ function updatePulses(dt) {
               goldRoleMetrics.goldBallHits += 1;
               if (sweetFactor > goldWaveInteractionBalance.ballHit.centerSweetThreshold) {
                 goldRoleMetrics.goldCenterHits += 1;
+                if (!headless) fx.hitStopSeconds = Math.max(fx.hitStopSeconds, 0.06);
               }
 
               if (pulse.side === 'left') matchStats.leftWaveHits += 1;
@@ -2323,7 +2628,12 @@ function updatePulses(dt) {
                 const pinkRoleMetrics = getRoleMetricsForSide(pulse.side);
                 pinkRoleMetrics.pinkBallHits += 1;
                 if (movingToward) pinkRoleMetrics.pinkThreatHits += 1;
-                if (movingToward && emergencyDistance <= W * 0.18) pinkRoleMetrics.pinkEmergencyHits += 1;
+                if (movingToward && emergencyDistance <= W * 0.18) {
+                  pinkRoleMetrics.pinkEmergencyHits += 1;
+                  spawnFloatText(ball.x, ball.y - 18, 'CLUTCH SAVE!', 'buff');
+                  playTone(760, 0.09, 'triangle', 0.045);
+                  if (!headless) fx.hitStopSeconds = Math.max(fx.hitStopSeconds, 0.05);
+                }
               } else {
                 const dx = ball.x - pulse.x;
                 const dy = ball.y - pulse.y;
@@ -2426,8 +2736,8 @@ function updateParticles(dt) {
         for (const ball of world.balls) {
           if ((ball.serveHoldTimer || 0) <= 0) continue;
           ball.serveHoldTimer = Math.max(0, ball.serveHoldTimer - dt);
-          ball.x = W / 2;
-          ball.y = H / 2;
+          ball.x = ball.serveAnchorX != null ? ball.serveAnchorX : W / 2;
+          ball.y = ball.serveAnchorY != null ? ball.serveAnchorY : H / 2;
           ball.vx = 0;
           ball.vy = 0;
           ball.flash = Math.max(ball.flash, 0.92);
@@ -2495,7 +2805,6 @@ function update(dt) {
         updatePlayCountdown(dt);
         updateServeHolds(dt);
         if (state.countdownActive) {
-          updateUI();
           return;
         }
 
@@ -2513,8 +2822,14 @@ function update(dt) {
         } else if (state.demoMode) {
           updateAI(world.paddles.left, dt, true);
         } else {
-          const leftUp = input.w || (state.mode !== 'pvp' && input.up);
-          const leftDown = input.s || (state.mode !== 'pvp' && input.down);
+          let leftUp = input.w || (state.mode !== 'pvp' && input.up) || gamepadControl.left.up;
+          let leftDown = input.s || (state.mode !== 'pvp' && input.down) || gamepadControl.left.down;
+          if (!leftUp && !leftDown && pointerControl.targetY != null) {
+            const center = world.paddles.left.y + world.paddles.left.h / 2;
+            const pointerDeadband = 14;
+            if (pointerControl.targetY < center - pointerDeadband) leftUp = true;
+            else if (pointerControl.targetY > center + pointerDeadband) leftDown = true;
+          }
           updatePaddle(world.paddles.left, leftUp, leftDown, dt);
         }
 
@@ -2524,7 +2839,7 @@ function update(dt) {
         } else if (state.demoMode) {
           updateAI(world.paddles.right, dt, false);
         } else if (state.mode === 'pvp') {
-          updatePaddle(world.paddles.right, input.up, input.down, dt);
+          updatePaddle(world.paddles.right, input.up || gamepadControl.right.up, input.down || gamepadControl.right.down, dt);
         } else {
           updateAI(world.paddles.right, dt, false);
         }
@@ -2535,7 +2850,6 @@ function update(dt) {
         updateParticles(dt);
         updateFloatTexts(dt);
         updatePowerups(dt);
-        updateUI();
       }
 
       function roundedRect(x, y, w, h, r) {
@@ -2578,26 +2892,43 @@ function update(dt) {
         return `rgba(255, 255, 255, ${safeAlpha})`;
       }
 
-      function renderBackground() {
+      let backgroundGradientCache = null;
+
+      function getBackgroundGradients() {
         const t = themes[state.theme];
-        const g = ctx.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, t.bgTop);
-        g.addColorStop(1, t.bgBottom);
-        ctx.fillStyle = g;
+        if (!backgroundGradientCache || backgroundGradientCache.theme !== state.theme) {
+          const g = ctx.createLinearGradient(0, 0, 0, H);
+          g.addColorStop(0, t.bgTop);
+          g.addColorStop(1, t.bgBottom);
+          const rg1 = ctx.createRadialGradient(W * 0.18, H * 0.2, 10, W * 0.18, H * 0.2, 320);
+          rg1.addColorStop(0, `rgba(${t.glowA}, 0.18)`);
+          rg1.addColorStop(1, 'rgba(0,0,0,0)');
+          const rg2 = ctx.createRadialGradient(W * 0.82, H * 0.8, 10, W * 0.82, H * 0.8, 340);
+          rg2.addColorStop(0, `rgba(${t.glowB}, 0.16)`);
+          rg2.addColorStop(1, 'rgba(0,0,0,0)');
+          backgroundGradientCache = { theme: state.theme, g, rg1, rg2 };
+        }
+        return backgroundGradientCache;
+      }
+
+      function isMatchPointLive() {
+        return state.running && !state.gameOver && !state.menuOpen &&
+          (state.leftScore === state.scoreLimit - 1 || state.rightScore === state.scoreLimit - 1);
+      }
+
+      function renderBackground() {
+        const gradients = getBackgroundGradients();
+        ctx.fillStyle = gradients.g;
         ctx.fillRect(0, 0, W, H);
 
         const pulse = 0.5 + Math.sin(performance.now() * 0.0013) * 0.1;
-        const rg1 = ctx.createRadialGradient(W * 0.18, H * 0.2, 10, W * 0.18, H * 0.2, 320);
-        rg1.addColorStop(0, `rgba(${t.glowA}, ${0.18 * pulse})`);
-        rg1.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = rg1;
+        ctx.save();
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = gradients.rg1;
         ctx.fillRect(0, 0, W, H);
-
-        const rg2 = ctx.createRadialGradient(W * 0.82, H * 0.8, 10, W * 0.82, H * 0.8, 340);
-        rg2.addColorStop(0, `rgba(${t.glowB}, ${0.16 * pulse})`);
-        rg2.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = rg2;
+        ctx.fillStyle = gradients.rg2;
         ctx.fillRect(0, 0, W, H);
+        ctx.restore();
 
         ctx.save();
         ctx.strokeStyle = 'rgba(255,255,255,0.06)';
@@ -2609,7 +2940,12 @@ function update(dt) {
         ctx.stroke();
         ctx.restore();
 
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        if (isMatchPointLive()) {
+          const beat = 0.5 + Math.sin(performance.now() * 0.0075) * 0.5;
+          ctx.strokeStyle = `rgba(255, 211, 77, ${0.12 + beat * 0.2})`;
+        } else {
+          ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        }
         ctx.lineWidth = 3;
         roundedRect(14, 14, W - 28, H - 28, 24);
         ctx.stroke();
@@ -2739,6 +3075,13 @@ function update(dt) {
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
         roundedRect(baseX, baseY, barWidth, 7, 4);
         ctx.fill();
+        // Faint tier tints so the bar itself teaches the blue / pink / gold thresholds.
+        ctx.fillStyle = 'rgba(123, 210, 255, 0.1)';
+        ctx.fillRect(baseX, baseY + 1, 74 * SOLID_CHARGE_THRESHOLD, 5);
+        ctx.fillStyle = 'rgba(255, 124, 215, 0.1)';
+        ctx.fillRect(baseX + 74 * SOLID_CHARGE_THRESHOLD, baseY + 1, 74 * (FULL_CHARGE_THRESHOLD - SOLID_CHARGE_THRESHOLD), 5);
+        ctx.fillStyle = 'rgba(255, 211, 77, 0.14)';
+        ctx.fillRect(baseX + 74 * FULL_CHARGE_THRESHOLD, baseY + 1, Math.max(0, barWidth - 74 * FULL_CHARGE_THRESHOLD), 5);
         if (maxCharge > BASE_MAX_CHARGE) {
           ctx.fillStyle = 'rgba(120, 240, 255, 0.08)';
           roundedRect(baseX + 74, baseY, barWidth - 74, 7, 4);
@@ -2753,7 +3096,7 @@ function update(dt) {
         if (fillWidth > 0) {
           ctx.fillStyle = meterColor;
           ctx.shadowColor = meterColor;
-          ctx.shadowBlur = 14;
+          ctx.shadowBlur = 6;
           roundedRect(baseX, baseY, fillWidth, 7, 4);
           ctx.fill();
           if (pulseLight > 0) {
@@ -2765,13 +3108,26 @@ function update(dt) {
           }
         }
 
+        // Tier notch lines at the pink and gold thresholds.
         ctx.shadowBlur = 0;
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255, 124, 215, 0.75)';
+        ctx.beginPath();
+        ctx.moveTo(baseX + 74 * SOLID_CHARGE_THRESHOLD, baseY - 2);
+        ctx.lineTo(baseX + 74 * SOLID_CHARGE_THRESHOLD, baseY + 9);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255, 211, 77, 0.8)';
+        ctx.beginPath();
+        ctx.moveTo(baseX + 74 * FULL_CHARGE_THRESHOLD, baseY - 2);
+        ctx.lineTo(baseX + 74 * FULL_CHARGE_THRESHOLD, baseY + 9);
+        ctx.stroke();
+
         ctx.fillStyle = 'rgba(255,255,255,0.1)';
         roundedRect(baseX, baseY + 11, 74, 5, 3);
         ctx.fill();
         ctx.fillStyle = xpColor;
         ctx.shadowColor = xpColor;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 4;
         roundedRect(baseX, baseY + 11, Math.max(6, 74 * xpProgress), 5, 3);
         ctx.fill();
 
@@ -2796,7 +3152,7 @@ function renderPowerups() {
           ctx.save();
           ctx.translate(p.x, p.y);
           ctx.shadowColor = def.color;
-          ctx.shadowBlur = def.kind === 'minion' ? 28 : 22;
+          ctx.shadowBlur = def.kind === 'minion' ? 16 : 12;
 
           if (def.kind === 'debuff') {
             ctx.rotate(Math.PI / 4);
@@ -2859,7 +3215,7 @@ function renderPaddle(paddle) {
         ctx.save();
         const boost = paddle.side === 'left' ? state.leftBoostTimer : state.rightBoostTimer;
         ctx.translate(0, 0);
-        ctx.shadowBlur = 28 + boost * 10;
+        ctx.shadowBlur = 20 + boost * 10;
         ctx.shadowColor = color;
         ctx.fillStyle = color;
         const wobble = paddle.jamTimer > 0 ? Math.sin(performance.now() * 0.08 + (paddle.side === 'left' ? 0 : 1.4)) * 3.5 * Math.min(1, paddle.jamTimer + 0.15) : 0;
@@ -2885,6 +3241,43 @@ function renderPaddle(paddle) {
         }
         ctx.restore();
         renderPulseMeters(paddle);
+        renderFireHoldIndicator(paddle);
+      }
+
+      // While a human holds the fire input, show which tier will fire on release:
+      // a charging ring at the muzzle plus three tier pips above the paddle.
+      function renderFireHoldIndicator(paddle) {
+        const startMs = fireHold[paddle.side];
+        if (startMs == null || !humanFireAllowed()) return;
+        const heldSeconds = Math.max(0, ((state.presentationTimeMs || 0) - startMs) / 1000);
+        const cap = tierForHoldDuration(heldSeconds);
+        const stats = getPulseStats(paddle, cap);
+        const origin = getPulseOrigin(paddle);
+        const progress = clamp(heldSeconds / Math.max(0.05, fireHoldBalance.goldAtSeconds), 0, 1);
+
+        ctx.save();
+        ctx.strokeStyle = stats.color;
+        ctx.shadowColor = stats.glow;
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(origin.x, origin.y, 14 + progress * 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.08, progress));
+        ctx.stroke();
+
+        const pipColors = [waveBalance.blue.color, waveBalance.pink.color, waveBalance.gold.color];
+        const activeIndex = stats.waveType === 'gold' ? 2 : (stats.waveType === 'pink' ? 1 : 0);
+        const pipY = paddle.y - 40;
+        const pipX = paddle.side === 'left' ? paddle.x + 4 : paddle.x + paddle.w - 4 - 28;
+        ctx.shadowBlur = 6;
+        for (let i = 0; i < 3; i++) {
+          ctx.globalAlpha = i === activeIndex ? 1 : 0.28;
+          ctx.fillStyle = pipColors[i];
+          ctx.shadowColor = pipColors[i];
+          ctx.beginPath();
+          ctx.arc(pipX + i * 14, pipY, i === activeIndex ? 5 : 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
       }
 
       function renderBalls() {
@@ -2892,22 +3285,27 @@ function renderPaddle(paddle) {
         const t = themes[state.theme];
         for (const ball of world.balls) {
           const hitColor = getBallRenderColor(ball, t);
+          // Boost visuals keep the owning paddle's color so possession stays readable;
+          // only an un-owned (neutral) ball falls back to the wave's boost color.
+          const boostVisualColor = ball.lastHitSide ? hitColor : (ball.boostColor || hitColor);
           const holdAlpha = (ball.serveHoldTimer || 0) > 0 && (ball.serveHoldDuration || 0) > 0
             ? clamp(ball.serveHoldTimer / ball.serveHoldDuration, 0, 1)
             : 0;
           if (state.trailsEnabled) {
+            ctx.save();
             for (let i = 0; i < ball.trail.length; i++) {
               const trail = ball.trail[i];
               const trailBoostStrength = Math.log2(1 + Math.max(0, trail.boostIntensity || 0));
               const alpha = clamp(Math.max(0, trail.life / 0.35) * (i / Math.max(1, ball.trail.length)) * (1 + trailBoostStrength * 0.14), 0, 1);
-              ctx.save();
               ctx.globalAlpha = alpha * 0.55;
-              ctx.fillStyle = trail.boost || hitColor;
+              // Owned balls keep their possession color even while boosted; the size still
+              // swells with trailBoostStrength so the boost reads without a color swap.
+              ctx.fillStyle = ball.lastHitSide ? hitColor : (trail.boost || hitColor);
               ctx.beginPath();
               ctx.arc(trail.x, trail.y, ball.r * (0.35 + alpha * 0.5 + trailBoostStrength * 0.08), 0, Math.PI * 2);
               ctx.fill();
-              ctx.restore();
             }
+            ctx.restore();
           }
           ctx.save();
           if (holdAlpha > 0) {
@@ -2936,9 +3334,8 @@ function renderPaddle(paddle) {
             const speed = Math.hypot(ball.vx, ball.vy) || 1;
             const nx = ball.vx / speed;
             const ny = ball.vy / speed;
-            const boostColor = ball.boostColor || '#7bd2ff';
-            ctx.strokeStyle = boostColor;
-            ctx.shadowColor = boostColor;
+            ctx.strokeStyle = boostVisualColor;
+            ctx.shadowColor = boostVisualColor;
             ctx.shadowBlur = 16 + boostOpacity * 12 + boostStrength * 4;
             ctx.lineCap = 'round';
             for (let lane = -1; lane <= 1; lane++) {
@@ -2954,21 +3351,39 @@ function renderPaddle(paddle) {
             }
           }
 
+          // Expanding shockwave ring right after an impact (flash decays 1 -> 0).
+          if (ball.flash > 0.35 && ball.flash < 0.98) {
+            ctx.globalAlpha = ball.flash * 0.45;
+            ctx.strokeStyle = hitColor;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r + (1 - ball.flash) * 30, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
           ctx.globalAlpha = 1;
-          ctx.shadowColor = boostOpacity > 0 ? (ball.boostColor || hitColor) : hitColor;
+          ctx.shadowColor = boostOpacity > 0 ? boostVisualColor : hitColor;
           ctx.shadowBlur = 20 + ball.flash * 12 + boostOpacity * 10 + boostStrength * 2;
           ctx.fillStyle = hitColor;
+          // Squash/stretch: elongate the ball along its velocity as it speeds up.
+          const ballSpeed = Math.hypot(ball.vx, ball.vy);
+          const stretch = 1 + clamp(ballSpeed / BALL_SPEED_CAP, 0, 1) * 0.2 + ball.flash * 0.1;
+          ctx.save();
+          ctx.translate(ball.x, ball.y);
+          if (ballSpeed > 1) ctx.rotate(Math.atan2(ball.vy, ball.vx));
+          ctx.scale(stretch, 1 / stretch);
           ctx.beginPath();
-          ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+          ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
           ctx.fill();
-
           ctx.fillStyle = boostOpacity > 0 ? 'rgba(255,250,228,0.96)' : 'rgba(255,255,255,0.92)';
           ctx.beginPath();
-          ctx.arc(ball.x, ball.y, ball.r * 0.52, 0, Math.PI * 2);
+          ctx.arc(0, 0, ball.r * 0.52, 0, Math.PI * 2);
           ctx.fill();
+          ctx.restore();
 
           if (ball.lastHitSide) {
-            ctx.strokeStyle = boostOpacity > 0 ? (ball.boostColor || 'rgba(255,255,255,0.8)') : 'rgba(255,255,255,0.7)';
+            ctx.strokeStyle = boostOpacity > 0 ? boostVisualColor : 'rgba(255,255,255,0.7)';
             ctx.lineWidth = 1.6 + boostOpacity * 1.2 + boostStrength * 0.2;
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.r - 1.2, 0, Math.PI * 2);
@@ -3045,37 +3460,65 @@ function renderPaddle(paddle) {
       }
 
       function renderCountdownOverlay() {
-        if (!state.countdownActive) return;
+        if (!state.countdownActive) {
+          fx.countdownLastSecond = 0;
+          return;
+        }
 
         const secondsLeft = Math.max(1, Math.ceil(state.countdownTimer));
+        if (fx.countdownLastSecond !== secondsLeft) {
+          if (fx.countdownLastSecond > 0) playToneRaw(secondsLeft <= 1 ? 620 : 440, 0.05, 'triangle', 0.032);
+          fx.countdownLastSecond = secondsLeft;
+        }
+        const frac = clamp(state.countdownTimer - Math.floor(state.countdownTimer), 0, 1) || 1;
+        const numeralScale = 0.9 + (1 - Math.pow(1 - frac, 3)) * 0.35;
+
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'rgba(255,255,255,0.94)';
+        ctx.lineJoin = 'round';
         ctx.strokeStyle = 'rgba(2, 6, 12, 0.78)';
         ctx.lineWidth = 8;
         ctx.font = '900 124px Inter, Segoe UI, sans-serif';
-        ctx.strokeText(String(secondsLeft), W / 2, H / 2 - 10);
-        ctx.fillText(String(secondsLeft), W / 2, H / 2 - 10);
-        ctx.font = '700 22px Inter, Segoe UI, sans-serif';
+        ctx.save();
+        ctx.globalAlpha = 0.4 + frac * 0.6;
+        ctx.fillStyle = secondsLeft <= 1 ? 'rgba(255, 211, 77, 0.96)' : 'rgba(255,255,255,0.94)';
+        ctx.translate(W / 2, H / 2 - 10);
+        ctx.scale(numeralScale, numeralScale);
+        ctx.strokeText(String(secondsLeft), 0, 0);
+        ctx.fillText(String(secondsLeft), 0, 0);
+        ctx.restore();
+
+        ctx.font = '700 20px Inter, Segoe UI, sans-serif';
         ctx.lineWidth = 5;
         ctx.fillStyle = 'rgba(223, 240, 255, 0.92)';
-        ctx.strokeText('Press fire to skip', W / 2, H / 2 + 66);
-        ctx.fillText('Press fire to skip', W / 2, H / 2 + 66);
+        const hint = state.demoMode
+          ? 'Sit back: CPU vs CPU'
+          : (state.mode === 'pvp'
+            ? 'P1: W/S move, hold F to charge  |  P2: arrows move, hold / to charge'
+            : 'Move: W/S, arrows, or mouse  |  Tap fire = blue. Hold = pink. Hold longer = gold.');
+        ctx.strokeText(hint, W / 2, H / 2 + 66);
+        ctx.fillText(hint, W / 2, H / 2 + 66);
+        ctx.font = '700 15px Inter, Segoe UI, sans-serif';
+        ctx.lineWidth = 4;
+        ctx.fillStyle = 'rgba(223, 240, 255, 0.7)';
+        ctx.strokeText('Press fire to skip', W / 2, H / 2 + 96);
+        ctx.fillText('Press fire to skip', W / 2, H / 2 + 96);
         ctx.restore();
       }
 
 function renderParticles() {
+        if (!world.particles.length) return;
+        ctx.save();
         for (const p of world.particles) {
           const alpha = Math.max(0, p.life / p.maxLife);
-          ctx.save();
           ctx.globalAlpha = alpha;
           ctx.fillStyle = p.color;
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
           ctx.fill();
-          ctx.restore();
         }
+        ctx.restore();
       }
 
 function renderPulses() {
@@ -3193,7 +3636,7 @@ function renderPulses() {
 
 function renderOverlayFX() {
 
-        const alpha = Math.min(0.22, state.comboFlash * 0.9);
+        const alpha = Math.min(0.16, state.comboFlash * 0.7);
         if (alpha > 0) {
           ctx.save();
           ctx.fillStyle = `rgba(255,255,255,${alpha})`;
@@ -3209,10 +3652,87 @@ function renderOverlayFX() {
           drawGlowLine(50, 50, W - 50, 50, 'rgba(120,180,255,0.45)', 2);
           drawGlowLine(50, H - 50, W - 50, H - 50, 'rgba(120,180,255,0.35)', 2);
         }
+
+        // Flash the wall that just conceded a goal.
+        if (fx.wallFlash) {
+          const flashAlpha = clamp(1 - fx.wallFlash.t / fx.wallFlash.dur, 0, 1);
+          const grad = ctx.createLinearGradient(
+            fx.wallFlash.side === 'left' ? 0 : W,
+            0,
+            fx.wallFlash.side === 'left' ? 110 : W - 110,
+            0
+          );
+          grad.addColorStop(0, colorWithAlpha(fx.wallFlash.color, 0.4 * flashAlpha));
+          grad.addColorStop(1, colorWithAlpha(fx.wallFlash.color, 0));
+          ctx.save();
+          ctx.fillStyle = grad;
+          ctx.fillRect(fx.wallFlash.side === 'left' ? 0 : W - 110, 0, 110, H);
+          ctx.restore();
+        }
+
+        // Match-end ceremony: confetti + winner banner before the stats overlay appears.
+        if (fx.confetti.length) {
+          ctx.save();
+          for (const c of fx.confetti) {
+            ctx.globalAlpha = clamp(c.life, 0, 1);
+            ctx.fillStyle = c.color;
+            ctx.translate(c.x, c.y);
+            ctx.rotate(c.spin);
+            ctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size * 0.6);
+            ctx.rotate(-c.spin);
+            ctx.translate(-c.x, -c.y);
+          }
+          ctx.restore();
+        }
+        if (fx.winnerBanner) {
+          const bt = clamp(fx.winnerBanner.t / 0.35, 0, 1);
+          const scaleIn = 0.7 + (1 - Math.pow(1 - bt, 3)) * 0.3;
+          const t = themes[state.theme];
+          const color = fx.winnerBanner.leftWon ? t.paddleLeft : t.paddleRight;
+          ctx.save();
+          ctx.globalAlpha = bt;
+          ctx.translate(W / 2, H / 2 - 30);
+          ctx.scale(scaleIn, scaleIn);
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.lineJoin = 'round';
+          ctx.font = '900 84px Inter, Segoe UI, sans-serif';
+          ctx.lineWidth = 10;
+          ctx.strokeStyle = 'rgba(2, 6, 12, 0.82)';
+          ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 30;
+          ctx.strokeText(fx.winnerBanner.name + ' WINS', 0, 0);
+          ctx.fillText(fx.winnerBanner.name + ' WINS', 0, 0);
+          ctx.restore();
+        }
+      }
+
+      function renderScoreDigit(value, x, y, color, pop, atMatchPoint) {
+        // pop (1 -> 0) punches the digit right after a goal; match point pulses it gold.
+        const popEase = pop * pop;
+        const scale = 1 + popEase * 0.55;
+        let fill = color;
+        if (atMatchPoint) {
+          const beat = 0.5 + Math.sin(performance.now() * 0.0075) * 0.5;
+          fill = beat > 0.5 ? '#ffd34d' : color;
+        }
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        ctx.strokeStyle = 'rgba(2, 6, 12, 0.78)';
+        ctx.fillStyle = fill;
+        ctx.shadowColor = fill;
+        ctx.shadowBlur = 14 + popEase * 18;
+        ctx.strokeText(String(value), 0, 0);
+        ctx.fillText(String(value), 0, 0);
+        ctx.restore();
       }
 
       function renderStatsOnCanvas() {
         const t = themes[state.theme];
+        const leftAtMatchPoint = state.running && !state.gameOver && state.leftScore === state.scoreLimit - 1;
+        const rightAtMatchPoint = state.running && !state.gameOver && state.rightScore === state.scoreLimit - 1;
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -3220,20 +3740,8 @@ function renderOverlayFX() {
 
         ctx.font = '900 62px Inter, Segoe UI, sans-serif';
         ctx.lineWidth = 8;
-
-        ctx.strokeStyle = 'rgba(2, 6, 12, 0.78)';
-        ctx.fillStyle = t.paddleLeft;
-        ctx.shadowColor = t.paddleLeft;
-        ctx.shadowBlur = 22;
-        ctx.strokeText(String(state.leftScore), W * 0.23, 72);
-        ctx.fillText(String(state.leftScore), W * 0.23, 72);
-
-        ctx.strokeStyle = 'rgba(2, 6, 12, 0.78)';
-        ctx.fillStyle = t.paddleRight;
-        ctx.shadowColor = t.paddleRight;
-        ctx.shadowBlur = 22;
-        ctx.strokeText(String(state.rightScore), W * 0.77, 72);
-        ctx.fillText(String(state.rightScore), W * 0.77, 72);
+        renderScoreDigit(state.leftScore, W * 0.23, 72, t.paddleLeft, fx.scorePopLeft, leftAtMatchPoint);
+        renderScoreDigit(state.rightScore, W * 0.77, 72, t.paddleRight, fx.scorePopRight, rightAtMatchPoint);
 
         ctx.shadowBlur = 0;
         ctx.font = '800 30px Inter, Segoe UI, sans-serif';
@@ -3242,6 +3750,16 @@ function renderOverlayFX() {
         ctx.fillStyle = t.power;
         ctx.strokeText(String(state.scoreLimit), W / 2, 66);
         ctx.fillText(String(state.scoreLimit), W / 2, 66);
+
+        if ((leftAtMatchPoint || rightAtMatchPoint) && !state.menuOpen && !state.gameOver) {
+          const beat = 0.5 + Math.sin(performance.now() * 0.0075) * 0.5;
+          ctx.font = '800 17px Inter, Segoe UI, sans-serif';
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = 'rgba(2, 6, 12, 0.7)';
+          ctx.fillStyle = `rgba(255, 211, 77, ${0.55 + beat * 0.45})`;
+          ctx.strokeText('MATCH POINT', W / 2, 96);
+          ctx.fillText('MATCH POINT', W / 2, 96);
+        }
         ctx.restore();
       }
 
@@ -3283,16 +3801,129 @@ function renderOverlayFX() {
         }
       }
 
+      function pollGamepads() {
+        const nav = windowRef && windowRef.navigator;
+        if (!nav || typeof nav.getGamepads !== 'function') return;
+        let pads;
+        try {
+          pads = nav.getGamepads();
+        } catch (err) {
+          return;
+        }
+        if (!pads) return;
+
+        const applyPad = (pad, side) => {
+          const control = gamepadControl[side];
+          if (!pad) {
+            control.up = false;
+            control.down = false;
+            control.fireDownMs = null;
+            return;
+          }
+          const axisY = pad.axes && pad.axes.length > 1 ? pad.axes[1] : 0;
+          const dpadUp = pad.buttons && pad.buttons[12] && pad.buttons[12].pressed;
+          const dpadDown = pad.buttons && pad.buttons[13] && pad.buttons[13].pressed;
+          control.up = axisY < -0.35 || !!dpadUp;
+          control.down = axisY > 0.35 || !!dpadDown;
+
+          const fireDown = !!(pad.buttons && ((pad.buttons[0] && pad.buttons[0].pressed) || (pad.buttons[7] && pad.buttons[7].pressed)));
+          if (fireDown && control.fireDownMs == null) {
+            if (skipPlayCountdown()) return;
+            if (humanFireAllowed() && !state.demoMode) control.fireDownMs = nowMs();
+          } else if (!fireDown && control.fireDownMs != null) {
+            const heldSeconds = (nowMs() - control.fireDownMs) / 1000;
+            control.fireDownMs = null;
+            if (humanFireAllowed() && !state.demoMode) {
+              firePulse(getPaddleBySide(side), tierForHoldDuration(heldSeconds));
+            }
+          }
+
+          if (side === 'left') {
+            const startPressed = !!(pad.buttons && pad.buttons[9] && pad.buttons[9].pressed);
+            if (startPressed && !gamepadControl.pausePressed && !state.menuOpen) pauseGame();
+            gamepadControl.pausePressed = startPressed;
+          }
+        };
+
+        applyPad(pads[0] || null, 'left');
+        applyPad(state.mode === 'pvp' && !state.demoMode ? (pads[1] || null) : null, 'right');
+      }
+
+      let hintsPending = null;
+
+      function maybeShowFirstMatchHints() {
+        if (headless || state.demoMode || !state.running || state.menuOpen || state.paused || state.gameOver) return;
+        if (hintsPending === null) hintsPending = safeStorageGetItem('gameWavePongHintsSeenV1') == null;
+        if (!hintsPending) return;
+        const charge = world.paddles.left.pulseCharge || 0;
+        if (fx.hintStage === 0 && !state.countdownActive) {
+          showMessage('Tap fire for BLUE. Hold for PINK, hold longer for GOLD.', 3.6);
+          fx.hintStage = 1;
+        } else if (fx.hintStage === 1 && charge >= FULL_CHARGE_THRESHOLD) {
+          showMessage('GOLD ready: hold fire and release. A quick tap still fires cheap blue.', 3.2);
+          fx.hintStage = 2;
+          hintsPending = false;
+          safeStorageSetItem('gameWavePongHintsSeenV1', '1');
+        }
+      }
+
+      function updatePresentationFx(dt) {
+        fx.scorePopLeft = Math.max(0, fx.scorePopLeft - dt * 2.4);
+        fx.scorePopRight = Math.max(0, fx.scorePopRight - dt * 2.4);
+        if (fx.wallFlash) {
+          fx.wallFlash.t += dt;
+          if (fx.wallFlash.t >= fx.wallFlash.dur) fx.wallFlash = null;
+        }
+        if (fx.winnerBanner) {
+          fx.winnerBanner.t += dt;
+          if (!state.gameOver) fx.winnerBanner = null;
+        }
+        for (let i = fx.confetti.length - 1; i >= 0; i--) {
+          const c = fx.confetti[i];
+          c.life -= dt;
+          c.x += c.vx * dt;
+          c.y += c.vy * dt;
+          c.vy += 900 * dt;
+          c.vx *= 0.99;
+          c.spin += c.spinSpeed * dt;
+          if (c.life <= 0 || c.y > H + 40) fx.confetti.splice(i, 1);
+        }
+
+        const matchPoint = state.running && !state.paused && !state.gameOver && !state.menuOpen && !state.countdownActive &&
+          (state.leftScore === state.scoreLimit - 1 || state.rightScore === state.scoreLimit - 1);
+        if (matchPoint) {
+          fx.heartbeatTimer -= dt;
+          if (fx.heartbeatTimer <= 0) {
+            fx.heartbeatTimer = 2;
+            playToneRaw(96, 0.16, 'sine', 0.032, 0);
+            playToneRaw(96, 0.14, 'sine', 0.026, 0.24);
+          }
+        } else {
+          fx.heartbeatTimer = 0;
+        }
+
+        maybeShowFirstMatchHints();
+      }
+
       function loop(ts) {
         if (!mounted || !windowRef) return;
         const dt = Math.min(0.25, ((ts - lastFrameTime) / 1000) || fixedDt);
         lastFrameTime = ts;
         state.presentationTimeMs = ts;
-        fixedAccumulator += dt;
+        pollGamepads();
+        // Hit-stop: freeze sim ticks in wall time for a few frames on heavy impacts.
+        // Ticks are only delayed, never dropped, so determinism is untouched.
+        if (fx.hitStopSeconds > 0) {
+          fx.hitStopSeconds = Math.max(0, fx.hitStopSeconds - dt);
+        } else {
+          fixedAccumulator += dt;
+        }
         while (fixedAccumulator >= fixedDt) {
           stepSimulation(1);
           fixedAccumulator -= fixedDt;
         }
+        updatePresentationFx(dt);
+        updateUI();
         render();
         loopHandle = windowRef.requestAnimationFrame(loop);
       }
@@ -3365,27 +3996,44 @@ function renderOverlayFX() {
         if (mounted || !documentRef || !windowRef) return runtimeApi;
         mounted = true;
 
+        // Match on e.code (physical key) with e.key fallback so controls survive
+        // non-QWERTY and non-Latin keyboard layouts.
+        const isP2FireKey = (e) => state.mode === 'pvp' && !state.demoMode &&
+          (e.code === 'Slash' || e.key === '/' || e.code === 'ControlRight' || e.code === 'Numpad0');
+        const isP1FireKey = (e) => e.code === 'KeyF' || e.key.toLowerCase() === 'f' || e.code === 'Space' ||
+          (state.mode !== 'pvp' && (e.code === 'Slash' || e.key === '/' || e.code === 'ControlRight' || e.code === 'NumpadEnter'));
+
         listen(documentRef, 'keydown', (e) => {
           const key = e.key.toLowerCase();
-          if (key === 'w') input.w = true;
-          else if (key === 's') input.s = true;
-          else if (e.key === 'ArrowUp') {
+          const code = e.code;
+          if (code === 'KeyW' || key === 'w') {
+            input.w = true;
+            pointerControl.targetY = null;
+          } else if (code === 'KeyS' || key === 's') {
+            input.s = true;
+            pointerControl.targetY = null;
+          } else if (e.key === 'ArrowUp' || code === 'ArrowUp') {
             input.up = true;
+            pointerControl.targetY = null;
             if (shouldCaptureGameplayKeys()) e.preventDefault();
-          } else if (e.key === 'ArrowDown') {
+          } else if (e.key === 'ArrowDown' || code === 'ArrowDown') {
             input.down = true;
+            pointerControl.targetY = null;
             if (shouldCaptureGameplayKeys()) e.preventDefault();
-          } else if (key === 'f' || e.code === 'Space') {
-            e.preventDefault();
+          } else if (isP2FireKey(e)) {
+            if (shouldCaptureGameplayKeys()) e.preventDefault();
+            if (e.repeat) return;
             if (skipPlayCountdown()) return;
-            if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver) firePulse(world.paddles.left);
-          } else if (key === '/') {
+            beginFireHold('right');
+          } else if (isP1FireKey(e)) {
+            if (shouldCaptureGameplayKeys()) e.preventDefault();
+            if (e.repeat) return;
             if (skipPlayCountdown()) return;
-            if (!e.repeat && !state.menuOpen && !state.paused && !state.gameOver && state.mode === 'pvp' && !state.demoMode) firePulse(world.paddles.right);
-          } else if (key === 'm') {
+            beginFireHold('left');
+          } else if (code === 'KeyM' || key === 'm') {
             muted = !muted;
             updateStatus(muted ? 'Muted. Silent chaos enabled.' : 'Unmuted. The bleeps have returned.');
-          } else if (key === 'p') {
+          } else if (code === 'KeyP' || key === 'p') {
             e.preventDefault();
             if (state.menuOpen) return;
             pauseGame();
@@ -3402,14 +4050,64 @@ function renderOverlayFX() {
 
         listen(documentRef, 'keyup', (e) => {
           const key = e.key.toLowerCase();
-          if (key === 'w') input.w = false;
-          else if (key === 's') input.s = false;
-          else if (e.key === 'ArrowUp') {
+          const code = e.code;
+          if (code === 'KeyW' || key === 'w') input.w = false;
+          else if (code === 'KeyS' || key === 's') input.s = false;
+          else if (e.key === 'ArrowUp' || code === 'ArrowUp') {
             input.up = false;
             if (shouldCaptureGameplayKeys()) e.preventDefault();
-          } else if (e.key === 'ArrowDown') {
+          } else if (e.key === 'ArrowDown' || code === 'ArrowDown') {
             input.down = false;
             if (shouldCaptureGameplayKeys()) e.preventDefault();
+          } else if (isP2FireKey(e)) {
+            releaseFireHold('right');
+          } else if (isP1FireKey(e)) {
+            releaseFireHold('left');
+          }
+        });
+
+        // Mouse hover / touch drag steers the left paddle; press-and-release fires with
+        // the same hold-to-charge rules as the keyboard. Lives entirely in the live
+        // human-input layer, so bots, replays, and the deterministic sim are untouched.
+        const pointerWorldY = (e) => {
+          const innerH = windowRef.innerHeight || 1;
+          const offsetY = (innerH - H * scale) / 2;
+          return (e.clientY - offsetY) / (scale || 1);
+        };
+        listen(canvas, 'pointermove', (e) => {
+          if (state.menuOpen) return;
+          pointerControl.targetY = pointerWorldY(e);
+          pointerControl.atMs = state.presentationTimeMs;
+        });
+        listen(canvas, 'pointerdown', (e) => {
+          if (state.menuOpen) return;
+          e.preventDefault();
+          pointerControl.targetY = pointerWorldY(e);
+          pointerControl.atMs = state.presentationTimeMs;
+          if (skipPlayCountdown()) return;
+          if (e.pointerType === 'touch' && pointerControl.steerPointerId == null) {
+            // First finger steers; a second finger fires.
+            pointerControl.steerPointerId = e.pointerId;
+            return;
+          }
+          beginFireHold('left');
+        });
+        listen(canvas, 'pointerup', (e) => {
+          if (e.pointerType === 'touch' && e.pointerId === pointerControl.steerPointerId) {
+            pointerControl.steerPointerId = null;
+            return;
+          }
+          releaseFireHold('left');
+        });
+        listen(canvas, 'pointercancel', (e) => {
+          if (e.pointerId === pointerControl.steerPointerId) pointerControl.steerPointerId = null;
+          fireHold.left = null;
+        });
+
+        // Auto-pause when the tab is hidden instead of bursting catch-up ticks on return.
+        listen(documentRef, 'visibilitychange', () => {
+          if (documentRef.hidden && state.running && !state.paused && !state.gameOver && !state.menuOpen) {
+            pauseGame(true);
           }
         });
 
