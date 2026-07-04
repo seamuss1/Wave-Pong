@@ -379,8 +379,40 @@
         }
       }
 
-      function saveHistory(history) {
+      // localStorage.setItem is synchronous and, on mobile / inside an itch.io
+      // iframe, can cost several milliseconds. Writing history + best-rally on
+      // every ball hit and goal put that I/O directly on the gameplay frame,
+      // which is the source of the per-hit / per-goal stutter. Instead we keep
+      // the in-memory history authoritative (UI reads it immediately) and only
+      // flush to storage lazily: coalesced on a timer and at natural breaks
+      // (pause, menu, match end, tab hidden), never inside the hot loop.
+      let historyDirty = false;
+      let historyFlushHandle = null;
+
+      function flushHistory() {
+        if (historyFlushHandle != null && windowRef && typeof windowRef.clearTimeout === 'function') {
+          windowRef.clearTimeout(historyFlushHandle);
+          historyFlushHandle = null;
+        }
+        if (!historyDirty) return;
+        historyDirty = false;
         safeStorageSetItem(HISTORY_KEY, JSON.stringify(history));
+        safeStorageSetItem(BEST_RALLY_KEY, String(Math.max(Number(state.bestRally) || 0, Number(history.bestRally) || 0)));
+      }
+
+      function saveHistory() {
+        // Mark dirty and schedule a coalesced flush; many marks in a rally
+        // collapse into a single write once the burst settles.
+        historyDirty = true;
+        if (historyFlushHandle == null && windowRef && typeof windowRef.setTimeout === 'function') {
+          historyFlushHandle = windowRef.setTimeout(() => {
+            historyFlushHandle = null;
+            flushHistory();
+          }, 4000);
+        } else if (!windowRef || typeof windowRef.setTimeout !== 'function') {
+          // No timer available (headless / test host): fall back to writing now.
+          flushHistory();
+        }
       }
 
       function createMatchStats() {
@@ -728,9 +760,8 @@
 
       function storeBestRally(value) {
         state.bestRally = value;
-        safeStorageSetItem(BEST_RALLY_KEY, String(value));
         history.bestRally = Math.max(history.bestRally || 0, value);
-        saveHistory(history);
+        saveHistory();
       }
 
       function formatStat(value) {
@@ -895,7 +926,10 @@
         const rightName = ui.rightName ? ui.rightName.textContent : 'RIGHT';
         history.lastWinner = leftWon ? leftName : rightName;
         lastWinner = history.lastWinner;
-        saveHistory(history);
+        // Match end is a natural break (sim has stopped), so persist now rather
+        // than risk losing the record if the player closes the tab.
+        saveHistory();
+        flushHistory();
       }
 
       function clamp(value, min, max) {
@@ -1705,6 +1739,7 @@ function startMatch({
         state.gameOver = false;
         state.countdownActive = false;
         state.countdownTimer = 0;
+        flushHistory(); // persist any deferred stats when leaving a match
         resetPresentationFx();
         state.playerLabels.left = null;
         state.playerLabels.right = null;
@@ -1735,6 +1770,7 @@ function startMatch({
           state.countdownActive = false;
           state.countdownTimer = 0;
           clearFireHolds();
+          flushHistory(); // pause is a natural moment to persist deferred stats
           updateStatus('Paused. The ball is thinking about its choices.');
           playTone(260, 0.08, 'sine', 0.03);
         } else if (wasPaused) {
@@ -4267,10 +4303,15 @@ function renderOverlayFX() {
         trackFramePerf(dt * 1000);
         pollGamepads();
         // Hit-stop: freeze sim ticks in wall time for a few frames on heavy impacts.
-        // Ticks are only delayed, never dropped, so determinism is untouched.
-        if (fx.hitStopSeconds > 0) {
+        // Ticks are only delayed, never dropped, so offline determinism is untouched.
+        // It must NOT run during online play: the authoritative server keeps
+        // ticking through the impact, so freezing locally leaves the client behind
+        // and the next snapshot fast-forwards it — a correction that reads as lag
+        // on exactly the hits and goals that trigger hit-stop.
+        if (fx.hitStopSeconds > 0 && !localHumanSide) {
           fx.hitStopSeconds = Math.max(0, fx.hitStopSeconds - dt);
         } else {
+          if (localHumanSide) fx.hitStopSeconds = 0;
           fixedAccumulator += dt * simSpeed;
         }
         // Cap catch-up steps per frame. On a device that cannot keep real time,
@@ -4515,6 +4556,9 @@ function renderOverlayFX() {
 
         // Auto-pause when the tab is hidden instead of bursting catch-up ticks on return.
         listen(documentRef, 'visibilitychange', () => {
+          // Tab hidden: flush any deferred stats before the OS can freeze/kill
+          // the page (this is the last reliable chance to persist on mobile).
+          if (documentRef.hidden) flushHistory();
           // Online matches keep running on the server, so never auto-pause them
           // (localHumanSide is only set during online play).
           if (localHumanSide) return;
@@ -4522,6 +4566,9 @@ function renderOverlayFX() {
             pauseGame(true);
           }
         });
+        // pagehide is the most reliable "app is going away" signal on mobile
+        // Safari/Chrome, where visibilitychange and unload are unreliable.
+        listen(windowRef, 'pagehide', () => flushHistory());
 
         listen(canvas, 'pointerdown', (event) => {
           if (!isPauseButtonPointerEvent(event)) return;
