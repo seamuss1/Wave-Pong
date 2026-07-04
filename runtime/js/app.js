@@ -525,7 +525,8 @@
         scoreLimit: ui.scoreLimitSelect ? ui.scoreLimitSelect.value : undefined,
         theme: ui.themeSelect ? ui.themeSelect.value : undefined,
         powerups: ui.powerupsToggle ? ui.powerupsToggle.checked : undefined,
-        trails: ui.trailToggle ? ui.trailToggle.checked : undefined
+        trails: ui.trailToggle ? ui.trailToggle.checked : undefined,
+        controlScheme: currentControlScheme()
       }));
     } catch (err) {
       // Storage unavailable (private mode / blocked iframe); settings just won't persist.
@@ -563,6 +564,10 @@
     }
     if (ui.powerupsToggle && typeof saved.powerups === 'boolean') ui.powerupsToggle.checked = saved.powerups;
     if (ui.trailToggle && typeof saved.trails === 'boolean') ui.trailToggle.checked = saved.trails;
+    if (saved.controlScheme) {
+      const target = controlSchemeRadios().find((radio) => radio.value === saved.controlScheme);
+      if (target) target.checked = true;
+    }
   }
 
   const GUEST_NAME_KEY = 'wavePongGuestNameV1';
@@ -658,10 +663,41 @@
     });
   }
 
+  // Driven explicitly (rather than a CSS :checked selector) so the highlight also
+  // updates when settings are restored programmatically, which sets .checked
+  // directly and doesn't dispatch a change event. Covers every segmented control
+  // in the menu (game mode and wave control).
+  function syncModeSegmentStyle() {
+    if (!menuOverlay) return;
+    menuOverlay.querySelectorAll('.segment').forEach((segment) => {
+      const input = segment.querySelector('input[type="radio"]');
+      segment.classList.toggle('segmentActive', !!(input && input.checked));
+    });
+  }
+
+  function controlSchemeRadios() {
+    return Array.from(document.querySelectorAll('input[name="controlScheme"]'));
+  }
+
+  function currentControlScheme() {
+    const checked = controlSchemeRadios().find((radio) => radio.checked);
+    return checked ? checked.value : ((config.defaults && config.defaults.controlScheme) || 'hold');
+  }
+
+  function applyControlScheme() {
+    if (typeof runtime.setControlScheme === 'function') runtime.setControlScheme(currentControlScheme());
+  }
+
   ['change', 'input'].forEach((eventName) => {
     if (runtime.ui.modeSelect) runtime.ui.modeSelect.addEventListener(eventName, syncControllers);
     if (runtime.ui.modeSelect) runtime.ui.modeSelect.addEventListener(eventName, applyModeVisibility);
+    if (runtime.ui.modeSelect) runtime.ui.modeSelect.addEventListener(eventName, syncModeSegmentStyle);
     if (runtime.ui.difficultySelect) runtime.ui.difficultySelect.addEventListener(eventName, syncControllers);
+    controlSchemeRadios().forEach((radio) => {
+      radio.addEventListener(eventName, applyControlScheme);
+      radio.addEventListener(eventName, syncModeSegmentStyle);
+      radio.addEventListener(eventName, saveMenuSettings);
+    });
     [
       runtime.ui.modeSelect,
       runtime.ui.difficultySelect,
@@ -776,6 +812,8 @@
   populateBotSelect();
   applySavedMenuSettings();
   applyModeVisibility();
+  syncModeSegmentStyle();
+  applyControlScheme();
   ensureGuestName();
   syncControllers();
   touchController.bind();

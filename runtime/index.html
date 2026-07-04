@@ -44,14 +44,14 @@
       <div class="section">
         <h2>Match setup</h2>
         <div class="form">
-          <label>
+          <div class="fieldLabel segmentedField">
             Game Mode
-            <select id="modeSelect">
-              <option value="cpu">Player vs CPU</option>
-              <option value="pvp">Two Players</option>
-              <option value="online">Online Match</option>
-            </select>
-          </label>
+            <div class="segmented" role="radiogroup" aria-label="Game Mode">
+              <label class="segment"><input type="radio" name="modeSelect" value="online" checked /><span>Online Match</span></label>
+              <label class="segment"><input type="radio" name="modeSelect" value="cpu" /><span>Player vs CPU</span></label>
+              <label class="segment"><input type="radio" name="modeSelect" value="pvp" /><span>Two Players</span></label>
+            </div>
+          </div>
 
           <label class="modeField" data-modes="cpu">
             <span class="labelWithAction">
@@ -85,6 +85,14 @@
               <option value="mint">Mint Storm</option>
             </select>
           </label>
+
+          <div class="fieldLabel segmentedField">
+            Wave Control
+            <div class="segmented" role="radiogroup" aria-label="Wave Control">
+              <label class="segment"><input type="radio" name="controlScheme" value="hold" checked /><span>Hold to Charge</span></label>
+              <label class="segment"><input type="radio" name="controlScheme" value="auto" /><span>Auto-Fire</span></label>
+            </div>
+          </div>
 
           <label class="toggle modeField" data-modes="cpu pvp">
             <input id="powerupsToggle" type="checkbox" checked />
@@ -123,9 +131,10 @@
           <div class="helpList">
             <div class="controlItem"><strong>Player 1</strong><br>W/S or Arrow keys move &bull; mouse or touch-drag also steers &bull; F or Space fires (Slash and Right Ctrl work too in single player)</div>
             <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move &bull; Slash, Right Ctrl, or Numpad 0 fires</div>
-            <div class="controlItem"><strong>Touch</strong><br>Drag the floating joystick up or down to move &bull; tap the fire button to launch a wave</div>
-            <div class="controlItem"><strong>Pick your wave</strong><br>Tap fire for BLUE &bull; hold ~0.25s and release for PINK &bull; hold ~0.5s for GOLD. The ring at your paddle shows what will fire.</div>
-            <div class="controlItem"><strong>Gamepad</strong><br>Left stick or D-pad moves &bull; A (or right trigger) fires with the same hold-to-charge rules &bull; Start pauses</div>
+            <div class="controlItem"><strong>Touch</strong><br>Drag the floating joystick up or down to move &bull; tap anywhere else on the play area to launch a wave (the strongest one you can afford)</div>
+            <div class="controlItem"><strong>Control scheme</strong><br>Choose Wave Control in the menu. <em>Hold to Charge</em>: hold fire to build a stronger wave, then release to fire. <em>Auto-Fire</em>: every press instantly launches the strongest wave you can afford.</div>
+            <div class="controlItem"><strong>Pick your wave (Hold to Charge)</strong><br>Tap fire for BLUE &bull; a brief hold and release fires PINK &bull; hold longer for GOLD. The ring at your paddle shows what will fire.</div>
+            <div class="controlItem"><strong>Gamepad</strong><br>Left stick or D-pad moves &bull; A (or right trigger) fires and follows your chosen Wave Control scheme &bull; Start pauses</div>
             <div class="controlItem"><strong>Pause</strong><br>P or Escape pauses the match</div>
             <div class="controlItem"><strong>Mute</strong><br>M toggles sound</div>
             <div class="controlItem"><strong>Wave costs</strong><br>Blue uses 10 percent charge &bull; Pink uses 50 percent &bull; Gold uses 90 percent. You can only fire a tier you can afford, so the notches on your charge bar mark pink and gold readiness.</div>

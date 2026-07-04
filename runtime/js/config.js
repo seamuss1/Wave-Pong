@@ -48,9 +48,10 @@
       concededChargeBonus: 0.25 // Instant charge granted to the side that just conceded a goal.
     },
     // Human-only fire input: holding the fire key charges up the requested wave tier.
+    // Only used by the 'hold' control scheme; 'auto' fires the best affordable tier on press.
     fireHold: {
-      pinkAtSeconds: 0.22, // Hold duration after which release fires pink (if affordable).
-      goldAtSeconds: 0.5 // Hold duration after which release fires gold (if affordable).
+      pinkAtSeconds: 0.12, // Hold duration after which release fires pink (if affordable). Blue is anything shorter, so a quick tap.
+      goldAtSeconds: 0.4 // Hold duration after which release fires gold (if affordable).
     },
     // XP curve for leveling wave strength.
     waveLevels: {
@@ -409,12 +410,13 @@
     },
     // Values used to seed the menu and startup experience.
     defaults: {
-      mode: 'cpu',
+      mode: 'online',
       difficulty: 'spicy',
       scoreLimit: 7,
       theme: 'neon',
       powerupsEnabled: true,
-      trailsEnabled: true
+      trailsEnabled: true,
+      controlScheme: 'hold' // 'hold' = hold fire to charge tier; 'auto' = tap fires best affordable wave.
     },
     balance, // Gameplay tuning numbers.
     // Shape of the persistent history record saved in localStorage.
