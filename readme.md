@@ -36,7 +36,7 @@ Open `runtime/index.html` in a modern desktop browser.
 
 ## itch.io packaging
 
-Versioning is tracked in `version.json`. The current repo version is `0.6.6`.
+Versioning is tracked in `version.json`. The current repo version is `0.7.0`.
 
 Version rules:
 
@@ -485,14 +485,19 @@ After the first push:
 #### Single player
 - **W / S** move your paddle
 - **Up / Down** also move your paddle
-- **F or Space** fire your wave
+- **Mouse hover or touch drag** also steers the paddle
+- **F or Space** fire your wave (Slash, Right Ctrl, and Numpad Enter also work)
+- **Tap fire = blue, hold ~0.25s = pink, hold ~0.5s = gold.** A charge ring at your paddle shows which tier will fire on release.
+- **Mouse button / second finger** fires with the same hold-to-charge rules
+- **Gamepad:** left stick or D-pad moves, A or right trigger fires, Start pauses
 - **P** pause
 - **M** mute
 - **Esc** open menu
 
 #### Two player
-- **Player 1:** W / S move, F or Space fire
-- **Player 2:** Up / Down move, / fire
+- **Player 1:** W / S move, F or Space fire (hold to charge)
+- **Player 2:** Up / Down move, Slash / Right Ctrl / Numpad 0 fire (hold to charge)
+- Keys are matched by physical position, so non-QWERTY layouts work.
 - **P** pause
 - **M** mute
 - **Esc** open menu
@@ -501,7 +506,8 @@ After the first push:
 
 - Score by sending a ball past the opponent into their goal.
 - The score limit is configurable in settings.
-- When a ball scores, the point is awarded and **a new ball is added**. The field is not wiped, so existing balls, waves, and powerups can keep the match chaotic.
+- When a ball scores, the point is awarded and the scored ball is removed. A fresh ball is served **only when the field is empty** — other live balls, waves, and powerups stay put, so multiball exchanges keep their momentum.
+- Serves launch from varied heights and angles, and conceding a goal grants the conceder bonus XP plus an instant charge top-up so the trailing side re-enters the rally armed.
 - Long rallies can still add more balls over time, but at a moderated pace.
 - Matches end when one side reaches the selected goal total.
 - The game tracks match stats and browser-saved historical totals.
@@ -522,19 +528,22 @@ Every paddle has a shared **wave charge bar**.
 
 ### Wave costs
 
-- **Blue wave:** 15% charge
+- **Blue wave:** 10% charge
 - **Pink wave:** 50% charge
-- **Gold wave:** 100% charge
+- **Gold wave:** 90% charge
+
+Human players pick the tier with the fire button: a quick tap fires blue, a short hold releases pink, and a long hold releases gold (you can only fire a tier you can afford — the notches on the charge bar mark the pink and gold thresholds). CPU and ML bot opponents auto-select the strongest tier their charge allows, which is also what happens if you simply hold to maximum.
 
 Some powerups can temporarily increase max charge to **150%** and speed up recharge.
 
 ## Wave XP and leveling
 
-Wave power scales with XP.
+Wave power scales with XP. The curve is tuned so a normal match spans several level-ups, and each level-up refunds a burst of charge on the spot.
 
 You gain XP from:
 - passive gain over time
 - scoring goals
+- conceding goals (a smaller comeback share)
 - hitting your opponent with offensive wave pressure
 - breaking XP minions
 - XP-related powerups
@@ -731,3 +740,11 @@ Prioritize positioning and pink defense first. Then use blue to tame the most da
 # Notes
 
 This README describes the current Game Wave Pong build and its intended gameplay loop. If you continue tuning the game, update this README alongside the code so the strategy and powerup sections stay accurate. Gameplay balance now lives in `runtime/js/config.js`.
+
+## ML bot compatibility note (v0.7.0)
+
+The v0.7.0 gameplay update changed the sim environment the published bots were trained in: XP thresholds and per-level wave gains were rescaled, serves gained angle/height variety, conceding a goal now grants comeback XP/charge, gold arcs live 4.5s instead of 7s, and the state-hash format moved to a lean gameplay-only v2 (old replay hashes are not comparable). The roster bots still play — their observation and action interfaces are unchanged, and hold-to-charge tier selection is human-input-only — but their Elo ratings were earned under the old rules. Run a refresh when convenient:
+
+```bash
+node tools/evolve-bots.js --population 20 --generations 300 --update-all-roster --checkpoint-every 25
+```

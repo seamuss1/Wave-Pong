@@ -32,8 +32,8 @@
         overCapDecayPerSecond: 220, // How quickly an over-speed ball settles back down toward the normal cap after a temporary boost ends.
         accelerationPerLog2Unit: 32 // Extra ball speed gained per second for each log2 unit of boost intensity while a boost timer is active.
       },
-      initialAngleBase: 0.70, // Minimum serve angle away from horizontal.
-      initialAngleRange: 0.10 // Extra randomized serve angle range.
+      initialAngleBase: 0.35, // Minimum serve angle away from horizontal.
+      initialAngleRange: 0.40 // Extra randomized serve angle range.
     },
     // Shared wave resource costs and recharge behavior.
     charge: {
@@ -43,23 +43,31 @@
       baseMax: 1, // Normal maximum charge bar value.
       overcapMax: 1.5, // Temporary maximum when Cap Bank is active.
       rechargeBasePerSecond: 0.152, // Passive recharge before level scaling.
-      rechargePerLevelPerSecond: 0.0105, // Extra recharge gained per wave level.
-      rapidMultiplier: 1.9 // Recharge multiplier while Rapid Charge is active.
+      rechargePerLevelPerSecond: 0.016, // Extra recharge gained per wave level.
+      rapidMultiplier: 1.9, // Recharge multiplier while Rapid Charge is active.
+      concededChargeBonus: 0.25 // Instant charge granted to the side that just conceded a goal.
+    },
+    // Human-only fire input: holding the fire key charges up the requested wave tier.
+    fireHold: {
+      pinkAtSeconds: 0.22, // Hold duration after which release fires pink (if affordable).
+      goldAtSeconds: 0.5 // Hold duration after which release fires gold (if affordable).
     },
     // XP curve for leveling wave strength.
     waveLevels: {
       max: 6, // Maximum attainable wave level.
-      xpThresholds: [0, 0, 180, 470, 930, 1520, 2250] // XP needed to reach each level index.
+      xpThresholds: [0, 0, 120, 300, 560, 900, 1350], // XP needed to reach each level index.
+      levelUpChargeBonus: 0.15 // Instant charge granted on level-up so the moment is felt.
     },
     // XP gains and losses from major gameplay events.
     xp: {
       passivePerSecond: 2.15, // Passive XP drip per second.
       goal: 52, // XP gained for scoring a goal.
+      concededGoal: 30, // Comeback XP granted to the side that just conceded.
       opponentHit: 15, // XP gained by landing a gold wave on the opponent paddle.
       powerupSurge: 82, // XP granted by XP Surge.
       minion: 58, // XP granted by an XP Minion.
       debuffLoss: 76, // XP removed by XP Drain.
-      goldHitLoss: 34 // XP removed from a paddle hit by a strong gold wave.
+      goldHitLoss: 24 // XP removed from a paddle hit by a strong gold wave.
     },
     // How paddle motion influences aiming and jam behavior.
     waveAim: {
@@ -106,10 +114,10 @@
         thicknessPerLevel: 1.9, // Width gained per level.
         rangeBase: 210, // Base travel range.
         rangeChargeScale: 118, // Extra range from available charge.
-        rangePerLevel: 12, // Extra range per level.
+        rangePerLevel: 22, // Extra range per level.
         strengthBase: 118, // Base force applied to balls.
         strengthChargeScale: 42, // Extra force from available charge.
-        strengthPerLevel: 7, // Extra force per level.
+        strengthPerLevel: 14, // Extra force per level.
         coneBase: 0.84, // Base spread arc.
         coneChargeScale: 0.09, // Extra spread from available charge.
         conePerLevel: 0.014, // Extra spread per level.
@@ -127,7 +135,7 @@
         rangePerLevel: 10, // Extra range per level.
         rangeChargeScale: 42, // Extra range from charge above the pink threshold.
         strengthBase: 138, // Base defensive force.
-        strengthPerLevel: 7, // Extra force per level.
+        strengthPerLevel: 14, // Extra force per level.
         strengthChargeScale: 18, // Extra force from current charge.
         coneBase: 0.86, // Base spread arc.
         conePerLevel: 0.018, // Extra spread per level.
@@ -142,13 +150,13 @@
       },
       gold: {
         thicknessBase: 92, // Starting visual width.
-        thicknessPerLevel: 6.2, // Width gained per level.
+        thicknessPerLevel: 10, // Width gained per level.
         strengthBase: 206, // Base force applied to targets.
-        strengthPerLevel: 15, // Extra force per level.
+        strengthPerLevel: 28, // Extra force per level.
         coneBase: 0.46, // Base spread arc.
         conePerLevel: 0.012, // Extra spread per level.
         cooldown: 0.07, // Post-fire cooldown.
-        life: 7, // Lifetime of the traveling gold arc.
+        life: 4.5, // Lifetime of the traveling gold arc.
         speedBase: 952, // Base travel speed.
         speedPerLevel: 10, // Extra travel speed per level.
         arcRadiusBase: 82, // Starting gold arc radius.
@@ -296,7 +304,9 @@
     matchFlow: {
       alwaysSpawnReplacementAfterGoal: false, // When true, every goal immediately serves a fresh ball even if others are still active.
       countdownSeconds: 3, // Countdown duration before play begins on match start and after resuming from pause.
-      serveHoldSeconds: 0.75, // How long a newly served ball waits at center before it can move.
+      serveHoldSeconds: 0.75, // How long a newly served ball waits at its serve point before it can move.
+      serveYJitter: 110, // Max vertical offset applied to replacement serves so serves stop being identical.
+      matchEndCeremonySeconds: 1.4, // Presentation delay between the winning goal and the game-over overlay.
       serveHoldPulseHz: 2.6, // Pulse rate for the glow wrapped around a held serve ball.
       serveHoldGlowRadius: 18, // Extra radius used by the held-ball glow halo.
       goalLight: {
