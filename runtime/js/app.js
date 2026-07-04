@@ -37,20 +37,9 @@
 
   const onlineEnabledPill = document.getElementById('onlineEnabledPill');
   const onlineNameInput = document.getElementById('onlineNameInput');
-  const onlinePlaylistSelect = document.getElementById('onlinePlaylistSelect');
-  const onlineRegionSelect = document.getElementById('onlineRegionSelect');
-  const onlineConnectBtn = document.getElementById('onlineConnectBtn');
-  const onlineVerifyBtn = document.getElementById('onlineVerifyBtn');
   const onlineQueueBtn = document.getElementById('onlineQueueBtn');
   const onlineLeaveQueueBtn = document.getElementById('onlineLeaveQueueBtn');
   const onlineStatusText = document.getElementById('onlineStatusText');
-  const onlineSessionState = document.getElementById('onlineSessionState');
-  const onlineQueueState = document.getElementById('onlineQueueState');
-  const onlineMatchState = document.getElementById('onlineMatchState');
-  const onlineChatLog = document.getElementById('onlineChatLog');
-  const onlineChatInput = document.getElementById('onlineChatInput');
-  const onlineChatSendBtn = document.getElementById('onlineChatSendBtn');
-  const quickChatRow = document.getElementById('quickChatRow');
   const fullscreenBtn = document.getElementById('fullscreenBtn');
   const pauseFullscreenBtn = document.getElementById('pauseFullscreenBtn');
   const touchControlsRoot = document.getElementById('touchControls');
@@ -276,15 +265,6 @@
   function reportOnlineError(error) {
     if (!onlineStatusText) return;
     onlineStatusText.textContent = error && error.message ? error.message : String(error || 'Online action failed.');
-  }
-
-  function escapeHtml(text) {
-    return String(text)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
   }
 
   function findBotById(botId) {
@@ -522,89 +502,28 @@
     if (ui.trailToggle && typeof saved.trails === 'boolean') ui.trailToggle.checked = saved.trails;
   }
 
-  function populateOnlineSelectors() {
-    if (!multiplayer) return;
-    if (onlinePlaylistSelect) {
-      onlinePlaylistSelect.innerHTML = multiplayer.listPlaylists()
-        .map((playlist) => `<option value="${playlist.id}">${escapeHtml(playlist.label)}</option>`)
-        .join('');
-      const defaultPlaylist = multiplayer.getDefaultPlaylist();
-      if (defaultPlaylist) onlinePlaylistSelect.value = defaultPlaylist.id;
-    }
-    if (onlineRegionSelect) {
-      onlineRegionSelect.innerHTML = multiplayer.listRegions()
-        .map((region) => `<option value="${region.id}">${escapeHtml(region.label)}</option>`)
-        .join('');
-      const defaultRegion = multiplayer.getDefaultRegion();
-      if (defaultRegion) onlineRegionSelect.value = defaultRegion.id;
-    }
-    if (quickChatRow) {
-      quickChatRow.innerHTML = '';
-      for (const quickChat of multiplayer.quickChat || []) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = quickChat.label;
-        button.addEventListener('click', () => {
-          if (!onlineService) return;
-          try {
-            onlineService.sendMatchQuickChat(quickChat.id);
-          } catch (error) {
-            reportOnlineError(error);
-          }
-        });
-        quickChatRow.appendChild(button);
-      }
-    }
-  }
-
-  function renderChatLog(target, entries) {
-    if (!target) return;
-    if (!entries || !entries.length) {
-      target.innerHTML = '<div class="onlineChatEmpty">No messages yet. Queue into a region to populate the lobby feed.</div>';
-      return;
-    }
-    target.innerHTML = entries.map((entry) => {
-      const meta = entry.kind === 'quick' ? `quick chat` : (entry.verified ? 'verified' : 'guest');
-      const body = entry.kind === 'quick' ? escapeHtml(entry.quickChatId || '') : escapeHtml(entry.text || '');
-      return `<div class="onlineChatMessage"><span class="onlineChatMeta">${escapeHtml(entry.displayName || 'player')} · ${escapeHtml(meta)}</span>${body}</div>`;
-    }).join('');
-    target.scrollTop = target.scrollHeight;
-  }
-
   function renderOnlineState(nextState) {
     const state = nextState || (onlineService ? onlineService.getState() : {
       enabled: !!env.enabled,
-      statusText: env.enabled ? 'Online available.' : 'Online disabled. Add runtime env query params to connect.',
+      statusText: env.enabled ? 'Ready.' : 'Online play is not configured for this build.',
       session: null,
       queue: null,
-      currentMatch: null,
-      lobbyMessages: [],
-      matchMessages: []
+      currentMatch: null
     });
     if (onlineEnabledPill) {
       onlineEnabledPill.textContent = state.enabled ? (state.controlConnected ? 'Live' : 'Ready') : 'Offline';
       onlineEnabledPill.classList.toggle('live', !!state.controlConnected);
     }
     if (onlineStatusText) onlineStatusText.textContent = state.statusText;
-    if (onlineSessionState) {
-      onlineSessionState.textContent = state.session && state.session.player
-        ? `${state.session.player.displayName}${state.session.player.verified ? ' · verified' : ' · guest'}`
-        : 'none';
+    const searching = !!(state.queue && state.queue.queued);
+    if (onlineQueueBtn) {
+      onlineQueueBtn.disabled = !state.enabled || searching || !!state.currentMatch;
+      onlineQueueBtn.textContent = searching ? 'Searching...' : 'Find Match';
     }
-    if (onlineQueueState) {
-      onlineQueueState.textContent = state.queue && state.queue.queued
-        ? `${state.queue.playlistId} · ${state.queue.region}`
-        : 'idle';
-    }
-    if (onlineMatchState) {
-      onlineMatchState.textContent = state.currentMatch
-        ? `${state.currentMatch.playlistId} · ${state.currentMatch.region}`
-        : 'offline';
-    }
+    if (onlineLeaveQueueBtn) onlineLeaveQueueBtn.classList.toggle('hidden', !searching);
     if (onlineNameInput && state.session && state.session.player && !onlineNameInput.value) {
       onlineNameInput.value = state.session.player.displayName;
     }
-    renderChatLog(onlineChatLog, state.lobbyMessages);
   }
 
   ['change', 'input'].forEach((eventName) => {
@@ -645,36 +564,23 @@
     });
   }
 
+  const offlineInputProvider = ({ side, defaultAction }) => (
+    side === 'left' ? touchController.getAction(defaultAction) : defaultAction
+  );
+
   if (onlineService) {
     onlineService.on('state', renderOnlineState);
-
-    if (onlineConnectBtn) {
-      onlineConnectBtn.addEventListener('click', async () => {
-        try {
-          await onlineService.ensureConnected(onlineNameInput ? onlineNameInput.value : '');
-        } catch (error) {
-          reportOnlineError(error);
-        }
-      });
-    }
-
-    if (onlineVerifyBtn) {
-      onlineVerifyBtn.addEventListener('click', async () => {
-        try {
-          await onlineService.upgradeAccount(onlineNameInput ? onlineNameInput.value : '');
-        } catch (error) {
-          reportOnlineError(error);
-        }
-      });
-    }
+    onlineService.on('match.result', () => {
+      // Hand input control back to the offline provider once the match is over.
+      runtime.setInputProvider(offlineInputProvider);
+      if (typeof runtime.setLocalHumanSide === 'function') runtime.setLocalHumanSide(null);
+    });
 
     if (onlineQueueBtn) {
       onlineQueueBtn.addEventListener('click', async () => {
         try {
           await onlineService.joinQueue({
-            displayName: onlineNameInput ? onlineNameInput.value : '',
-            playlistId: onlinePlaylistSelect ? onlinePlaylistSelect.value : 'unranked_standard',
-            region: onlineRegionSelect ? onlineRegionSelect.value : 'na'
+            displayName: onlineNameInput ? onlineNameInput.value : ''
           });
         } catch (error) {
           reportOnlineError(error);
@@ -692,38 +598,18 @@
       });
     }
 
-    if (onlineChatSendBtn) {
-      onlineChatSendBtn.addEventListener('click', () => {
-        if (!onlineChatInput || !onlineChatInput.value.trim()) return;
-        try {
-          onlineService.sendLobbyChat({
-            playlistId: onlinePlaylistSelect ? onlinePlaylistSelect.value : 'unranked_standard',
-            region: onlineRegionSelect ? onlineRegionSelect.value : 'na',
-            message: {
-              kind: 'free',
-              text: onlineChatInput.value.trim()
-            }
-          });
-          onlineChatInput.value = '';
-        } catch (error) {
-          reportOnlineError(error);
-        }
-      });
-    }
+    renderOnlineState(null);
   } else {
-    [onlineConnectBtn, onlineVerifyBtn, onlineQueueBtn, onlineLeaveQueueBtn, onlineChatSendBtn].forEach((button) => {
+    [onlineQueueBtn, onlineLeaveQueueBtn].forEach((button) => {
       if (button) button.disabled = true;
     });
   }
 
   populateBotSelect();
   applySavedMenuSettings();
-  populateOnlineSelectors();
   syncControllers();
   touchController.bind();
-  runtime.setInputProvider(({ side, defaultAction }) => (
-    side === 'left' ? touchController.getAction(defaultAction) : defaultAction
-  ));
+  runtime.setInputProvider(offlineInputProvider);
   runtime.mountBrowser();
   if (window.requestAnimationFrame) {
     const syncUiLoop = () => {

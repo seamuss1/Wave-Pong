@@ -32,12 +32,10 @@ Open `runtime/index.html` in a modern desktop browser.
 - `runtime/styles/main.css` contains the presentation layer.
 - `runtime/wave_pong.html` is a legacy entry that redirects to `runtime/index.html`.
 - `shared/multiplayer/config.js`, `shared/protocol/index.js`, and `shared/sim/engine.js` expose Node entrypoints for the shared multiplayer modules that still ship inside `runtime/`.
-- `backend/control-plane/` contains the queue, auth, chat, leaderboard, and match-ticket service.
+- `backend/control-plane/` contains the guest-auth, quick-play queue, and match-ticket service, and serves the static client.
 - `backend/match-worker/` contains the authoritative match host built on the deterministic simulation core.
-- `backend/config.js` centralizes environment loading for local `.env`, cloud env vars, and generated runtime endpoint config.
-- `backend/dev-server.js` runs a local control-plane plus match-worker pair for end-to-end multiplayer testing.
-- `docker-compose.yml` starts local Postgres and Redis for persistence-shaped development.
-- `infra/terraform/` contains the provider-neutral deployment contract that generates backend env files and static runtime config.
+- `backend/config.js` centralizes environment loading for local `.env` and deployment env vars.
+- `backend/server.js` runs the control-plane plus match-worker in one process.
 - `training/evolve-bots.js` runs the offline training pipeline and writes reports, checkpoints, exports, and auto-promotion snapshots.
 - `training/publish-bots.js` validates and publishes trained candidates into `runtime/js/bot-roster.js`.
 - `training/promote-live-training.js` snapshots a still-running trainer process and optionally publishes the live candidates.
@@ -133,75 +131,49 @@ The browser runtime is split into small layers instead of one giant script:
 - `runtime/js/app.js` creates the runtime, populates the CPU selector with both classic scripted difficulties and published ML bots, exposes the bot dossier overlay, and wires the multiplayer control surface.
 - `runtime/js/sim-core.js` owns the deterministic match simulation. It is still the source of truth for world state, tick stepping, controller input queuing, rendering, replay serialization, and state hashing, but it now also supports pluggable live input so the online client can drive prediction and reconciliation.
 - `runtime/js/shared/engine.js` wraps the deterministic runtime with authoritative-match helpers and serializable state snapshots for the backend.
-- `runtime/js/shared/protocol.js` and `runtime/js/shared/multiplayer.js` define the canonical queues, regions, rulesets, and message validation shared by browser and backend.
-- `runtime/js/online.js` manages guest sessions, control-plane and match-worker sockets, queueing, lobby chat, match quick-chat, and snapshot application.
+- `runtime/js/shared/protocol.js` and `runtime/js/shared/multiplayer.js` define the quick-play ruleset and message validation shared by browser and backend.
+- `runtime/js/online.js` manages guest sessions, control-plane and match-worker sockets, the quick-play queue, and authoritative snapshot reconciliation.
 - `runtime/js/controllers.js` turns either player input, scripted heuristics, or a trained neural network into the same `{ moveAxis, fire }` action shape.
 
-## Multiplayer foundation
+## Online quick play
 
-Wave Pong now includes the first production-minded multiplayer foundation while keeping the shipped client browser-only and static:
+Online play is a single quick-play queue: enter a name, click **Find Match**, get paired with the next player who queues. No accounts, no ranked ladder, no chat.
 
-- `backend/control-plane/` exposes guest auth, local-dev account verification, queue joins/leaves, seasons, leaderboards, reconnect tickets, and lobby chat over HTTP plus a minimal WebSocket control channel.
-- `backend/match-worker/` runs authoritative 120 Hz matches using the same deterministic simulation core as the browser and offline bot tooling.
-- `backend/dev-server.js` starts both services locally. With the defaults, the control-plane listens on `http://127.0.0.1:8787` and the match-worker listens on `http://127.0.0.1:8788`.
-- The browser client can opt into online mode by opening `runtime/index.html` with query params like `?api=http://127.0.0.1:8787&controlWs=ws://127.0.0.1:8787/ws/control`.
-- Ranked, standard, and chaos playlists now live in `runtime/js/config.js` under `multiplayer`, so the same canonical ruleset data can be consumed by browser, backend, and future tooling.
+- `backend/control-plane/` exposes guest auth, quick-play queue join/leave, and reconnect tickets over HTTP plus a WebSocket control channel. It also serves the static browser client, so players can just open the server URL.
+- `backend/match-worker/` runs authoritative 120 Hz matches using the same deterministic simulation core as the browser and offline bot tooling, broadcasting full state snapshots at 24 Hz that clients restore and replay their pending inputs on top of.
+- `backend/server.js` starts both listeners in one process. Defaults: control-plane on `:8787`, match-worker on `:8788`.
+- The quick-play ruleset lives in `runtime/js/config.js` under `multiplayer.playlists.quick_play` (score to 7, powerups on — same feel as the offline vanilla game).
 
-Local backend flow:
-
-```bash
-cd backend
-npm.cmd run dev
-```
-
-Then open the static client with the query params above from `runtime/index.html`.
-
-## Local online infrastructure
-
-The online stack can now be developed fully locally with the same config contract that cloud deploys use:
-
-1. Copy `.env.example` to `.env` and adjust values if needed.
-2. Start local Postgres and Redis:
-
-```bash
-docker compose up -d
-```
-
-3. Generate browser runtime config from the same `.env` values:
-
-```bash
-cd tools
-npm.cmd run runtime:env
-```
-
-4. Start the local backend:
+Run it locally:
 
 ```bash
 cd backend
-npm.cmd run dev
+npm.cmd start
 ```
 
-5. Serve or open `runtime/index.html`. The browser client will pick up `runtime/js/runtime-env.js` automatically, and query params remain available for temporary overrides.
+Then open `http://127.0.0.1:8787/` in two browsers and click **Find Match** in each.
 
-The generated `runtime/js/runtime-env.js` keeps the client browser-only and static. The backend can move between local Node, containers, and cloud hosting without changing the runtime code.
+### Hosting (current deployment: VM 101, 10.0.0.12)
 
-## Terraform deploy contract
+The service runs on the `cf-proxmox-tunnel` VM as a systemd unit:
 
-`infra/terraform/` is a provider-neutral Terraform scaffold for the multiplayer stack. It does not create Fly, Render, or Railway resources directly yet; instead it generates the artifacts those platforms need:
+- App dir: `/opt/wave-pong` (contains `backend/`, `shared/`, `runtime/`, `version.json`, `.env`)
+- Unit: `/etc/systemd/system/wave-pong.service` (`sudo systemctl restart wave-pong`)
+- Config: `/opt/wave-pong/.env` sets the public URLs (`http://10.0.0.12:8787`, worker `ws://10.0.0.12:8788/ws/match`) and the token secret.
+- Players open `http://10.0.0.12:8787/` — the control-plane serves the client and generates `/js/runtime-env.js` from the `.env` so the browser connects back to the right host.
 
-- a backend env file with canonical service URLs and secrets
-- a static `runtime-env.js` file for the browser client
-- a JSON deployment contract for CI or ops tooling
-
-Typical usage:
+To redeploy after changing code:
 
 ```bash
-terraform -chdir=infra/terraform init
-terraform -chdir=infra/terraform plan -var-file=environments/dev.tfvars
-terraform -chdir=infra/terraform apply -var-file=environments/dev.tfvars
+tar czf - backend shared runtime version.json | ssh codex@10.0.0.12 "tar xzf - -C /opt/wave-pong && sudo systemctl restart wave-pong"
 ```
 
-Generated files are written to `infra/terraform/generated/<environment>/`.
+End-to-end verification (matchmaking, movement + fire transmission, authoritative scoring) against any backend:
+
+```bash
+node backend/tests/online-e2e.js                      # spawns a local backend
+node backend/tests/online-e2e.js http://10.0.0.12:8787  # tests the deployed one
+```
 
 ### Deterministic simulation
 

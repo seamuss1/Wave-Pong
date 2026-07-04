@@ -403,13 +403,19 @@
         w: false,
         s: false,
         up: false,
-        down: false,
-        leftFireQueued: false,
-        rightFireQueued: false
+        down: false
       };
+      // Human fire released this frame, waiting to enter the queued-action path.
+      // Values: null (no fire) or { tier: 'blue' | 'pink' | null } (null = best affordable).
+      const pendingHumanFire = { left: null, right: null };
+      // When set ('left' | 'right'), all local human input drives that side. Used by
+      // online play, where the local player may be assigned either paddle.
+      let localHumanSide = null;
+      // True while update() is consuming the current tick; see queueInput.
+      let insideUpdate = false;
       const controllerActionState = {
-        left: { moveAxis: 0, fire: false, lastTick: -1 },
-        right: { moveAxis: 0, fire: false, lastTick: -1 }
+        left: { moveAxis: 0, fire: false, fireTier: null, lastTick: -1 },
+        right: { moveAxis: 0, fire: false, fireTier: null, lastTick: -1 }
       };
 
       // Presentation-only state. Never read by the simulation, never hashed, never replayed.
@@ -451,24 +457,42 @@
         return 'blue';
       }
 
+      function resolveHumanSide(side) {
+        return localHumanSide || side;
+      }
+
       function beginFireHold(side) {
         if (!humanFireAllowed()) return;
         if (state.demoMode) return;
-        fireHold[side] = nowMs();
+        fireHold[resolveHumanSide(side)] = nowMs();
       }
 
       function releaseFireHold(side) {
-        const startedAt = fireHold[side];
-        fireHold[side] = null;
+        const targetSide = resolveHumanSide(side);
+        const startedAt = fireHold[targetSide];
+        fireHold[targetSide] = null;
         if (startedAt == null) return;
         if (!humanFireAllowed() || state.demoMode) return;
         const heldSeconds = Math.max(0, (nowMs() - startedAt) / 1000);
-        firePulse(getPaddleBySide(side), tierForHoldDuration(heldSeconds));
+        queueHumanFire(targetSide, tierForHoldDuration(heldSeconds));
+      }
+
+      // All human fire flows through the queued-action path so it is deterministic,
+      // recorded in replays, and transmitted during online matches. Falls back to a
+      // direct pulse for sides not driven by the human-input queue.
+      function queueHumanFire(side, tier) {
+        if (shouldQueueHumanInput(side)) {
+          pendingHumanFire[side] = { tier: tier || null };
+          return;
+        }
+        firePulse(getPaddleBySide(side), tier);
       }
 
       function clearFireHolds() {
         fireHold.left = null;
         fireHold.right = null;
+        pendingHumanFire.left = null;
+        pendingHumanFire.right = null;
         gamepadControl.left.fireDownMs = null;
         gamepadControl.right.fireDownMs = null;
       }
@@ -1545,6 +1569,7 @@ function startMatch({
         state.modeLabelOverride = modeLabel || '';
         state.opponentLabelOverride = opponentLabel || '';
         liveInputEnabled = nextLiveInputEnabled !== false;
+        localHumanSide = null;
         state.running = true;
         state.paused = false;
         state.menuOpen = false;
@@ -1589,6 +1614,7 @@ function startMatch({
         state.modeLabelOverride = '';
         state.opponentLabelOverride = '';
         liveInputEnabled = true;
+        localHumanSide = null;
         if (ui.menu) ui.menu.classList.remove('hidden');
         if (ui.pause) ui.pause.classList.add('hidden');
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
@@ -1692,39 +1718,52 @@ function updateUI() {
   renderStatusIcons();
 }
 
-      function consumeQueuedHumanFire(side) {
-        if (side === 'left') {
-          const fire = !!input.leftFireQueued;
-          input.leftFireQueued = false;
-          return fire;
-        }
-        const fire = !!input.rightFireQueued;
-        input.rightFireQueued = false;
-        return fire;
+      function consumePendingHumanFire(side) {
+        const pending = pendingHumanFire[side];
+        pendingHumanFire[side] = null;
+        return pending;
+      }
+
+      function applyPointerSteer(side, up, down) {
+        // Mouse / touch-drag steering falls through to the paddle only when no
+        // discrete up/down input is active, matching the offline direct-input feel.
+        if (up || down || pointerControl.targetY == null) return { up, down };
+        const paddle = getPaddleBySide(side);
+        const center = paddle.y + paddle.h / 2;
+        const pointerDeadband = 14;
+        if (pointerControl.targetY < center - pointerDeadband) return { up: true, down };
+        if (pointerControl.targetY > center + pointerDeadband) return { up, down: true };
+        return { up, down };
       }
 
       function buildKeyboardAction(side) {
-        if (side === 'left') {
-          let up = input.w || (state.mode !== 'pvp' && input.up) || gamepadControl.left.up;
-          let down = input.s || (state.mode !== 'pvp' && input.down) || gamepadControl.left.down;
-          // Mouse / touch-drag steering falls through to the paddle only when no
-          // discrete up/down input is active, matching the offline direct-input feel.
-          if (!up && !down && pointerControl.targetY != null) {
-            const center = world.paddles.left.y + world.paddles.left.h / 2;
-            const pointerDeadband = 14;
-            if (pointerControl.targetY < center - pointerDeadband) up = true;
-            else if (pointerControl.targetY > center + pointerDeadband) down = true;
-          }
-          return {
-            moveAxis: up === down ? 0 : (up ? -1 : 1),
-            fire: consumeQueuedHumanFire('left')
-          };
+        let up = false;
+        let down = false;
+        let steer = true;
+        if (localHumanSide) {
+          // Online: one local human drives their assigned side with the full P1
+          // control set (both key groups, both gamepad slots, pointer steering).
+          if (side !== localHumanSide) return { moveAxis: 0, fire: false, fireTier: null };
+          up = input.w || input.up || gamepadControl.left.up || gamepadControl.right.up;
+          down = input.s || input.down || gamepadControl.left.down || gamepadControl.right.down;
+        } else if (side === 'left') {
+          up = input.w || (state.mode !== 'pvp' && input.up) || gamepadControl.left.up;
+          down = input.s || (state.mode !== 'pvp' && input.down) || gamepadControl.left.down;
+        } else {
+          up = input.up || gamepadControl.right.up;
+          down = input.down || gamepadControl.right.down;
+          steer = false;
         }
-        const up = input.up || gamepadControl.right.up;
-        const down = input.down || gamepadControl.right.down;
+        if (steer) {
+          const steered = applyPointerSteer(side, up, down);
+          up = steered.up;
+          down = steered.down;
+        }
+        const pendingFire = consumePendingHumanFire(side);
         return {
           moveAxis: up === down ? 0 : (up ? -1 : 1),
-          fire: consumeQueuedHumanFire('right')
+          fire: !!pendingFire,
+          fireTier: pendingFire ? pendingFire.tier : null
         };
       }
 
@@ -2059,15 +2098,23 @@ function updateAI(paddle, dt, isLeft) {
         const moveAxis = action && Number.isFinite(action.moveAxis)
           ? Math.max(-1, Math.min(1, Math.round(action.moveAxis)))
           : 0;
+        const fire = !!(action && action.fire);
         return {
           moveAxis,
-          fire: !!(action && action.fire)
+          fire,
+          // 'blue' | 'pink' cap the fired wave tier; null fires the best affordable.
+          fireTier: fire && action && (action.fireTier === 'blue' || action.fireTier === 'pink') ? action.fireTier : null
         };
       }
 
       function queueInput(side, tick, action) {
         const normalized = normalizeAction(action);
-        const targetTick = Math.max(state.tick, Math.floor(Number.isFinite(tick) ? tick : state.tick));
+        // While update() runs, actions for the in-progress tick are still consumable.
+        // Between steps, state.tick has already been consumed, so the earliest tick
+        // an action can land on is the next one — clamping to state.tick there would
+        // silently drop it (fatal for single-frame impulses like fire).
+        const earliestTick = insideUpdate ? state.tick : state.tick + 1;
+        const targetTick = Math.max(earliestTick, Math.floor(Number.isFinite(tick) ? tick : earliestTick));
         inputQueue[side].set(targetTick, normalized);
         replay.actions.push({ tick: targetTick, side, action: normalized });
       }
@@ -2078,9 +2125,11 @@ function updateAI(paddle, dt, isLeft) {
           inputQueue[side].delete(state.tick);
           controllerActionState[side].moveAxis = queued.moveAxis;
           controllerActionState[side].fire = queued.fire;
+          controllerActionState[side].fireTier = queued.fireTier || null;
           controllerActionState[side].lastTick = state.tick;
         } else {
           controllerActionState[side].fire = false;
+          controllerActionState[side].fireTier = null;
         }
         return controllerActionState[side];
       }
@@ -2896,7 +2945,7 @@ function update(dt) {
 
         if (leftQueued) {
           updatePaddle(world.paddles.left, leftQueued.moveAxis < 0, leftQueued.moveAxis > 0, dt);
-          if (leftQueued.fire) firePulse(world.paddles.left);
+          if (leftQueued.fire) firePulse(world.paddles.left, leftQueued.fireTier || null);
         } else if (state.demoMode) {
           updateAI(world.paddles.left, dt, true);
         } else {
@@ -2905,7 +2954,7 @@ function update(dt) {
 
         if (rightQueued) {
           updatePaddle(world.paddles.right, rightQueued.moveAxis < 0, rightQueued.moveAxis > 0, dt);
-          if (rightQueued.fire) firePulse(world.paddles.right);
+          if (rightQueued.fire) firePulse(world.paddles.right, rightQueued.fireTier || null);
         } else if (state.demoMode) {
           updateAI(world.paddles.right, dt, false);
         } else if (state.mode === 'pvp') {
@@ -3906,7 +3955,12 @@ function renderOverlayFX() {
         for (let i = 0; i < safeCount; i += 1) {
           state.tick += 1;
           state.simulationTimeMs = state.tick * fixedDt * 1000;
-          update(fixedDt);
+          insideUpdate = true;
+          try {
+            update(fixedDt);
+          } finally {
+            insideUpdate = false;
+          }
           if (state.tick === 1 || state.tick % fixedTickRate === 0) {
             replay.stateHashes.push({ tick: state.tick, hash: hashSimulationState() });
           }
@@ -3946,7 +4000,7 @@ function renderOverlayFX() {
             const heldSeconds = (nowMs() - control.fireDownMs) / 1000;
             control.fireDownMs = null;
             if (humanFireAllowed() && !state.demoMode) {
-              firePulse(getPaddleBySide(side), tierForHoldDuration(heldSeconds));
+              queueHumanFire(resolveHumanSide(side), tierForHoldDuration(heldSeconds));
             }
           }
 
@@ -3969,10 +4023,10 @@ function renderOverlayFX() {
         if (!hintsPending) return;
         const charge = world.paddles.left.pulseCharge || 0;
         if (fx.hintStage === 0 && !state.countdownActive) {
-          showMessage('Tap fire for BLUE. Hold for PINK, hold longer for GOLD.', 3.6);
+          updateStatus('Tap fire for BLUE. Hold for PINK, hold longer for GOLD.');
           fx.hintStage = 1;
         } else if (fx.hintStage === 1 && charge >= FULL_CHARGE_THRESHOLD) {
-          showMessage('GOLD ready: hold fire and release. A quick tap still fires cheap blue.', 3.2);
+          updateStatus('GOLD ready: hold fire and release. A quick tap still fires cheap blue.');
           fx.hintStage = 2;
           hintsPending = false;
           safeStorageSetItem('gameWavePongHintsSeenV1', '1');
@@ -4105,6 +4159,10 @@ function renderOverlayFX() {
         liveInputEnabled = !!nextValue;
       }
 
+      function setLocalHumanSide(side) {
+        localHumanSide = side === 'left' || side === 'right' ? side : null;
+      }
+
       function flushEvents() {
         return eventQueue.splice(0, eventQueue.length);
       }
@@ -4227,6 +4285,9 @@ function renderOverlayFX() {
 
         // Auto-pause when the tab is hidden instead of bursting catch-up ticks on return.
         listen(documentRef, 'visibilitychange', () => {
+          // Online matches keep running on the server, so never auto-pause them
+          // (localHumanSide is only set during online play).
+          if (localHumanSide) return;
           if (documentRef.hidden && state.running && !state.paused && !state.gameOver && !state.menuOpen) {
             pauseGame(true);
           }
@@ -4322,6 +4383,7 @@ function renderOverlayFX() {
         setControllers,
         setInputProvider,
         setLiveInputEnabled,
+        setLocalHumanSide,
         setMuted,
         isPauseButtonPointerEvent,
         mountBrowser,

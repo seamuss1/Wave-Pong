@@ -3,7 +3,6 @@ const assert = require('node:assert/strict');
 const crypto = require('crypto');
 
 const protocol = require('../../shared/protocol/index.js');
-const multiplayer = require('../../shared/multiplayer/config.js');
 const engineApi = require('../../shared/sim/engine.js');
 const { AuthoritativeMatch } = require('../match-worker/authoritative-match.js');
 const { createMemoryStore } = require('../control-plane/store.js');
@@ -32,14 +31,15 @@ function createExpiredToken(secret, playerId) {
   return `${body}.${signature}`;
 }
 
-test('protocol validates and normalizes input batches', () => {
+test('protocol validates and normalizes input batches with fire tiers', () => {
   const result = protocol.validateInputBatch({
     matchId: 'match_1',
     seq: 7.8,
     startTick: 12.2,
     frames: [
-      { moveAxis: 2, fire: 1 },
-      { moveAxis: -2, fire: 0 }
+      { moveAxis: 2, fire: 1, fireTier: 'pink' },
+      { moveAxis: -2, fire: 0, fireTier: 'pink' },
+      { moveAxis: 0, fire: true, fireTier: 'nonsense' }
     ]
   });
 
@@ -49,15 +49,16 @@ test('protocol validates and normalizes input batches', () => {
     seq: 7,
     startTick: 12,
     frames: [
-      { moveAxis: 1, fire: true },
-      { moveAxis: -1, fire: false }
+      { moveAxis: 1, fire: true, fireTier: 'pink' },
+      { moveAxis: -1, fire: false, fireTier: null },
+      { moveAxis: 0, fire: true, fireTier: null }
     ]
   });
 });
 
 test('authoritative engine builds a serializable snapshot blob', () => {
   const engine = engineApi.createAuthoritativeMatchEngine({
-    playlistId: 'unranked_standard',
+    playlistId: 'quick_play',
     matchId: 'match_engine',
     seed: 42
   });
@@ -78,11 +79,32 @@ test('authoritative engine builds a serializable snapshot blob', () => {
   assert.equal(restored.state.rightScore, 0);
 });
 
+test('queued fire actions produce waves in the authoritative engine', () => {
+  const engine = engineApi.createAuthoritativeMatchEngine({
+    playlistId: 'quick_play',
+    matchId: 'match_fire',
+    seed: 7
+  });
+  engine.start({ skipCountdown: true, leftName: 'Alpha', rightName: 'Bravo' });
+
+  const startTick = engine.runtime.state.tick;
+  engine.queueFrames('left', {
+    matchId: 'match_fire',
+    seq: 1,
+    startTick,
+    frames: [{ moveAxis: 0, fire: true, fireTier: 'blue' }]
+  });
+  engine.step(1);
+
+  const snapshot = engine.snapshot(false);
+  assert.equal(snapshot.waves.length, 1);
+  assert.equal(snapshot.waves[0].side, 'left');
+});
+
 test('authoritative match accepts players and emits a start payload', () => {
   const match = new AuthoritativeMatch({
     matchId: 'match_live',
-    playlistId: 'unranked_standard',
-    region: multiplayer.getDefaultRegion().id,
+    playlistId: 'quick_play',
     players: [
       { id: 'left-player', displayName: 'Lefty', side: 'left' },
       { id: 'right-player', displayName: 'Righty', side: 'right' }
@@ -122,20 +144,16 @@ test('authoritative match accepts players and emits a start payload', () => {
   }
 });
 
-test('queue service broadcasts old bucket presence and returns the public worker url to browsers', () => {
-  const store = createMemoryStore(multiplayer);
-  const playerA = { id: 'player-a', displayName: 'Alpha', verified: true };
-  const playerB = { id: 'player-b', displayName: 'Bravo', verified: true };
-  const playerC = { id: 'player-c', displayName: 'Charlie', verified: true };
+test('queue service matches pairs and returns the public worker url to browsers', () => {
+  const store = createMemoryStore();
+  const playerA = { id: 'player-a', displayName: 'Alpha' };
+  const playerB = { id: 'player-b', displayName: 'Bravo' };
   store.players.set(playerA.id, playerA);
   store.players.set(playerB.id, playerB);
-  store.players.set(playerC.id, playerC);
 
-  const presenceUpdates = [];
   const matchFound = [];
   const queueService = createQueueService({
     store,
-    multiplayer,
     workerManager: {
       createMatch(payload) {
         return {
@@ -151,32 +169,28 @@ test('queue service broadcasts old bucket presence and returns the public worker
     broadcastToPlayer(playerId, type, payload) {
       matchFound.push({ playerId, type, payload });
     },
-    broadcastQueuePresence(bucketKey, queueSize) {
-      presenceUpdates.push({ bucketKey, queueSize });
-    },
-    publicWorkerUrl: 'wss://worker.wave-pong.example/ws/match'
+    publicWorkerUrl: 'ws://10.0.0.12:8788/ws/match'
   });
 
-  queueService.joinQueue(playerA, { playlistId: 'unranked_standard', region: 'na' });
-  queueService.joinQueue(playerB, { playlistId: 'unranked_chaos', region: 'eu' });
-  presenceUpdates.length = 0;
+  const soloState = queueService.joinQueue(playerA);
+  assert.equal(soloState.queued, true);
+  assert.equal(soloState.queueSize, 1);
 
-  queueService.joinQueue(playerA, { playlistId: 'unranked_standard', region: 'eu' });
-  assert.deepEqual(presenceUpdates.slice(0, 3), [
-    { bucketKey: 'unranked_standard:na', queueSize: 0 },
-    { bucketKey: 'unranked_standard:eu', queueSize: 1 },
-    { bucketKey: 'unranked_standard:eu', queueSize: 1 }
-  ]);
+  // Re-joining does not duplicate the entry.
+  const rejoinState = queueService.joinQueue(playerA);
+  assert.equal(rejoinState.queueSize, 1);
 
-  presenceUpdates.length = 0;
-  queueService.joinQueue(playerC, { playlistId: 'unranked_standard', region: 'eu' });
-
+  queueService.joinQueue(playerB);
+  assert.equal(store.queue.length, 0);
   assert.equal(matchFound.length, 2);
-  assert.equal(matchFound[0].payload.workerUrl, 'wss://worker.wave-pong.example/ws/match');
-  assert.equal(matchFound[1].payload.workerUrl, 'wss://worker.wave-pong.example/ws/match');
+  assert.equal(matchFound[0].type, 'match.found');
+  assert.equal(matchFound[0].payload.workerUrl, 'ws://10.0.0.12:8788/ws/match');
+  assert.equal(matchFound[0].payload.side, 'left');
+  assert.equal(matchFound[1].payload.side, 'right');
+  assert.equal(matchFound[0].payload.opponent.displayName, 'Bravo');
 
-  queueService.leaveQueue(playerB, {});
-  assert.deepEqual(presenceUpdates.at(-1), { bucketKey: 'unranked_chaos:eu', queueSize: 0 });
+  const leaveState = queueService.leaveQueue(playerA);
+  assert.equal(leaveState.queued, false);
 });
 
 test('online service refreshes expired stored sessions before connecting control socket', async () => {
@@ -227,7 +241,7 @@ test('online service refreshes expired stored sessions before connecting control
         this.emit('message', {
           type: 'hello.ok',
           payload: {
-            player: { id: 'fresh-player', displayName: 'Fresh', verified: false }
+            player: { id: 'fresh-player', displayName: 'Fresh' }
           }
         });
       }
@@ -262,7 +276,7 @@ test('online service refreshes expired stored sessions before connecting control
         json: async () => ({
           accessToken: freshToken,
           refreshToken: 'refresh-token',
-          player: { id: 'fresh-player', displayName: 'Fresh', verified: false }
+          player: { id: 'fresh-player', displayName: 'Fresh' }
         })
       });
     },
@@ -326,7 +340,7 @@ test('online service attempts to reconnect a dropped match websocket', async () 
         this.emit('message', {
           type: 'hello.ok',
           payload: {
-            player: { id: 'player-1', displayName: 'Player 1', verified: false }
+            player: { id: 'player-1', displayName: 'Player 1' }
           }
         });
       } else if ((message.type === 'hello' || message.type === 'resume') && message.payload.ticket) {
@@ -348,7 +362,7 @@ test('online service attempts to reconnect a dropped match websocket', async () 
   global.__WAVE_PONG_ENV__ = {
     apiBaseUrl: 'http://127.0.0.1:8787',
     controlWsUrl: 'ws://127.0.0.1:8787/ws/control',
-    workerWsUrl: 'wss://worker.wave-pong.example/ws/match',
+    workerWsUrl: 'ws://10.0.0.12:8788/ws/match',
     enabled: true
   };
   delete require.cache[require.resolve('../../runtime/js/env.js')];
@@ -360,6 +374,7 @@ test('online service attempts to reconnect a dropped match websocket', async () 
       startMatch() {},
       setInputProvider() {},
       setLiveInputEnabled() {},
+      setLocalHumanSide() {},
       restoreSimulation() {},
       queueInput() {},
       stepSimulation() {},
@@ -373,7 +388,7 @@ test('online service attempts to reconnect a dropped match websocket', async () 
           json: async () => ({
             accessToken: freshToken,
             refreshToken: 'refresh-token',
-            player: { id: 'player-1', displayName: 'Player 1', verified: false }
+            player: { id: 'player-1', displayName: 'Player 1' }
           })
         });
       }
@@ -383,7 +398,7 @@ test('online service attempts to reconnect a dropped match websocket', async () 
           ok: true,
           json: async () => ({
             matchId: 'match-1',
-            workerUrl: 'wss://worker.wave-pong.example/ws/match',
+            workerUrl: 'ws://10.0.0.12:8788/ws/match',
             ticket: 'resume-ticket'
           })
         });
@@ -409,12 +424,11 @@ test('online service attempts to reconnect a dropped match websocket', async () 
     type: 'match.found',
     payload: {
       matchId: 'match-1',
-      playlistId: 'unranked_standard',
-      region: 'na',
-      workerUrl: 'wss://worker.wave-pong.example/ws/match',
+      playlistId: 'quick_play',
+      workerUrl: 'ws://10.0.0.12:8788/ws/match',
       side: 'left',
       ticket: 'initial-ticket',
-      opponent: { id: 'player-2', displayName: 'Player 2', verified: false }
+      opponent: { id: 'player-2', displayName: 'Player 2' }
     }
   });
 

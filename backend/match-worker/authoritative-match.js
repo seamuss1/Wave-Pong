@@ -6,20 +6,16 @@ class AuthoritativeMatch {
   constructor(options) {
     this.id = options.matchId;
     this.playlistId = options.playlistId;
-    this.region = options.region;
     this.players = {
       left: options.players.find((player) => player.side === 'left'),
       right: options.players.find((player) => player.side === 'right')
     };
-    this.playlist = multiplayer.getPlaylist(this.playlistId);
     this.connections = new Map();
     this.accepted = new Set();
     this.disconnectedAt = new Map();
-    this.matchChatHistory = [];
     this.engine = engineApi.createAuthoritativeMatchEngine({
       matchId: this.id,
       playlistId: this.playlistId,
-      region: this.region,
       seed: options.seed
     });
     this.started = false;
@@ -50,8 +46,7 @@ class AuthoritativeMatch {
         matchId: this.id,
         playerId,
         side: player.side,
-        playlistId: this.playlistId,
-        region: this.region
+        playlistId: this.playlistId
       }
     });
     if (this.started && this.currentSnapshot) {
@@ -65,7 +60,6 @@ class AuthoritativeMatch {
         payload: {
           matchId: this.id,
           playlistId: this.playlistId,
-          region: this.region,
           players: {
             left: this.players.left && { playerId: this.players.left.id, displayName: this.players.left.displayName },
             right: this.players.right && { playerId: this.players.right.id, displayName: this.players.right.displayName }
@@ -88,7 +82,6 @@ class AuthoritativeMatch {
       this.broadcast('match.start', {
         matchId: this.id,
         playlistId: this.playlistId,
-        region: this.region,
         snapshot,
         tickRate: (multiplayer.netcode || {}).serverTickRate || 120
       });
@@ -104,27 +97,6 @@ class AuthoritativeMatch {
     });
     if (!validation.ok) throw new Error(validation.error);
     this.engine.queueFrames(player.side, validation.value);
-  }
-
-  receiveChat(playerId, payload) {
-    const player = this.getPlayerById(playerId);
-    if (!player) throw new Error('Unknown match player.');
-    const validation = protocol.validateChatPayload(payload, {
-      maxLength: ((multiplayer.moderation || {}).matchMessageMaxLength) || 140
-    });
-    if (!validation.ok) throw new Error(validation.error);
-    const entry = {
-      matchId: this.id,
-      playerId,
-      displayName: player.displayName,
-      createdAt: new Date().toISOString(),
-      ...validation.value
-    };
-    if (this.playlist && this.playlist.matchChatMode === 'quick' && entry.kind !== 'quick') {
-      throw new Error('This match only allows quick chat.');
-    }
-    this.matchChatHistory.push(entry);
-    this.broadcast('chat.message', entry);
   }
 
   handleDisconnect(playerId) {
@@ -148,9 +120,11 @@ class AuthoritativeMatch {
   step() {
     if (!this.started || this.finished) return;
     this.engine.step(1);
-    const snapshot = this.engine.snapshot(false);
-    this.currentSnapshot = snapshot;
-    if (snapshot.serverTick % this.snapshotIntervalTicks === 0) {
+    if (this.engine.runtime.state.tick % this.snapshotIntervalTicks === 0) {
+      // Full snapshots (with state blob) are what clients restore from; thin
+      // snapshots would be ignored by the client reconciliation path.
+      const snapshot = this.engine.snapshot(true);
+      this.currentSnapshot = snapshot;
       this.broadcast('match.snapshot', snapshot);
     }
     const events = this.engine.flushEvents();
@@ -169,8 +143,7 @@ class AuthoritativeMatch {
 
   applyDisconnectRules() {
     const reconnect = multiplayer.reconnect || {};
-    const rated = !!(this.playlist && this.playlist.rated);
-    const timeoutMs = ((rated ? reconnect.rankedForfeitSeconds : reconnect.graceSeconds) || 15) * 1000;
+    const timeoutMs = (reconnect.graceSeconds || 30) * 1000;
     for (const [playerId, disconnectedAt] of this.disconnectedAt.entries()) {
       if (Date.now() - disconnectedAt < timeoutMs) continue;
       const player = this.getPlayerById(playerId);
@@ -190,7 +163,6 @@ class AuthoritativeMatch {
     const summary = {
       matchId: this.id,
       playlistId: this.playlistId,
-      region: this.region,
       winnerSide: result.winnerSide || null,
       reason: result.reason || 'completed',
       leftScore: result.leftScore,

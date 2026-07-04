@@ -62,7 +62,6 @@
     const storage = options.storage || (windowRef && windowRef.localStorage) || null;
     const sessionKey = 'wavePongOnlineSessionV1';
     const emitter = createEmitter();
-    const maxBatchFrames = ((multiplayer.netcode || {}).maxInputBatchFrames) || 12;
     const reconnectConfig = (multiplayer && multiplayer.reconnect) || {};
     const state = {
       enabled: !!(env && env.enabled && fetchImpl && WebSocketImpl),
@@ -71,16 +70,14 @@
       matchSocket: null,
       controlConnected: false,
       queue: null,
-      statusText: env && env.enabled ? 'Online ready.' : 'Online disabled. Configure runtime/js/runtime-env.js or use api/controlWs query params to enable it.',
+      statusText: env && env.enabled ? 'Ready.' : 'Online play is not configured for this build.',
       currentMatch: null,
       localSide: null,
       remoteSide: null,
-      remotePredictedAction: { moveAxis: 0, fire: false },
+      remotePredictedAction: { moveAxis: 0, fire: false, fireTier: null },
       pendingInputs: new Map(),
       lastQueuedTick: -1,
       nextSeq: 1,
-      lobbyMessages: [],
-      matchMessages: [],
       pendingControlConnect: null,
       matchReconnectTimer: null,
       matchReconnectAttempts: 0,
@@ -172,9 +169,7 @@
         controlConnected: state.controlConnected,
         queue: state.queue,
         statusText: state.statusText,
-        currentMatch: state.currentMatch,
-        lobbyMessages: state.lobbyMessages.slice(-20),
-        matchMessages: state.matchMessages.slice(-20)
+        currentMatch: state.currentMatch
       };
     }
 
@@ -207,7 +202,7 @@
 
     function buildRuntimeInputProvider() {
       return function onRuntimeInput(context) {
-        const decoratedDefaultAction = context.side === 'left'
+        const decoratedDefaultAction = context.side === state.localSide
           ? decorateLocalAction(context.defaultAction, context)
           : context.defaultAction;
         if (!state.currentMatch) return decoratedDefaultAction;
@@ -232,7 +227,7 @@
     }
 
     function ensureRuntimeForMatch(matchInfo, startPayload) {
-      const playlist = multiplayer.getPlaylist(matchInfo.playlistId);
+      const playlist = multiplayer.getPlaylist(matchInfo.playlistId) || multiplayer.getDefaultPlaylist();
       const playlistOptions = multiplayer.buildMatchRuntimeOptions(playlist, {
         skipCountdown: true,
         leftName: matchInfo.leftName,
@@ -243,6 +238,9 @@
       runtime.startMatch(playlistOptions);
       runtime.setInputProvider(buildRuntimeInputProvider());
       runtime.setLiveInputEnabled(true);
+      if (typeof runtime.setLocalHumanSide === 'function') {
+        runtime.setLocalHumanSide(state.localSide);
+      }
       if (startPayload && startPayload.snapshot) {
         applyAuthoritativeSnapshot(startPayload.snapshot);
       }
@@ -261,7 +259,6 @@
       connectMatchSocket({
         matchId: response.matchId,
         playlistId: state.currentMatch.playlistId,
-        region: state.currentMatch.region,
         opponent: state.currentMatch.opponent,
         side: state.localSide,
         ticket: response.ticket,
@@ -274,7 +271,7 @@
     function scheduleMatchReconnect() {
       clearMatchReconnectTimer();
       if (!state.currentMatch || !state.session || !state.session.accessToken) return;
-      const reconnectWindowSeconds = reconnectConfig.graceSeconds || reconnectConfig.rankedForfeitSeconds || 15;
+      const reconnectWindowSeconds = reconnectConfig.graceSeconds || 30;
       const maxAttempts = Math.max(1, Math.ceil((reconnectWindowSeconds * 1000) / 2000));
       if (state.matchReconnectAttempts >= maxAttempts) {
         setStatus('Match connection lost. Reconnect window expired.');
@@ -301,15 +298,13 @@
         state.currentMatch = {
           matchId: foundPayload.matchId,
           playlistId: foundPayload.playlistId,
-          region: foundPayload.region,
           opponent: foundPayload.opponent
         };
         state.localSide = foundPayload.side;
         state.remoteSide = foundPayload.side === 'left' ? 'right' : 'left';
-        state.remotePredictedAction = { moveAxis: 0, fire: false };
+        state.remotePredictedAction = { moveAxis: 0, fire: false, fireTier: null };
         state.pendingInputs.clear();
         state.lastQueuedTick = -1;
-        state.matchMessages = [];
         state.matchReconnectAttempts = 0;
       }
       clearMatchReconnectTimer();
@@ -319,7 +314,7 @@
       const socket = new WebSocketImpl(foundPayload.workerUrl || env.workerWsUrl);
       state.intentionalMatchSocketClose = false;
       state.matchSocket = socket;
-      setStatus(connectOptions.resume ? `Reconnecting to ${foundPayload.playlistId} match...` : `Connecting to ${foundPayload.playlistId} match...`);
+      setStatus(connectOptions.resume ? 'Reconnecting to match...' : 'Opponent found. Connecting...');
 
       socket.addEventListener('open', () => {
         socket.send(protocol.encodeMessage(connectOptions.resume ? 'resume' : 'hello', {
@@ -334,28 +329,24 @@
             matchId: foundPayload.matchId
           }));
         } else if (message.type === 'match.start') {
-          const leftName = foundPayload.side === 'left' ? (state.session && state.session.player && state.session.player.displayName) : foundPayload.opponent.displayName;
-          const rightName = foundPayload.side === 'right' ? (state.session && state.session.player && state.session.player.displayName) : foundPayload.opponent.displayName;
+          const localName = state.session && state.session.player ? state.session.player.displayName : 'You';
+          const opponentName = foundPayload.opponent ? foundPayload.opponent.displayName : 'Opponent';
           ensureRuntimeForMatch({
             matchId: foundPayload.matchId,
             playlistId: foundPayload.playlistId,
-            region: foundPayload.region,
-            opponentLabel: foundPayload.opponent.displayName,
-            leftName,
-            rightName
+            opponentLabel: opponentName,
+            leftName: foundPayload.side === 'left' ? localName : opponentName,
+            rightName: foundPayload.side === 'right' ? localName : opponentName
           }, message.payload);
-          setStatus(`Live in ${foundPayload.playlistId}.`);
+          setStatus(`Playing vs ${opponentName}.`);
         } else if (message.type === 'match.snapshot' || message.type === 'match.correction') {
           applyAuthoritativeSnapshot(message.payload);
         } else if (message.type === 'match.result') {
-          setStatus(`Match complete: ${message.payload.reason}.`);
+          setStatus(message.payload.reason === 'completed' ? 'Match complete.' : `Match over: ${message.payload.reason}.`);
           emitter.emit('match.result', message.payload);
           clearMatchReconnectTimer();
           state.currentMatch = null;
           state.matchReconnectAttempts = 0;
-        } else if (message.type === 'chat.message') {
-          state.matchMessages.push(message.payload);
-          emitter.emit('state', snapshotState());
         } else if (message.type === 'error') {
           setStatus(message.payload.message || 'Match socket error.');
         }
@@ -423,12 +414,8 @@
             return;
           }
           if (message.type === 'match.found') {
+            state.queue = null;
             connectMatchSocket(message.payload);
-            emitter.emit('state', snapshotState());
-            return;
-          }
-          if (message.type === 'chat.message') {
-            state.lobbyMessages.push(message.payload);
             emitter.emit('state', snapshotState());
             return;
           }
@@ -465,7 +452,7 @@
 
     async function ensureGuestSession(displayName) {
       if (!state.enabled) {
-        throw new Error('Online services are disabled for this build.');
+        throw new Error('Online play is not configured for this build.');
       }
       if (hasFreshAccessToken(state.session)) return state.session;
       if (state.session && !hasFreshAccessToken(state.session)) {
@@ -495,27 +482,11 @@
       async ensureConnected(displayName) {
         await ensureGuestSession(displayName);
         await connectControlSocket();
-        setStatus('Control plane connected.');
-      },
-      async upgradeAccount(displayName) {
-        await ensureGuestSession(displayName);
-        const payload = await jsonFetch(fetchImpl, `${env.apiBaseUrl}/auth/upgrade`, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            authorization: `Bearer ${state.session.accessToken}`
-          },
-          body: JSON.stringify({
-            displayName,
-            method: 'local-dev'
-          })
-        });
-        state.session = payload;
-        persistSession();
-        emitter.emit('state', snapshotState());
+        setStatus('Connected.');
       },
       async joinQueue(payload) {
-        await ensureGuestSession(payload.displayName);
+        const options = payload || {};
+        await ensureGuestSession(options.displayName);
         await connectControlSocket();
         const response = await jsonFetch(fetchImpl, `${env.apiBaseUrl}/queue/join`, {
           method: 'POST',
@@ -523,45 +494,25 @@
             'content-type': 'application/json',
             authorization: `Bearer ${state.session.accessToken}`
           },
-          body: JSON.stringify({
-            playlistId: payload.playlistId,
-            region: payload.region
-          })
+          body: JSON.stringify({})
         });
         state.queue = response.queue;
-        setStatus(`Queued for ${payload.playlistId} in ${payload.region}.`);
+        setStatus('Searching for an opponent...');
         emitter.emit('state', snapshotState());
       },
       async leaveQueue() {
         if (!state.session) return;
-        const payload = state.queue || {};
         const response = await jsonFetch(fetchImpl, `${env.apiBaseUrl}/queue/leave`, {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
             authorization: `Bearer ${state.session.accessToken}`
           },
-          body: JSON.stringify({
-            playlistId: payload.playlistId,
-            region: payload.region
-          })
+          body: JSON.stringify({})
         });
         state.queue = response.queue;
-        setStatus('Queue left.');
+        setStatus('Search cancelled.');
         emitter.emit('state', snapshotState());
-      },
-      sendLobbyChat(payload) {
-        if (!state.controlSocket || state.controlSocket.readyState !== WebSocketImpl.OPEN) {
-          throw new Error('Control socket is not connected.');
-        }
-        state.controlSocket.send(protocol.encodeMessage('chat.send', payload));
-      },
-      sendMatchQuickChat(quickChatId) {
-        if (!state.matchSocket || state.matchSocket.readyState !== WebSocketImpl.OPEN) return;
-        state.matchSocket.send(protocol.encodeMessage('chat.send', {
-          kind: 'quick',
-          quickChatId
-        }));
       },
       _debugState: state
     };

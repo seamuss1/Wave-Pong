@@ -45,9 +45,6 @@ function buildRuntimeConfig(options = {}) {
     serviceName,
     environment: process.env.NODE_ENV || process.env.WAVE_PONG_ENVIRONMENT || 'development',
     secret,
-    staticClientOrigin: trimTrailingSlash(process.env.WAVE_PONG_STATIC_CLIENT_ORIGIN || ''),
-    databaseUrl: process.env.DATABASE_URL || '',
-    redisUrl: process.env.REDIS_URL || '',
     control: {
       host: controlHost,
       port: controlPort,

@@ -19,8 +19,6 @@
     'match.accept',
     'match.input_batch',
     'match.reconnect',
-    'chat.send',
-    'chat.report',
     'ping'
   ];
   const SERVER_WS_TYPES = [
@@ -33,8 +31,6 @@
     'match.correction',
     'match.event',
     'match.result',
-    'chat.message',
-    'chat.moderation',
     'presence.update',
     'error'
   ];
@@ -42,7 +38,7 @@
     control: '/ws/control',
     match: '/ws/match'
   };
-  const quickChatIds = new Set((multiplayer && multiplayer.quickChat || []).map((entry) => entry.id));
+  const FIRE_TIERS = new Set(['blue', 'pink']);
 
   function isObject(value) {
     return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -60,9 +56,12 @@
     const moveAxis = frame && Number.isFinite(Number(frame.moveAxis))
       ? Math.max(-1, Math.min(1, Math.round(Number(frame.moveAxis))))
       : 0;
+    const fire = !!(frame && frame.fire);
     return {
       moveAxis,
-      fire: !!(frame && frame.fire)
+      fire,
+      // Wave tier for a fire action: 'blue' | 'pink' | null (null = best affordable).
+      fireTier: fire && frame && FIRE_TIERS.has(frame.fireTier) ? frame.fireTier : null
     };
   }
 
@@ -84,23 +83,6 @@
         frames: payload.frames.map(normalizeActionFrame)
       }
     };
-  }
-
-  function validateChatPayload(payload, options) {
-    const moderation = (multiplayer && multiplayer.moderation) || {};
-    const limits = options || {};
-    const maxLength = Number(limits.maxLength) || moderation.lobbyMessageMaxLength || 280;
-    if (!isObject(payload)) return { ok: false, error: 'Chat payload must be an object.' };
-    if (payload.kind === 'quick') {
-      if (typeof payload.quickChatId !== 'string' || !quickChatIds.has(payload.quickChatId)) {
-        return { ok: false, error: 'Unknown quick chat message.' };
-      }
-      return { ok: true, value: { kind: 'quick', quickChatId: payload.quickChatId } };
-    }
-    const text = typeof payload.text === 'string' ? payload.text.trim() : '';
-    if (!text) return { ok: false, error: 'Chat payload is missing text.' };
-    if (text.length > maxLength) return { ok: false, error: 'Chat payload exceeds the maximum length.' };
-    return { ok: true, value: { kind: 'free', text } };
   }
 
   function validateSnapshot(payload) {
@@ -158,7 +140,6 @@
     WS_PATHS,
     normalizeActionFrame,
     validateInputBatch,
-    validateChatPayload,
     validateSnapshot,
     encodeMessage,
     parseMessage,

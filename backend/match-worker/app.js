@@ -46,10 +46,6 @@ function createMatchWorkerApp(options = {}) {
             match.receiveInputBatch(playerId, message.payload);
             return;
           }
-          if (message.type === 'chat.send') {
-            match.receiveChat(playerId, message.payload);
-            return;
-          }
           if (message.type === 'ping') {
             connection.sendJson({ type: 'presence.update', payload: { now: Date.now() } });
             return;

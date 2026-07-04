@@ -4,7 +4,7 @@ const { createMatchWorkerApp } = require('./match-worker/app.js');
 const { buildRuntimeConfig } = require('./config.js');
 
 const config = buildRuntimeConfig({
-  serviceName: 'dev-server'
+  serviceName: 'wave-pong'
 });
 
 const workerManager = createMatchWorkerManager({
@@ -16,6 +16,7 @@ const controlPlane = createControlPlaneApp({
   workerManager,
   workerUrl: config.worker.internalWsUrl,
   publicWorkerUrl: config.worker.publicWsUrl,
+  publicRuntimeEnv: config.publicRuntimeEnv,
   secret: config.secret
 });
 
@@ -24,7 +25,7 @@ const matchWorker = createMatchWorkerApp({
 });
 
 controlPlane.server.listen(config.control.port, () => {
-  console.log(`Wave Pong control-plane listening on ${config.control.origin}`);
+  console.log(`Wave Pong control-plane + client listening on ${config.control.origin}`);
 });
 
 matchWorker.server.listen(config.worker.port, () => {

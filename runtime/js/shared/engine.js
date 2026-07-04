@@ -147,7 +147,7 @@
 
   function createAuthoritativeMatchEngine(options) {
     const opts = options || {};
-    const playlistId = opts.playlistId || 'unranked_standard';
+    const playlistId = opts.playlistId || 'quick_play';
     const playlist = multiplayer.getPlaylist(playlistId);
     if (!playlist) {
       throw new Error('Unknown multiplayer playlist: ' + playlistId);
@@ -169,7 +169,13 @@
     let forcedResult = null;
 
     function start(matchOptions) {
-      const runtimeOptions = multiplayer.buildMatchRuntimeOptions(playlist, matchOptions);
+      // The authoritative engine has no local human: all input arrives via
+      // queueFrames. Live input would queue empty local actions every tick,
+      // overwriting the remote frames in the input queue.
+      const runtimeOptions = multiplayer.buildMatchRuntimeOptions(playlist, {
+        ...(matchOptions || {}),
+        liveInputEnabled: false
+      });
       runtime.startMatch(runtimeOptions);
       return buildPublicSnapshot(runtime, {
         matchId: opts.matchId,

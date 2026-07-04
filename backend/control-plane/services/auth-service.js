@@ -1,6 +1,5 @@
 const crypto = require('crypto');
 const { issueScopedToken, verifySignedPayload } = require('../../lib/tokens.js');
-const { ensureRating } = require('../store.js');
 
 function sanitizeDisplayName(value, fallbackPrefix) {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -14,10 +13,7 @@ function serializePlayer(player) {
     id: player.id,
     displayName: player.displayName,
     guest: !!player.guest,
-    verified: !!player.verified,
-    createdAt: player.createdAt,
-    ratings: player.ratings || {},
-    sanctions: player.sanctions || {}
+    createdAt: player.createdAt
   };
 }
 
@@ -47,32 +43,9 @@ function createAuthService(options) {
         id: playerId,
         displayName,
         guest: true,
-        verified: false,
-        createdAt: new Date().toISOString(),
-        ratings: {},
-        mutedPlayerIds: new Set(),
-        blockedPlayerIds: new Set(),
-        moderationHistory: {
-          lobbyMessages: [],
-          quickChatMessages: []
-        },
-        sanctions: {}
+        createdAt: new Date().toISOString()
       };
       store.players.set(playerId, player);
-      for (const playlist of options.multiplayer.listPlaylists()) {
-        for (const region of options.multiplayer.listRegions()) {
-          ensureRating(player, playlist.id, region.id).placementsRemaining = (((options.multiplayer.seasons || {}).placementMatches) || 5);
-        }
-      }
-      return issueSession(player);
-    },
-    upgrade(player, payload) {
-      player.guest = false;
-      player.verified = true;
-      if (payload && payload.displayName) {
-        player.displayName = sanitizeDisplayName(payload.displayName, 'Player');
-      }
-      player.verificationMethod = (payload && payload.method) || 'local-dev';
       return issueSession(player);
     },
     authenticateAccess(token) {

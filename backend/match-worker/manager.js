@@ -14,7 +14,6 @@ function createMatchWorkerManager(options = {}) {
       const match = new AuthoritativeMatch({
         matchId,
         playlistId: payload.playlistId,
-        region: payload.region,
         players: payload.players,
         seed: Math.floor(Math.random() * 0xffffffff),
         onFinished(summary) {

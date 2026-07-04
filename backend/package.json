@@ -2,11 +2,9 @@
   "name": "wave-pong-backend",
   "private": true,
   "version": "0.1.0",
-  "description": "Control-plane and match-worker services for Wave Pong multiplayer",
+  "description": "Quick-play matchmaking and authoritative match hosting for Wave Pong",
   "scripts": {
-    "dev": "node dev-server.js",
-    "control": "node control-plane/server.js",
-    "worker": "node match-worker/server.js",
+    "start": "node server.js",
     "test": "node --test --test-isolation=none tests/*.test.js"
   }
 }
