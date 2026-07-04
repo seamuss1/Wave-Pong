@@ -23,7 +23,9 @@ class AuthoritativeMatch {
     this.currentSnapshot = null;
     this.loopHandle = null;
     this.onFinished = typeof options.onFinished === 'function' ? options.onFinished : null;
-    this.snapshotIntervalTicks = Math.max(1, Math.round(((multiplayer.netcode || {}).serverTickRate || 120) / ((multiplayer.netcode || {}).snapshotRateHz || 24)));
+    this.tickRate = (multiplayer.netcode || {}).serverTickRate || 120;
+    this.snapshotIntervalTicks = Math.max(1, Math.round(this.tickRate / ((multiplayer.netcode || {}).snapshotRateHz || 24)));
+    this.simStartMs = 0;
   }
 
   getPlayerById(playerId) {
@@ -79,13 +81,17 @@ class AuthoritativeMatch {
       });
       this.currentSnapshot = snapshot;
       this.started = true;
+      this.simStartMs = Date.now();
       this.broadcast('match.start', {
         matchId: this.id,
         playlistId: this.playlistId,
         snapshot,
-        tickRate: (multiplayer.netcode || {}).serverTickRate || 120
+        tickRate: this.tickRate
       });
-      this.loopHandle = setInterval(() => this.step(), 1000 / (((multiplayer.netcode || {}).serverTickRate) || 120));
+      // Step from wall-clock elapsed time instead of one-tick-per-callback:
+      // Node timers fire late, and a naive 8.3ms interval runs the sim 10-30%
+      // slower than real time, which reads as permanent lag on both clients.
+      this.loopHandle = setInterval(() => this.pump(), 1000 / this.tickRate);
     }
   }
 
@@ -112,28 +118,48 @@ class AuthoritativeMatch {
   }
 
   broadcast(type, payload) {
+    // Serialize once per message instead of once per connection; snapshots are
+    // the largest payloads this server produces.
+    const text = JSON.stringify({ type, payload });
     for (const connection of this.connections.values()) {
-      connection.sendJson({ type, payload });
+      if (typeof connection.sendText === 'function') {
+        connection.sendText(text);
+      } else {
+        connection.sendJson({ type, payload });
+      }
     }
   }
 
-  step() {
+  pump() {
     if (!this.started || this.finished) return;
-    this.engine.step(1);
-    if (this.engine.runtime.state.tick % this.snapshotIntervalTicks === 0) {
+    const targetTick = Math.floor(((Date.now() - this.simStartMs) / 1000) * this.tickRate);
+    let due = targetTick - this.engine.runtime.state.tick;
+    if (due <= 0) return;
+    const maxCatchUpTicks = this.tickRate; // one second of simulation
+    if (due > maxCatchUpTicks) {
+      // Long stall (event-loop pause, host suspend): resync the clock instead
+      // of freezing the process on a huge burst.
+      this.simStartMs = Date.now() - ((this.engine.runtime.state.tick + maxCatchUpTicks) / this.tickRate) * 1000;
+      due = maxCatchUpTicks;
+    }
+    let snapshotDue = false;
+    for (let i = 0; i < due; i += 1) {
+      this.engine.step(1);
+      if (this.engine.runtime.state.tick % this.snapshotIntervalTicks === 0) {
+        snapshotDue = true;
+      }
+    }
+    if (snapshotDue) {
       // Full snapshots (with state blob) are what clients restore from; thin
       // snapshots would be ignored by the client reconciliation path.
       const snapshot = this.engine.snapshot(true);
       this.currentSnapshot = snapshot;
       this.broadcast('match.snapshot', snapshot);
     }
-    const events = this.engine.flushEvents();
-    for (const event of events) {
-      this.broadcast('match.event', {
-        matchId: this.id,
-        ...event
-      });
-    }
+    // Drain the runtime event queue so it cannot grow, but do not broadcast it:
+    // clients ignore match.event, and forwarding per-tick tone/status events
+    // multiplied websocket traffic for nothing.
+    this.engine.flushEvents();
     this.applyDisconnectRules();
     const result = this.engine.getResult();
     if (result) {

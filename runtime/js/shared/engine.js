@@ -133,7 +133,7 @@
         slowmoTimer: state.slowmoTimer
       },
       lastActions: clone(meta && meta.lastActions ? meta.lastActions : {}),
-      stateBlob: meta && meta.includeStateBlob ? serializeStateBlob(runtime.cloneSimulation()) : null
+      stateBlob: meta && meta.includeStateBlob ? serializeStateBlob(runtime.cloneSimulation({ network: true })) : null
     };
   }
 
@@ -159,8 +159,8 @@
       tickRate
     });
     const lastActions = {
-      left: { moveAxis: 0, fire: false },
-      right: { moveAxis: 0, fire: false }
+      left: { moveAxis: 0, fire: false, fireTier: null },
+      right: { moveAxis: 0, fire: false, fireTier: null }
     };
     const ackSeq = {
       left: 0,
@@ -194,7 +194,8 @@
         runtime.queueInput(side, tick, action);
         lastActions[side] = {
           moveAxis: action.moveAxis,
-          fire: action.fire
+          fire: action.fire,
+          fireTier: action.fireTier || null
         };
       }
       ackSeq[side] = Math.max(ackSeq[side], batch.seq);

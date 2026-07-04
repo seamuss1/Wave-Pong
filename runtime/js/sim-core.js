@@ -210,6 +210,13 @@
       };
       let inputProvider = typeof options.inputProvider === 'function' ? options.inputProvider : null;
       let liveInputEnabled = options.liveInputEnabled !== false;
+      // Online matches disable replay recording: the replay log grows by hundreds of
+      // entries per second and would otherwise be dragged through every authoritative
+      // snapshot clone/restore.
+      let replayRecordingEnabled = options.replayEnabled !== false;
+      // Optional override for the game-over Rematch button (online play swaps the
+      // local restart for a return to matchmaking).
+      let rematchHandler = null;
 
       function normalizeDifficulty(value) {
         const difficulty = String(value || '').toLowerCase();
@@ -1380,7 +1387,10 @@ function firePulse(paddle, tierCap = null) {
           payload: deepClone(payload)
         };
         eventQueue.push(entry);
-        replay.events.push(entry);
+        // Browsers never drain the event queue (only headless hosts call
+        // flushEvents), so cap it instead of letting a long session leak.
+        if (eventQueue.length > 1024) eventQueue.splice(0, eventQueue.length - 1024);
+        if (replayRecordingEnabled) replay.events.push(entry);
       }
 
       let audioBus = null;
@@ -1551,6 +1561,7 @@ function startMatch({
   modeLabel = null,
   opponentLabel = null,
   liveInputEnabled: nextLiveInputEnabled = true,
+  replayEnabled = null,
   leftController = undefined,
   rightController = undefined
 } = {}) {
@@ -1569,6 +1580,7 @@ function startMatch({
         state.modeLabelOverride = modeLabel || '';
         state.opponentLabelOverride = opponentLabel || '';
         liveInputEnabled = nextLiveInputEnabled !== false;
+        replayRecordingEnabled = replayEnabled == null ? (options.replayEnabled !== false) : !!replayEnabled;
         localHumanSide = null;
         state.running = true;
         state.paused = false;
@@ -2116,7 +2128,7 @@ function updateAI(paddle, dt, isLeft) {
         const earliestTick = insideUpdate ? state.tick : state.tick + 1;
         const targetTick = Math.max(earliestTick, Math.floor(Number.isFinite(tick) ? tick : earliestTick));
         inputQueue[side].set(targetTick, normalized);
-        replay.actions.push({ tick: targetTick, side, action: normalized });
+        if (replayRecordingEnabled) replay.actions.push({ tick: targetTick, side, action: normalized });
       }
 
       function getQueuedAction(side) {
@@ -2284,7 +2296,30 @@ function updateAI(paddle, dt, isLeft) {
         }));
       }
 
-      function cloneSimulation() {
+      function cloneSimulation(cloneOptions = {}) {
+        // Network snapshots carry only gameplay state: the replay log and local
+        // history grow with match length, and cosmetic arrays (particles, trails,
+        // float texts) are presentation-only. Shipping them made authoritative
+        // snapshots balloon over time — the main source of online lag.
+        if (cloneOptions.network) {
+          return deepClone({
+            network: true,
+            nextBallId,
+            rngState: rng.getState(),
+            state,
+            world: {
+              paddles: world.paddles,
+              balls: world.balls.map((ball) => ({ ...ball, trail: [] })),
+              goalFlashes: [],
+              particles: [],
+              powerups: world.powerups,
+              pulses: world.pulses.map((pulse) => ({ ...pulse, trail: [] })),
+              floatTexts: []
+            },
+            matchStats,
+            controllerActionState
+          });
+        }
         return deepClone({
           nextBallId,
           rngState: rng.getState(),
@@ -2300,15 +2335,36 @@ function updateAI(paddle, dt, isLeft) {
       function restoreSimulation(snapshot) {
         nextBallId = snapshot.nextBallId;
         rng.setState(snapshot.rngState);
-        history = deepClone(snapshot.history);
+        if (snapshot.history) history = deepClone(snapshot.history);
         matchStats = deepClone(snapshot.matchStats);
+        // Network snapshots omit presentation state; keep the local cosmetic
+        // arrays alive across the restore so trails/particles do not flicker.
+        const preserved = snapshot.network
+          ? {
+              particles: world.particles,
+              floatTexts: world.floatTexts,
+              goalFlashes: world.goalFlashes,
+              ballTrails: new Map(world.balls.map((ball) => [ball.id, ball.trail]))
+            }
+          : null;
         Object.assign(state, deepClone(snapshot.state));
         Object.assign(world, deepClone(snapshot.world));
+        if (preserved) {
+          world.particles = preserved.particles;
+          world.floatTexts = preserved.floatTexts;
+          world.goalFlashes = preserved.goalFlashes;
+          for (const ball of world.balls) {
+            const trail = preserved.ballTrails.get(ball.id);
+            if (trail) ball.trail = trail;
+          }
+        }
         controllerActionState.left = deepClone(snapshot.controllerActionState.left);
         controllerActionState.right = deepClone(snapshot.controllerActionState.right);
-        replay.actions = deepClone(snapshot.replay.actions);
-        replay.events = deepClone(snapshot.replay.events);
-        replay.stateHashes = deepClone(snapshot.replay.stateHashes);
+        if (snapshot.replay) {
+          replay.actions = deepClone(snapshot.replay.actions);
+          replay.events = deepClone(snapshot.replay.events);
+          replay.stateHashes = deepClone(snapshot.replay.stateHashes);
+        }
       }
 
       function serializeReplay() {
@@ -3961,7 +4017,7 @@ function renderOverlayFX() {
           } finally {
             insideUpdate = false;
           }
-          if (state.tick === 1 || state.tick % fixedTickRate === 0) {
+          if (replayRecordingEnabled && (state.tick === 1 || state.tick % fixedTickRate === 0)) {
             replay.stateHashes.push({ tick: state.tick, hash: hashSimulationState() });
           }
         }
@@ -4163,6 +4219,10 @@ function renderOverlayFX() {
         localHumanSide = side === 'left' || side === 'right' ? side : null;
       }
 
+      function setRematchHandler(handler) {
+        rematchHandler = typeof handler === 'function' ? handler : null;
+      }
+
       function flushEvents() {
         return eventQueue.splice(0, eventQueue.length);
       }
@@ -4307,7 +4367,12 @@ function renderOverlayFX() {
         wireMenuButton('closeHelpBtn', closeHelp);
         wireMenuButton('resumeBtn', () => pauseGame(false));
         wireMenuButton('pauseMenuBtn', backToMenu);
-        wireMenuButton('rematchBtn', () => startMatch({ demo: state.demoMode }));
+        wireMenuButton('rematchBtn', () => {
+          // Online play installs a handler that returns true to swap the local
+          // restart for a trip back through matchmaking.
+          if (rematchHandler && rematchHandler() === true) return;
+          startMatch({ demo: state.demoMode });
+        });
         wireMenuButton('gameOverMenuBtn', backToMenu);
 
         ['change', 'input'].forEach((eventName) => {
@@ -4384,6 +4449,7 @@ function renderOverlayFX() {
         setInputProvider,
         setLiveInputEnabled,
         setLocalHumanSide,
+        setRematchHandler,
         setMuted,
         isPauseButtonPointerEvent,
         mountBrowser,

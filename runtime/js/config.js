@@ -504,7 +504,10 @@
         inputBufferTicks: 4,
         rollbackWindowTicks: 16,
         snapshotRateHz: 24,
-        maxInputBatchFrames: 12
+        maxInputBatchFrames: 12,
+        // Client batches this many input frames per websocket message
+        // (fire frames still flush immediately for latency).
+        inputSendIntervalTicks: 4
       },
       reconnect: {
         graceSeconds: 30
