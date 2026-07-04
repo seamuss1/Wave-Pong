@@ -117,6 +117,7 @@
       statusPill: get('statusPill'),
       menu: get('menuOverlay'),
       help: get('helpOverlay'),
+      settings: get('settingsOverlay'),
       pause: get('pauseOverlay'),
       gameOver: get('gameOverOverlay'),
       winnerTitle: get('winnerTitle'),
@@ -718,6 +719,7 @@
         impacts: 0,
         nextLongRallySpawnAt: rallyBalance.initialSpawnAtSeconds,
         helpReturnToPause: false,
+        settingsReturnToPause: false,
         lowPerfEffects: REDUCED_WAVE_FX,
         countdownActive: false,
         countdownTimer: 0,
@@ -1817,7 +1819,9 @@ function startMatch({
         if (ui.pause) ui.pause.classList.add('hidden');
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
         if (ui.help) ui.help.classList.add('hidden');
+        if (ui.settings) ui.settings.classList.add('hidden');
         state.helpReturnToPause = false;
+        state.settingsReturnToPause = false;
         resetPresentationFx();
         applyTheme(state.theme);
         resetMatch();
@@ -1851,7 +1855,9 @@ function startMatch({
         if (ui.pause) ui.pause.classList.add('hidden');
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
         if (ui.help) ui.help.classList.add('hidden');
+        if (ui.settings) ui.settings.classList.add('hidden');
         state.helpReturnToPause = false;
+        state.settingsReturnToPause = false;
         updateStatus('Ready to embarrass a rectangle.');
         updateMenuStats();
       }
@@ -1861,8 +1867,13 @@ function startMatch({
         const wasPaused = state.paused;
         state.paused = typeof toggle === 'boolean' ? toggle : !state.paused;
         if (!state.paused) {
+          // Resuming closes any modal opened from the pause menu, so the countdown
+          // never starts hidden behind Help or Settings (e.g. a P / Start press
+          // while Settings is open).
           if (ui.help) ui.help.classList.add('hidden');
+          if (ui.settings) ui.settings.classList.add('hidden');
           state.helpReturnToPause = false;
+          state.settingsReturnToPause = false;
         }
         if (ui.pause) ui.pause.classList.toggle('hidden', !state.paused);
         if (state.paused) {
@@ -4484,11 +4495,16 @@ function renderOverlayFX() {
         if (hintsPending === null) hintsPending = safeStorageGetItem('gameWavePongHintsSeenV1') == null;
         if (!hintsPending) return;
         const charge = world.paddles.left.pulseCharge || 0;
+        const auto = controlScheme === 'auto';
         if (fx.hintStage === 0 && !state.countdownActive) {
-          updateStatus('Tap fire for BLUE. Hold for PINK, hold longer for GOLD.');
+          updateStatus(auto
+            ? 'Auto-Fire: press fire to launch the strongest wave you can afford.'
+            : 'Tap fire for BLUE. Hold for PINK, hold longer for GOLD.');
           fx.hintStage = 1;
         } else if (fx.hintStage === 1 && charge >= FULL_CHARGE_THRESHOLD) {
-          updateStatus('GOLD ready: hold fire and release. A quick tap still fires cheap blue.');
+          updateStatus(auto
+            ? 'GOLD ready: press fire to unleash it. Fire earlier for cheaper, faster waves.'
+            : 'GOLD ready: hold fire and release. A quick tap still fires cheap blue.');
           fx.hintStage = 2;
           hintsPending = false;
           safeStorageSetItem('gameWavePongHintsSeenV1', '1');
@@ -4545,6 +4561,15 @@ function renderOverlayFX() {
         maybeShowFirstMatchHints();
       }
 
+      // Presentation-only: true for the first moments of a match (before either side scores).
+      // Both paddles start fully charged, so the opening exchange is a gold barrage; we use this
+      // to cap shake and skip hit-stop so the match does not stutter at kickoff.
+      function isMatchOpening() {
+        return state.running && !state.gameOver &&
+          state.leftScore === 0 && state.rightScore === 0 &&
+          state.roundSeconds < (matchFlowBalance.openingCalmSeconds || 0);
+      }
+
       function loop(ts) {
         if (!mounted || !windowRef) return;
         const dt = Math.min(0.25, ((ts - lastFrameTime) / 1000) || fixedDt);
@@ -4552,6 +4577,10 @@ function renderOverlayFX() {
         state.presentationTimeMs = ts;
         trackFramePerf(dt * 1000);
         pollGamepads();
+        // Keep the opening smooth: skip hit-stop freezes before the first goal. Zeroing it here
+        // (top of frame) means a freeze armed by a prior tick never takes effect during the opening.
+        const opening = isMatchOpening();
+        if (opening) fx.hitStopSeconds = 0;
         // Hit-stop: freeze sim ticks in wall time for a few frames on heavy impacts.
         // Ticks are only delayed, never dropped, so offline determinism is untouched.
         // It must NOT run during online play: the authoritative server keeps
@@ -4579,6 +4608,8 @@ function renderOverlayFX() {
         if (fixedAccumulator > fixedDt * maxCatchUpSteps) {
           fixedAccumulator = 0;
         }
+        // Cap opening shake after the ticks that set it, so this frame renders calm too.
+        if (opening) screenShake = Math.min(screenShake, matchFlowBalance.openingShakeCap);
         updatePresentationFx(dt);
         updateUI();
         render();
@@ -4631,6 +4662,20 @@ function renderOverlayFX() {
           ui.pause.classList.remove('hidden');
         }
         state.helpReturnToPause = false;
+      }
+
+      function openSettings() {
+        state.settingsReturnToPause = state.paused && ui.pause && !ui.pause.classList.contains('hidden');
+        if (state.settingsReturnToPause && ui.pause) ui.pause.classList.add('hidden');
+        if (ui.settings) ui.settings.classList.remove('hidden');
+      }
+
+      function closeSettings() {
+        if (ui.settings) ui.settings.classList.add('hidden');
+        if (state.settingsReturnToPause && state.paused && !state.gameOver && ui.pause) {
+          ui.pause.classList.remove('hidden');
+        }
+        state.settingsReturnToPause = false;
       }
 
       function setControllers(nextControllers = {}) {
@@ -4718,6 +4763,10 @@ function renderOverlayFX() {
             pauseGame();
           } else if (key === 'escape') {
             e.preventDefault();
+            if (ui.settings && !ui.settings.classList.contains('hidden')) {
+              closeSettings();
+              return;
+            }
             if (ui.help && !ui.help.classList.contains('hidden')) {
               closeHelp();
               return;
@@ -4832,6 +4881,9 @@ function renderOverlayFX() {
         wireMenuButton('menuHelpBtn', openHelp);
         wireMenuButton('pauseHelpBtn', openHelp);
         wireMenuButton('closeHelpBtn', closeHelp);
+        wireMenuButton('menuSettingsBtn', openSettings);
+        wireMenuButton('pauseSettingsBtn', openSettings);
+        wireMenuButton('closeSettingsBtn', closeSettings);
         wireMenuButton('resumeBtn', () => pauseGame(false));
         wireMenuButton('pauseMenuBtn', backToMenu);
         wireMenuButton('rematchBtn', () => {

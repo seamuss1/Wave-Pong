@@ -157,7 +157,8 @@
 
     function shouldShow() {
       const helpOpen = runtime.ui.help && !runtime.ui.help.classList.contains('hidden');
-      return !runtime.state.menuOpen && !runtime.state.paused && !runtime.state.gameOver && !runtime.state.demoMode && !helpOpen;
+      const settingsOpen = runtime.ui.settings && !runtime.ui.settings.classList.contains('hidden');
+      return !runtime.state.menuOpen && !runtime.state.paused && !runtime.state.gameOver && !runtime.state.demoMode && !helpOpen && !settingsOpen;
     }
 
     function sync() {
@@ -665,11 +666,10 @@
 
   // Driven explicitly (rather than a CSS :checked selector) so the highlight also
   // updates when settings are restored programmatically, which sets .checked
-  // directly and doesn't dispatch a change event. Covers every segmented control
-  // in the menu (game mode and wave control).
+  // directly and doesn't dispatch a change event. Covers every segmented control,
+  // whether in the main menu (game mode) or the settings screen (wave control).
   function syncModeSegmentStyle() {
-    if (!menuOverlay) return;
-    menuOverlay.querySelectorAll('.segment').forEach((segment) => {
+    document.querySelectorAll('.segment').forEach((segment) => {
       const input = segment.querySelector('input[type="radio"]');
       segment.classList.toggle('segmentActive', !!(input && input.checked));
     });
