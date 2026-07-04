@@ -38,7 +38,7 @@
           <h1>Wave Pong</h1>
           <div id="menuVersion" class="menuVersion">v0.17.0</div>
         </div>
-        <div class="menuSubtle">Set up the match here, then open Help for controls, rules, and powerups.</div>
+        <div class="menuSubtle">Set up the match here. Open Settings for theme, wave control, and effects, or Help for controls and rules.</div>
       </div>
 
       <div class="section">
@@ -76,7 +76,31 @@
             Score to Win
             <input id="scoreLimitSelect" type="number" min="1" step="1" value="7" />
           </label>
+        </div>
 
+        <div class="btnRow">
+          <button id="startBtn" class="primary modeField" data-modes="cpu pvp">Start Match</button>
+          <button id="onlineQueueBtn" class="primary modeField" data-modes="online">Find Match</button>
+          <button id="onlineLeaveQueueBtn" class="ghost hidden modeField" data-modes="online">Cancel</button>
+          <button id="demoBtn" class="secondary modeField" data-modes="cpu pvp">CPU vs CPU Demo</button>
+          <button id="menuSettingsBtn" class="secondary">Settings</button>
+          <button id="fullscreenBtn" class="secondary">Fullscreen</button>
+          <button id="menuHelpBtn" class="ghost">Help</button>
+        </div>
+        <div id="onlineStatusText" class="onlineStatusText modeField" data-modes="online">Online play is not configured for this build.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsOverlay" class="overlay hidden">
+    <div class="card settingsCard">
+      <div class="btnRow helpActions">
+        <button id="closeSettingsBtn" class="primary">Done</button>
+      </div>
+      <div class="tiny">Settings</div>
+      <h2>Settings</h2>
+      <div class="section">
+        <div class="form">
           <label>
             Arena Theme
             <select id="themeSelect">
@@ -89,31 +113,22 @@
           <div class="fieldLabel segmentedField">
             Wave Control
             <div class="segmented" role="radiogroup" aria-label="Wave Control">
-              <label class="segment"><input type="radio" name="controlScheme" value="hold" checked /><span>Hold to Charge</span></label>
-              <label class="segment"><input type="radio" name="controlScheme" value="auto" /><span>Auto-Fire</span></label>
+              <label class="segment"><input type="radio" name="controlScheme" value="auto" checked /><span>Auto-Fire</span></label>
+              <label class="segment"><input type="radio" name="controlScheme" value="hold" /><span>Hold to Charge</span></label>
             </div>
           </div>
 
-          <label class="toggle modeField" data-modes="cpu pvp">
+          <label class="toggle">
             <input id="powerupsToggle" type="checkbox" checked />
             <span>Enable powerups and chaos</span>
           </label>
 
           <label class="toggle">
             <input id="trailToggle" type="checkbox" checked />
-            <span>Enable trails and particles</span>
+            <span>Enable particle effects</span>
           </label>
         </div>
-
-        <div class="btnRow">
-          <button id="startBtn" class="primary modeField" data-modes="cpu pvp">Start Match</button>
-          <button id="onlineQueueBtn" class="primary modeField" data-modes="online">Find Match</button>
-          <button id="onlineLeaveQueueBtn" class="ghost hidden modeField" data-modes="online">Cancel</button>
-          <button id="demoBtn" class="secondary modeField" data-modes="cpu pvp">CPU vs CPU Demo</button>
-          <button id="fullscreenBtn" class="secondary">Fullscreen</button>
-          <button id="menuHelpBtn" class="ghost">Help</button>
-        </div>
-        <div id="onlineStatusText" class="onlineStatusText modeField" data-modes="online">Online play is not configured for this build.</div>
+        <div class="menuSubtle settingsHint">Powerups apply to Player vs CPU and Two Players matches. Online matches use standard rules.</div>
       </div>
     </div>
   </div>
@@ -132,7 +147,7 @@
             <div class="controlItem"><strong>Player 1</strong><br>W/S or Arrow keys move &bull; mouse or touch-drag also steers &bull; F or Space fires (Slash and Right Ctrl work too in single player)</div>
             <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move &bull; Slash, Right Ctrl, or Numpad 0 fires</div>
             <div class="controlItem"><strong>Touch</strong><br>Drag the floating joystick up or down to move &bull; tap anywhere else on the play area to launch a wave (the strongest one you can afford)</div>
-            <div class="controlItem"><strong>Control scheme</strong><br>Choose Wave Control in the menu. <em>Hold to Charge</em>: hold fire to build a stronger wave, then release to fire. <em>Auto-Fire</em>: every press instantly launches the strongest wave you can afford.</div>
+            <div class="controlItem"><strong>Control scheme</strong><br>Choose Wave Control in Settings. <em>Auto-Fire</em> (default): every press instantly launches the strongest wave you can afford. <em>Hold to Charge</em>: hold fire to build a stronger wave, then release to fire.</div>
             <div class="controlItem"><strong>Pick your wave (Hold to Charge)</strong><br>Tap fire for BLUE &bull; a brief hold and release fires PINK &bull; hold longer for GOLD. The ring at your paddle shows what will fire.</div>
             <div class="controlItem"><strong>Gamepad</strong><br>Left stick or D-pad moves &bull; A (or right trigger) fires and follows your chosen Wave Control scheme &bull; Start pauses</div>
             <div class="controlItem"><strong>Pause</strong><br>P or Escape pauses the match</div>
@@ -169,6 +184,7 @@
         <button id="resumeBtn" class="primary">Resume</button>
         <button id="pauseBotInfoBtn" class="secondary">Bot Info</button>
         <button id="pauseFullscreenBtn" class="secondary">Fullscreen</button>
+        <button id="pauseSettingsBtn" class="secondary">Settings</button>
         <button id="pauseHelpBtn" class="secondary">Help</button>
         <button id="pauseMenuBtn" class="ghost">Back to Menu</button>
       </div>

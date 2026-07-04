@@ -317,6 +317,12 @@
     matchFlow: {
       alwaysSpawnReplacementAfterGoal: false, // When true, every goal immediately serves a fresh ball even if others are still active.
       countdownSeconds: 3, // Countdown duration before play begins on match start and after resuming from pause.
+      // Presentation-only opening calm. Both paddles start fully charged, so without this the
+      // first exchange is an instant gold barrage: stacked screen shake and hit-stop freezes that
+      // read as a stutter right at kickoff. During this window (before the first goal) screen shake
+      // is capped and offline hit-stop is skipped so the match opens smoothly.
+      openingCalmSeconds: 2.5, // How long after the first serve the opening calm stays active.
+      openingShakeCap: 3, // Max screen shake allowed during the opening calm.
       serveHoldSeconds: 0.55, // How long a newly served ball waits at its serve point before it can move.
       serveYJitter: 150, // Max vertical offset applied to replacement serves so serves stop being identical.
       matchEndCeremonySeconds: 1.4, // Presentation delay between the winning goal and the game-over overlay.
@@ -416,7 +422,7 @@
       theme: 'neon',
       powerupsEnabled: true,
       trailsEnabled: true,
-      controlScheme: 'hold' // 'hold' = hold fire to charge tier; 'auto' = tap fires best affordable wave.
+      controlScheme: 'auto' // 'auto' = tap fires best affordable wave; 'hold' = hold fire to charge tier.
     },
     balance, // Gameplay tuning numbers.
     // Shape of the persistent history record saved in localStorage.
