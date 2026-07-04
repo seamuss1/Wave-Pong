@@ -442,7 +442,10 @@
   function syncControllers() {
     const mode = runtime.ui.modeSelect ? runtime.ui.modeSelect.value : config.defaults.mode;
     syncBotInfoButtons();
-    if (mode === 'pvp') {
+    // Only classic single-player runs a CPU controller. Online matches are
+    // human-vs-human: leaving a CPU in a slot would silently consume that
+    // side's input during networked play.
+    if (mode !== 'cpu') {
       runtime.setControllers({ left: null, right: null });
       return;
     }
@@ -641,13 +644,41 @@
     side === 'left' ? touchController.getAction(defaultAction) : defaultAction
   );
 
+  const rematchBtn = document.getElementById('rematchBtn');
+  // True between an online match ending and the next match starting; the
+  // game-over Rematch button becomes "Find New Opponent" during that window.
+  let postOnlineMatch = false;
+
+  function setRematchButtonMode(online) {
+    postOnlineMatch = online;
+    if (rematchBtn) rematchBtn.textContent = online ? 'Find New Opponent' : 'Rematch';
+  }
+
   if (onlineService) {
     onlineService.on('state', renderOnlineState);
+    onlineService.on('match.started', () => {
+      setRematchButtonMode(false);
+    });
     onlineService.on('match.result', () => {
       // Hand input control back to the offline provider once the match is over.
       runtime.setInputProvider(offlineInputProvider);
       if (typeof runtime.setLocalHumanSide === 'function') runtime.setLocalHumanSide(null);
+      // Restore the menu-selected controllers for whatever is played next.
+      syncControllers();
+      setRematchButtonMode(true);
     });
+
+    if (typeof runtime.setRematchHandler === 'function') {
+      runtime.setRematchHandler(() => {
+        if (!postOnlineMatch) return false;
+        setRematchButtonMode(false);
+        runtime.backToMenu();
+        onlineService.joinQueue({
+          displayName: onlineNameInput ? onlineNameInput.value : ''
+        }).catch(reportOnlineError);
+        return true;
+      });
+    }
 
     if (onlineQueueBtn) {
       onlineQueueBtn.addEventListener('click', async () => {
@@ -670,6 +701,11 @@
         }
       });
     }
+
+    ['startBtn', 'demoBtn'].forEach((id) => {
+      const button = document.getElementById(id);
+      if (button) button.addEventListener('click', () => setRematchButtonMode(false));
+    });
 
     renderOnlineState(null);
   } else {

@@ -7,6 +7,17 @@ function createMatchWorkerManager(options = {}) {
   const workerUrl = options.workerUrl || 'ws://127.0.0.1:8788/ws/match';
   const matches = new Map();
   let matchFinishedHandler = null;
+  // Finished matches linger briefly so late result/reconnect traffic still
+  // resolves, then get dropped. Without this every match leaked its engine
+  // (and ever-growing sim state) for the life of the process.
+  const finishedRetentionMs = Number(options.finishedRetentionMs) || 60 * 1000;
+  // Matches where both players never accepted are abandoned after this long.
+  const acceptTimeoutMs = Number(options.acceptTimeoutMs) || 60 * 1000;
+
+  function scheduleDelete(matchId, delayMs) {
+    const timer = setTimeout(() => matches.delete(matchId), delayMs);
+    if (typeof timer.unref === 'function') timer.unref();
+  }
 
   return {
     createMatch(payload) {
@@ -20,9 +31,22 @@ function createMatchWorkerManager(options = {}) {
           if (matchFinishedHandler) {
             matchFinishedHandler(summary);
           }
+          scheduleDelete(matchId, finishedRetentionMs);
         }
       });
       matches.set(matchId, match);
+      const acceptTimer = setTimeout(() => {
+        const pending = matches.get(matchId);
+        if (pending && !pending.started && !pending.finished) {
+          pending.finish({
+            winnerSide: null,
+            reason: 'abandoned',
+            leftScore: 0,
+            rightScore: 0
+          });
+        }
+      }, acceptTimeoutMs);
+      if (typeof acceptTimer.unref === 'function') acceptTimer.unref();
       return {
         matchId,
         workerUrl,

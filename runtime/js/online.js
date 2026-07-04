@@ -63,6 +63,16 @@
     const sessionKey = 'wavePongOnlineSessionV1';
     const emitter = createEmitter();
     const reconnectConfig = (multiplayer && multiplayer.reconnect) || {};
+    const netcodeConfig = (multiplayer && multiplayer.netcode) || {};
+    // Batch this many input frames per websocket message (fire frames flush
+    // immediately). At 120Hz a batch of 4 sends ~30 messages/sec instead of 120.
+    const inputFlushFrames = Math.max(1, Math.min(
+      Number(netcodeConfig.inputSendIntervalTicks) || 4,
+      Number(netcodeConfig.maxInputBatchFrames) || 12
+    ));
+    // Keep the local sim this many ticks ahead of the last authoritative snapshot
+    // so inputs reach the server before the tick they are stamped for.
+    const leadTicks = Math.max(0, Number(netcodeConfig.inputBufferTicks) || 4);
     const state = {
       enabled: !!(env && env.enabled && fetchImpl && WebSocketImpl),
       session: null,
@@ -77,6 +87,7 @@
       remotePredictedAction: { moveAxis: 0, fire: false, fireTier: null },
       pendingInputs: new Map(),
       lastQueuedTick: -1,
+      outgoing: { startTick: -1, frames: [] },
       nextSeq: 1,
       pendingControlConnect: null,
       matchReconnectTimer: null,
@@ -173,29 +184,92 @@
       };
     }
 
+    function flushOutgoingInputs() {
+      if (!state.outgoing.frames.length) return;
+      if (state.currentMatch && state.matchSocket && state.matchSocket.readyState === WebSocketImpl.OPEN) {
+        state.matchSocket.send(protocol.encodeMessage('match.input_batch', {
+          matchId: state.currentMatch.matchId,
+          seq: state.nextSeq++,
+          startTick: state.outgoing.startTick,
+          frames: state.outgoing.frames
+        }));
+      }
+      state.outgoing = { startTick: -1, frames: [] };
+    }
+
+    function bufferOutgoingInput(tick, action) {
+      const expectedTick = state.outgoing.startTick + state.outgoing.frames.length;
+      if (state.outgoing.frames.length && tick !== expectedTick) {
+        // Tick gap (countdown, reconnect, lead catch-up): frames must stay contiguous.
+        flushOutgoingInputs();
+      }
+      if (!state.outgoing.frames.length) state.outgoing.startTick = tick;
+      state.outgoing.frames.push(action);
+      // Fire is latency-sensitive; movement can ride the batch cadence.
+      if (action.fire || state.outgoing.frames.length >= inputFlushFrames) {
+        flushOutgoingInputs();
+      }
+    }
+
+    function prunePendingInputs(confirmedTick) {
+      for (const tick of Array.from(state.pendingInputs.keys())) {
+        if (tick <= confirmedTick) state.pendingInputs.delete(tick);
+      }
+      // Hard cap so a stalled snapshot stream can never grow this without bound.
+      if (state.pendingInputs.size > 600) {
+        const ticks = Array.from(state.pendingInputs.keys()).sort((a, b) => a - b);
+        for (const tick of ticks.slice(0, ticks.length - 600)) {
+          state.pendingInputs.delete(tick);
+        }
+      }
+    }
+
     function applyAuthoritativeSnapshot(payload) {
       const validation = protocol.validateSnapshot(payload);
       if (!validation.ok) return;
       const snapshot = validation.value;
       if (!snapshot.stateBlob || !state.currentMatch || !runtime) return;
-      state.remotePredictedAction = snapshot.lastActions && snapshot.lastActions[state.remoteSide]
-        ? snapshot.lastActions[state.remoteSide]
-        : state.remotePredictedAction;
+      const remoteAction = snapshot.lastActions && snapshot.lastActions[state.remoteSide];
+      if (remoteAction) {
+        // Predict remote movement only. Predicting fire would re-trigger the wave
+        // on every predicted tick until the next snapshot corrects it.
+        state.remotePredictedAction = {
+          moveAxis: Number(remoteAction.moveAxis) || 0,
+          fire: false,
+          fireTier: null
+        };
+      }
+      flushOutgoingInputs();
       const stateBlob = engineApi.deserializeStateBlob(snapshot.stateBlob);
-      const pendingTicks = Array.from(state.pendingInputs.keys()).filter((tick) => tick > snapshot.serverTick).sort((a, b) => a - b);
+      prunePendingInputs(snapshot.serverTick);
+      const pendingTicks = Array.from(state.pendingInputs.keys()).sort((a, b) => a - b);
       runtime.setLiveInputEnabled(false);
       runtime.restoreSimulation(stateBlob);
-      for (const [tick] of Array.from(state.pendingInputs.entries())) {
-        if (tick <= snapshot.serverTick) {
-          state.pendingInputs.delete(tick);
-        }
-      }
       for (const tick of pendingTicks) {
         runtime.queueInput(state.localSide, tick, state.pendingInputs.get(tick));
         runtime.queueInput(state.remoteSide, tick, state.remotePredictedAction);
       }
       if (pendingTicks.length) {
         runtime.stepSimulation(pendingTicks[pendingTicks.length - 1] - runtime.state.tick);
+      }
+      // Keep the local sim slightly ahead of the server so our inputs arrive
+      // before the tick they are stamped for. Without this the client trails the
+      // server by the network delay and every input lands in the server's past.
+      const targetTick = snapshot.serverTick + leadTicks;
+      if (runtime.state.tick < targetTick) {
+        const lastLocal = state.pendingInputs.get(state.lastQueuedTick);
+        const heldLocal = {
+          moveAxis: lastLocal ? lastLocal.moveAxis : 0,
+          fire: false,
+          fireTier: null
+        };
+        for (let tick = runtime.state.tick + 1; tick <= targetTick; tick += 1) {
+          if (!state.pendingInputs.has(tick)) state.pendingInputs.set(tick, heldLocal);
+          runtime.queueInput(state.localSide, tick, state.pendingInputs.get(tick));
+          runtime.queueInput(state.remoteSide, tick, state.remotePredictedAction);
+        }
+        state.lastQueuedTick = Math.max(state.lastQueuedTick, targetTick);
+        runtime.stepSimulation(targetTick - runtime.state.tick);
       }
       runtime.setLiveInputEnabled(true);
     }
@@ -207,19 +281,13 @@
           : context.defaultAction;
         if (!state.currentMatch) return decoratedDefaultAction;
         if (context.side === state.localSide) {
-          const action = protocol.normalizeActionFrame(decoratedDefaultAction);
-          if (!state.pendingInputs.has(context.tick)) {
-            state.pendingInputs.set(context.tick, action);
-            state.lastQueuedTick = Math.max(state.lastQueuedTick, context.tick);
-            if (state.matchSocket && state.matchSocket.readyState === WebSocketImpl.OPEN) {
-              state.matchSocket.send(protocol.encodeMessage('match.input_batch', {
-                matchId: state.currentMatch.matchId,
-                seq: state.nextSeq++,
-                startTick: context.tick,
-                frames: [action]
-              }));
-            }
+          if (state.pendingInputs.has(context.tick)) {
+            return state.pendingInputs.get(context.tick);
           }
+          const action = protocol.normalizeActionFrame(decoratedDefaultAction);
+          state.pendingInputs.set(context.tick, action);
+          state.lastQueuedTick = Math.max(state.lastQueuedTick, context.tick);
+          bufferOutgoingInput(context.tick, action);
           return action;
         }
         return state.remotePredictedAction;
@@ -244,6 +312,11 @@
       if (startPayload && startPayload.snapshot) {
         applyAuthoritativeSnapshot(startPayload.snapshot);
       }
+      emitter.emit('match.started', {
+        matchId: matchInfo.matchId,
+        side: state.localSide,
+        opponentLabel: matchInfo.opponentLabel
+      });
     }
 
     async function reconnectCurrentMatch() {
@@ -305,6 +378,8 @@
         state.remotePredictedAction = { moveAxis: 0, fire: false, fireTier: null };
         state.pendingInputs.clear();
         state.lastQueuedTick = -1;
+        state.outgoing = { startTick: -1, frames: [] };
+        state.nextSeq = 1;
         state.matchReconnectAttempts = 0;
       }
       clearMatchReconnectTimer();
@@ -343,10 +418,14 @@
           applyAuthoritativeSnapshot(message.payload);
         } else if (message.type === 'match.result') {
           setStatus(message.payload.reason === 'completed' ? 'Match complete.' : `Match over: ${message.payload.reason}.`);
-          emitter.emit('match.result', message.payload);
           clearMatchReconnectTimer();
           state.currentMatch = null;
           state.matchReconnectAttempts = 0;
+          state.pendingInputs.clear();
+          state.outgoing = { startTick: -1, frames: [] };
+          closeMatchSocket(true);
+          emitter.emit('match.result', message.payload);
+          emitter.emit('state', snapshotState());
         } else if (message.type === 'error') {
           setStatus(message.payload.message || 'Match socket error.');
         }

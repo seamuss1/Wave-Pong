@@ -101,6 +101,42 @@ test('queued fire actions produce waves in the authoritative engine', () => {
   assert.equal(snapshot.waves[0].side, 'left');
 });
 
+test('network snapshots stay lean and do not grow with match length', () => {
+  const engine = engineApi.createAuthoritativeMatchEngine({
+    playlistId: 'quick_play',
+    matchId: 'match_lean',
+    seed: 11
+  });
+  engine.start({ skipCountdown: true, leftName: 'Alpha', rightName: 'Bravo' });
+
+  for (let tick = 1; tick <= 600; tick += 1) {
+    engine.queueFrames('left', {
+      matchId: 'match_lean',
+      seq: tick,
+      startTick: tick,
+      frames: [{ moveAxis: tick % 2 ? 1 : -1, fire: tick % 120 === 0, fireTier: null }]
+    });
+    engine.step(1);
+  }
+  const earlyBlob = engine.snapshot(true).stateBlob;
+  // The blob must not carry the replay log, local history, or cosmetic arrays —
+  // those grow with match length and were the source of runaway snapshot sizes.
+  assert.equal(earlyBlob.replay, undefined);
+  assert.equal(earlyBlob.history, undefined);
+  assert.deepEqual(earlyBlob.world.particles, []);
+  assert.deepEqual(earlyBlob.world.floatTexts, []);
+  for (const ball of earlyBlob.world.balls) assert.deepEqual(ball.trail, []);
+
+  const earlySize = JSON.stringify(earlyBlob).length;
+  for (let tick = 601; tick <= 3600; tick += 1) {
+    engine.step(1);
+  }
+  const lateSize = JSON.stringify(engine.snapshot(true).stateBlob).length;
+  // Allow variance from ball/pulse/powerup counts, but 25 extra seconds of
+  // simulation must not meaningfully inflate the payload.
+  assert.ok(lateSize < Math.max(earlySize * 3, 20000), `snapshot grew from ${earlySize} to ${lateSize} bytes`);
+});
+
 test('authoritative match accepts players and emits a start payload', () => {
   const match = new AuthoritativeMatch({
     matchId: 'match_live',

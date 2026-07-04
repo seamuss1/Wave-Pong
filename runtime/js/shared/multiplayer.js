@@ -57,7 +57,13 @@
       rightName: mergedOverrides.rightName || 'PLAYER 2',
       modeLabel: mergedOverrides.modeLabel || playlist.modeLabel || 'ONLINE',
       opponentLabel: mergedOverrides.opponentLabel || playlist.label || 'Online',
-      liveInputEnabled: mergedOverrides.liveInputEnabled !== false
+      liveInputEnabled: mergedOverrides.liveInputEnabled !== false,
+      // Online matches never run a local CPU controller (a stale menu-selected bot
+      // in a controller slot silently eats one player's input) and never record a
+      // replay (the log grows unboundedly and bloats authoritative snapshots).
+      leftController: null,
+      rightController: null,
+      replayEnabled: mergedOverrides.replayEnabled === true
     };
   }
 
