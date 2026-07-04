@@ -1,0 +1,10 @@
+{
+  "name": "wave-pong-backend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Quick-play matchmaking and authoritative match hosting for Wave Pong",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test --test-isolation=none tests/*.test.js"
+  }
+}

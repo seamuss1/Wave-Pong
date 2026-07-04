@@ -402,9 +402,7 @@
       scoreLimit: 7,
       theme: 'neon',
       powerupsEnabled: true,
-      trailsEnabled: true,
-      startupMessage: 'Open the match menu and unleash the rectangles.',
-      startupMessageSeconds: 2.1
+      trailsEnabled: true
     },
     balance, // Gameplay tuning numbers.
     // Shape of the persistent history record saved in localStorage.
@@ -453,17 +451,6 @@
       'That was not a miss. That was an interpretive choice.',
       'The ball has entered its villain era.'
     ],
-    // Randomized point-scored callouts.
-    scoreLines: [
-      'Clinical finish.',
-      'That point had paperwork and witnesses.',
-      'An absolute robbery at the netless court.',
-      'Some rectangles simply want it more.',
-      'The ball filed a change of address.',
-      'The crowd goes polite but sustained.',
-      'That one had a sequel budget.',
-      'A point so clean it squeaks.'
-    ],
     // Theme color palettes used by CSS variables and canvas rendering.
     themes: {
       neon: {
@@ -508,6 +495,38 @@
       chill: { aiSpeed: 740, aiError: 92, reaction: 0.12, ballSpeed: 600 },
       spicy: { aiSpeed: 950, aiError: 36, reaction: 0.22, ballSpeed: 690 },
       absurd: { aiSpeed: 1210, aiError: 14, reaction: 0.32, ballSpeed: 770 }
+    },
+    // Minimal multiplayer configuration shared by browser and backend: one quick-play
+    // queue, no ranked ladder, no chat.
+    multiplayer: {
+      netcode: {
+        serverTickRate: 120,
+        inputBufferTicks: 4,
+        rollbackWindowTicks: 16,
+        snapshotRateHz: 24,
+        maxInputBatchFrames: 12
+      },
+      reconnect: {
+        graceSeconds: 30
+      },
+      auth: {
+        guestDisplayNamePrefix: 'Guest',
+        accessTokenTtlSeconds: 60 * 20,
+        refreshTokenTtlSeconds: 60 * 60 * 24 * 30
+      },
+      playlists: {
+        quick_play: {
+          id: 'quick_play',
+          label: 'Quick Play',
+          modeLabel: 'ONLINE',
+          scoreLimit: 7,
+          mode: 'pvp',
+          powerupsEnabled: true,
+          longRallyMultiballEnabled: true,
+          trailsEnabled: true,
+          theme: 'neon'
+        }
+      }
     }
   };
 
