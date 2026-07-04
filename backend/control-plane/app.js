@@ -130,7 +130,7 @@ function createControlPlaneApp(options = {}) {
     });
   });
 
-  attachTinyWebSocketServer(server, {
+  const wsHandlers = {
     [protocol.WS_PATHS.control]: (connection) => {
       let player = null;
 
@@ -184,7 +184,11 @@ function createControlPlaneApp(options = {}) {
         }
       });
     }
-  });
+  };
+  // Single-port deployments mount the match-worker socket here too, so one origin
+  // (and one Cloudflare hostname) serves the client, control, and match sockets.
+  Object.assign(wsHandlers, options.extraWsHandlers || {});
+  attachTinyWebSocketServer(server, wsHandlers);
 
   return {
     server,
