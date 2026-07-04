@@ -161,7 +161,11 @@
     const runtime = simCore.createSimulation({
       config: opts.config || config,
       seed: opts.seed,
-      tickRate
+      tickRate,
+      // The authoritative server never renders, so it stores no cosmetic
+      // particles/trails. RNG draws that feed those effects still happen, so the
+      // deterministic state stays identical to the browser clients'.
+      cosmetics: false
     });
     const lastActions = {
       left: { moveAxis: 0, fire: false, fireTier: null },

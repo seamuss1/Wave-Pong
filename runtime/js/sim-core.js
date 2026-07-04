@@ -179,6 +179,17 @@
       let loopHandle = null;
       let fixedAccumulator = 0;
       let audioCtx = null;
+      // Adaptive rendering budget. When sustained frame times show the device
+      // cannot keep up, drop the canvas resolution (devicePixelRatio cap) and
+      // switch on the reduced-effects path (skips the expensive per-object
+      // canvas shadow blur). Recovers to full quality once frames are fast again.
+      const perf = {
+        emaFrameMs: 1000 / 60,
+        slowMs: 0,
+        fastMs: 0,
+        maxDpr: 2,
+        auto: false
+      };
       let history;
       let lastWinner = 'None';
       let matchStats;
@@ -214,6 +225,12 @@
       // entries per second and would otherwise be dragged through every authoritative
       // snapshot clone/restore.
       let replayRecordingEnabled = options.replayEnabled !== false;
+      // Cosmetic arrays (particles, ball/pulse trails) are presentation-only:
+      // they are excluded from the state hash and the network snapshot. The
+      // authoritative server never renders, so it stores none of them. RNG draws
+      // that feed these effects are always performed regardless, so disabling
+      // storage cannot desync the deterministic sim.
+      const cosmeticsEnabled = options.cosmetics !== false;
       // Optional override for the game-over Rematch button (online play swaps the
       // local restart for a return to matchmaking).
       let rematchHandler = null;
@@ -1373,13 +1390,61 @@ function firePulse(paddle, tierCap = null) {
 
       function resize() {
         if (!canvas || !ctx || !windowRef) return;
-        const dpr = Math.max(1, Math.min(windowRef.devicePixelRatio || 1, 2));
+        const dpr = Math.max(1, Math.min(windowRef.devicePixelRatio || 1, perf.maxDpr));
         canvas.width = Math.floor(windowRef.innerWidth * dpr);
         canvas.height = Math.floor(windowRef.innerHeight * dpr);
         canvas.style.width = windowRef.innerWidth + 'px';
         canvas.style.height = windowRef.innerHeight + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         scale = Math.min(windowRef.innerWidth / W, windowRef.innerHeight / H);
+        // A resolution change invalidates the ctx-bound gradient cache.
+        backgroundGradientCache = null;
+      }
+
+      // Effective shadow-blur radius: 0 when the reduced-effects path is active,
+      // since per-object canvas shadows are the dominant mobile fill-rate cost.
+      function gb(blur) {
+        return state.lowPerfEffects ? 0 : blur;
+      }
+
+      function setAutoLowPerf(next) {
+        if (perf.auto === next) return;
+        perf.auto = next;
+        perf.maxDpr = next ? 1 : 2;
+        state.lowPerfEffects = REDUCED_WAVE_FX || next;
+        resize();
+      }
+
+      // Called once per rendered frame with the wall-clock delta. Escalates to
+      // reduced quality after a sustained slow stretch and, with hysteresis,
+      // restores full quality after a sustained fast stretch. Only samples during
+      // active, foregrounded play so menu idling and tab-switch stalls do not
+      // trip it.
+      function trackFramePerf(frameMs) {
+        if (headless) return;
+        perf.emaFrameMs = perf.emaFrameMs * 0.9 + frameMs * 0.1;
+        const sampling = state.running && !state.paused && !state.menuOpen && !state.gameOver &&
+          !(documentRef && documentRef.hidden);
+        if (!sampling) {
+          perf.slowMs = 0;
+          perf.fastMs = 0;
+          return;
+        }
+        if (perf.emaFrameMs > 34) { // sustained below ~29fps
+          perf.slowMs += frameMs;
+          perf.fastMs = 0;
+        } else if (perf.emaFrameMs < 21) { // comfortably above ~47fps
+          perf.fastMs += frameMs;
+          perf.slowMs = 0;
+        } else {
+          perf.slowMs = 0;
+          perf.fastMs = 0;
+        }
+        if (!perf.auto && perf.slowMs > 1500) {
+          setAutoLowPerf(true);
+        } else if (perf.auto && perf.fastMs > 6000) {
+          setAutoLowPerf(false);
+        }
       }
 
       function initAudio() {
@@ -1395,16 +1460,21 @@ function firePulse(paddle, tierCap = null) {
       }
 
       function emitRuntimeEvent(type, payload = {}) {
+        // The live event queue has no runtime consumer: the browser never drains
+        // it and the authoritative server drains-and-discards. Its only real sink
+        // is the replay log. So when replay recording is off (all online play and
+        // normal browser matches) skip the work entirely - the per-event
+        // deepClone fired for every tone/goal/hit was pure overhead on both the
+        // client render loop and the server tick loop.
+        if (!replayRecordingEnabled) return;
         const entry = {
           type,
           tick: state.tick,
           payload: deepClone(payload)
         };
         eventQueue.push(entry);
-        // Browsers never drain the event queue (only headless hosts call
-        // flushEvents), so cap it instead of letting a long session leak.
         if (eventQueue.length > 1024) eventQueue.splice(0, eventQueue.length - 1024);
-        if (replayRecordingEnabled) replay.events.push(entry);
+        replay.events.push(entry);
       }
 
       let audioBus = null;
@@ -1841,7 +1911,7 @@ function applyTheme(name) {
           const life = 0.45 + rng.next() * 0.35;
           const maxLife = 0.45 + rng.next() * 0.35;
           const size = 2 + rng.next() * 4;
-          if (!state.trailsEnabled || world.particles.length >= MAX_PARTICLES) continue;
+          if (!state.trailsEnabled || !cosmeticsEnabled || world.particles.length >= MAX_PARTICLES) continue;
           world.particles.push({
             x,
             y,
@@ -2546,7 +2616,7 @@ function updateBalls(dt) {
       continue;
     }
 
-    if (state.trailsEnabled) {
+    if (state.trailsEnabled && cosmeticsEnabled) {
       ball.trail.push({
         x: ball.x,
         y: ball.y,
@@ -2643,7 +2713,7 @@ function updatePulses(dt) {
             const trailInterval = 0.02;
             if (pulse.trailSpawnTimer <= 0) {
               pulse.trailSpawnTimer = trailInterval;
-              pulse.trail.push({ x: pulse.x, y: pulse.y, angle: pulse.angle, life: 0.24 });
+              if (cosmeticsEnabled) pulse.trail.push({ x: pulse.x, y: pulse.y, angle: pulse.angle, life: 0.24 });
             }
             const maxTrail = 10;
             if (pulse.trail.length > maxTrail) pulse.trail.splice(0, pulse.trail.length - maxTrail);
@@ -3191,7 +3261,7 @@ function update(dt) {
           ctx.strokeStyle = glowGradient;
           ctx.lineWidth = flash.thickness;
           ctx.shadowColor = flash.color;
-          ctx.shadowBlur = flash.thickness * 1.35;
+          ctx.shadowBlur = gb(flash.thickness * 1.35);
           ctx.beginPath();
           ctx.moveTo(originX, flash.y);
           ctx.lineTo(endX, flash.y);
@@ -3200,7 +3270,7 @@ function update(dt) {
           ctx.strokeStyle = coreGradient;
           ctx.lineWidth = Math.max(4, flash.thickness * 0.32);
           ctx.shadowColor = '#ffffff';
-          ctx.shadowBlur = 16 + glowAlpha * 12;
+          ctx.shadowBlur = gb(16 + glowAlpha * 12);
           ctx.beginPath();
           ctx.moveTo(originX, flash.y);
           ctx.lineTo(endX, flash.y);
@@ -3229,7 +3299,7 @@ function update(dt) {
         ctx.strokeStyle = `rgba(${coreColor}, ${0.22 + readiness * 0.48})`;
         ctx.lineWidth = stats.mode === 'push' ? 4.4 : (stats.mode === 'solid' ? 3.6 : 3);
         ctx.shadowColor = stats.glow;
-        ctx.shadowBlur = stats.mode === 'push' ? 26 : 18;
+        ctx.shadowBlur = gb(stats.mode === 'push' ? 26 : 18);
         ctx.beginPath();
         ctx.moveTo(origin.x, origin.y);
         ctx.lineTo(beamX, beamY);
@@ -3312,7 +3382,7 @@ function update(dt) {
         if (fillWidth > 0) {
           ctx.fillStyle = meterColor;
           ctx.shadowColor = meterColor;
-          ctx.shadowBlur = 6;
+          ctx.shadowBlur = gb(6);
           roundedRect(baseX, baseY, fillWidth, 7, 4);
           ctx.fill();
           if (pulseLight > 0) {
@@ -3343,7 +3413,7 @@ function update(dt) {
         ctx.fill();
         ctx.fillStyle = xpColor;
         ctx.shadowColor = xpColor;
-        ctx.shadowBlur = 4;
+        ctx.shadowBlur = gb(4);
         roundedRect(baseX, baseY + 11, Math.max(6, 74 * xpProgress), 5, 3);
         ctx.fill();
 
@@ -3368,7 +3438,7 @@ function renderPowerups() {
           ctx.save();
           ctx.translate(p.x, p.y);
           ctx.shadowColor = def.color;
-          ctx.shadowBlur = def.kind === 'minion' ? 16 : 12;
+          ctx.shadowBlur = gb(def.kind === 'minion' ? 16 : 12);
 
           if (def.kind === 'debuff') {
             ctx.rotate(Math.PI / 4);
@@ -3445,7 +3515,7 @@ function renderPaddle(paddle) {
         ctx.save();
         const boost = paddle.side === 'left' ? state.leftBoostTimer : state.rightBoostTimer;
         ctx.translate(0, 0);
-        ctx.shadowBlur = 20 + boost * 10;
+        ctx.shadowBlur = gb(20 + boost * 10);
         ctx.shadowColor = color;
         ctx.fillStyle = color;
         const wobble = paddle.jamTimer > 0 ? Math.sin(performance.now() * 0.08 + (paddle.side === 'left' ? 0 : 1.4)) * 3.5 * Math.min(1, paddle.jamTimer + 0.15) : 0;
@@ -3488,7 +3558,7 @@ function renderPaddle(paddle) {
         ctx.save();
         ctx.strokeStyle = stats.color;
         ctx.shadowColor = stats.glow;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = gb(10);
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(origin.x, origin.y, 14 + progress * 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0.08, progress));
@@ -3498,7 +3568,7 @@ function renderPaddle(paddle) {
         const activeIndex = stats.waveType === 'gold' ? 2 : (stats.waveType === 'pink' ? 1 : 0);
         const pipY = paddle.y - 40;
         const pipX = paddle.side === 'left' ? paddle.x + 4 : paddle.x + paddle.w - 4 - 28;
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = gb(6);
         for (let i = 0; i < 3; i++) {
           ctx.globalAlpha = i === activeIndex ? 1 : 0.28;
           ctx.fillStyle = pipColors[i];
@@ -3545,7 +3615,7 @@ function renderPaddle(paddle) {
             ctx.globalAlpha = 0.2 + pulse * 0.22 + holdAlpha * 0.12;
             ctx.fillStyle = hitColor;
             ctx.shadowColor = hitColor;
-            ctx.shadowBlur = 20 + pulse * 18;
+            ctx.shadowBlur = gb(20 + pulse * 18);
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, haloRadius, 0, Math.PI * 2);
             ctx.fill();
@@ -3566,7 +3636,7 @@ function renderPaddle(paddle) {
             const ny = ball.vy / speed;
             ctx.strokeStyle = boostVisualColor;
             ctx.shadowColor = boostVisualColor;
-            ctx.shadowBlur = 16 + boostOpacity * 12 + boostStrength * 4;
+            ctx.shadowBlur = gb(16 + boostOpacity * 12 + boostStrength * 4);
             ctx.lineCap = 'round';
             for (let lane = -1; lane <= 1; lane++) {
               const sideOffset = 4.5 + boostStrength * 0.6;
@@ -3594,7 +3664,7 @@ function renderPaddle(paddle) {
 
           ctx.globalAlpha = 1;
           ctx.shadowColor = boostOpacity > 0 ? boostVisualColor : hitColor;
-          ctx.shadowBlur = 20 + ball.flash * 12 + boostOpacity * 10 + boostStrength * 2;
+          ctx.shadowBlur = gb(20 + ball.flash * 12 + boostOpacity * 10 + boostStrength * 2);
           ctx.fillStyle = hitColor;
           // Squash/stretch: elongate the ball along its velocity as it speeds up.
           const ballSpeed = Math.hypot(ball.vx, ball.vy);
@@ -3823,7 +3893,7 @@ function renderPulses() {
             ctx.strokeStyle = `rgba(255, 211, 77, ${0.42 + alpha * 0.44})`;
             ctx.lineWidth = thickness;
             ctx.shadowColor = pulse.glow;
-            ctx.shadowBlur = reduced ? 10 : 30;
+            ctx.shadowBlur = gb(reduced ? 10 : 30);
             ctx.beginPath();
             ctx.arc(pulse.x, pulse.y, pulse.arcRadius, pulse.angle - pulse.cone, pulse.angle + pulse.cone);
             ctx.stroke();
@@ -3847,7 +3917,7 @@ function renderPulses() {
             : `rgba(123, 210, 255, ${0.3 + alpha * 0.5})`;
           ctx.lineWidth = thickness;
           ctx.shadowColor = pulse.glow;
-          ctx.shadowBlur = pulse.mode === 'solid' ? 30 : 24;
+          ctx.shadowBlur = gb(pulse.mode === 'solid' ? 30 : 24);
           ctx.beginPath();
           ctx.arc(pulse.x, pulse.y, radius, pulse.angle - pulse.cone, pulse.angle + pulse.cone);
           ctx.stroke();
@@ -3953,7 +4023,7 @@ function renderOverlayFX() {
         ctx.strokeStyle = 'rgba(2, 6, 12, 0.78)';
         ctx.fillStyle = fill;
         ctx.shadowColor = fill;
-        ctx.shadowBlur = 14 + popEase * 18;
+        ctx.shadowBlur = gb(14 + popEase * 18);
         ctx.strokeText(String(value), 0, 0);
         ctx.fillText(String(value), 0, 0);
         ctx.restore();
@@ -4194,6 +4264,7 @@ function renderOverlayFX() {
         const dt = Math.min(0.25, ((ts - lastFrameTime) / 1000) || fixedDt);
         lastFrameTime = ts;
         state.presentationTimeMs = ts;
+        trackFramePerf(dt * 1000);
         pollGamepads();
         // Hit-stop: freeze sim ticks in wall time for a few frames on heavy impacts.
         // Ticks are only delayed, never dropped, so determinism is untouched.
@@ -4202,9 +4273,20 @@ function renderOverlayFX() {
         } else {
           fixedAccumulator += dt * simSpeed;
         }
-        while (fixedAccumulator >= fixedDt) {
+        // Cap catch-up steps per frame. On a device that cannot keep real time,
+        // an uncapped loop runs ever more sim steps as frames slow, feeding a
+        // spiral of death. Beyond the cap we drop the backlog: offline play
+        // simply advances a hair slower, and online play is re-aligned by the
+        // next authoritative snapshot's fast-forward.
+        const maxCatchUpSteps = 8;
+        let steps = 0;
+        while (fixedAccumulator >= fixedDt && steps < maxCatchUpSteps) {
           stepSimulation(1);
           fixedAccumulator -= fixedDt;
+          steps += 1;
+        }
+        if (fixedAccumulator > fixedDt * maxCatchUpSteps) {
+          fixedAccumulator = 0;
         }
         updatePresentationFx(dt);
         updateUI();
@@ -4385,29 +4467,32 @@ function renderOverlayFX() {
           pointerControl.targetY = pointerWorldY(e);
           pointerControl.atMs = state.presentationTimeMs;
         });
+        const isTouchLikePointer = (e) => e.pointerType === 'touch' || e.pointerType === 'pen';
         listen(canvas, 'pointerdown', (e) => {
           if (state.menuOpen) return;
           e.preventDefault();
           pointerControl.targetY = pointerWorldY(e);
           pointerControl.atMs = state.presentationTimeMs;
           if (skipPlayCountdown()) return;
-          if (e.pointerType === 'touch' && pointerControl.steerPointerId == null) {
-            // First finger steers; a second finger fires.
-            pointerControl.steerPointerId = e.pointerId;
+          if (isTouchLikePointer(e)) {
+            // Touch/pen only steers here. Firing for touch is owned entirely by
+            // the on-screen touch controller (tap-to-fire / second-finger-fire),
+            // so the first steering touch never also launches a wave.
+            if (pointerControl.steerPointerId == null) pointerControl.steerPointerId = e.pointerId;
             return;
           }
           beginFireHold('left');
         });
         listen(canvas, 'pointerup', (e) => {
-          if (e.pointerType === 'touch' && e.pointerId === pointerControl.steerPointerId) {
-            pointerControl.steerPointerId = null;
+          if (isTouchLikePointer(e)) {
+            if (e.pointerId === pointerControl.steerPointerId) pointerControl.steerPointerId = null;
             return;
           }
           releaseFireHold('left');
         });
         listen(canvas, 'pointercancel', (e) => {
           if (e.pointerId === pointerControl.steerPointerId) pointerControl.steerPointerId = null;
-          fireHold.left = null;
+          if (!isTouchLikePointer(e)) fireHold.left = null;
         });
 
         // Auto-pause when the tab is hidden instead of bursting catch-up ticks on return.
