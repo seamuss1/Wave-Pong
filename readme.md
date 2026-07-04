@@ -462,14 +462,14 @@ npm.cmd run deploy:test
 npm.cmd run deploy:production
 ```
 
-If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.6.6`.
+If you do not pass `-UserVersion`, local deploys will use the version from `version.json`, for example `0.7.0`.
 
 You can still override it for a one-off deploy:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\deploy-itch.ps1 `
   -Destination test `
-  -UserVersion "0.6.6-hotfix1"
+  -UserVersion "0.7.0-hotfix1"
 ```
 
 ### First-time itch.io setup
@@ -599,10 +599,10 @@ Pink is the solid defensive wave. It has a wider angle but a shorter reach than 
 
 **Role:** offense, disruption, and precision power plays
 
-Gold is the full-bar super wave.
+Gold is the top-tier super wave, fired from a nearly full bar.
 
 ### What it does
-- consumes the full charge bar
+- consumes almost the entire charge bar (90%)
 - travels as a broad offensive arc
 - is strongest in the **center sweet spot** and weaker at the edges
 - rewards accurate aim instead of random spraying
@@ -623,7 +623,7 @@ Gold is the full-bar super wave.
 
 The ball changes color based on **who hit it last**, making possession and control easier to read.
 
-Boosted balls also get a speed visual effect so you can tell when a wave has added extra pace.
+Boosted balls keep that owner color and add a speed streak effect on top, so you can read both possession and extra pace at the same time. Only an un-owned (freshly served) ball tints toward the wave color while boosted.
 
 # Powerups
 
@@ -692,8 +692,10 @@ Historic stats are stored locally in your browser.
 
 # Strategy guide
 
+The fire button picks your wave: **tap for blue, hold briefly for pink, hold longer for gold** (you can only fire a tier you can afford). The notches on your charge bar mark the pink and gold thresholds, so tier selection is a live decision rather than an automatic one.
+
 ## 1. Use blue constantly
-Blue is your general-purpose tool. Because it is cheap, fast, and flexible, it should be part of your normal rhythm rather than something you save forever.
+Blue is your general-purpose tool. Because it is cheap, fast, and flexible, it should be part of your normal rhythm rather than something you save forever. A quick tap always fires blue even on a full bar, so you never have to spend pink or gold just to poke.
 
 ## 2. Use pink like a shield, not a snipe
 Pink is best when the ball is threatening your goal or when you need broad short-range coverage. It is about reliability, not reach.
@@ -708,23 +710,27 @@ XP minions and XP powerups are valuable, but chasing them blindly can give up po
 As more balls arrive, court control matters more than raw aggression. Blue helps steer the chaos, pink saves emergencies, and yellow should be used to create a clean scoring opening rather than random noise.
 
 ## 6. Watch the charge bar, not just the ball
-Because blue, pink, and gold all spend from the same resource, smart timing matters. A full bar is pressure. A half bar is still dangerous. An empty bar means you are back to pure paddle fundamentals.
+Because blue, pink, and gold all spend from the same resource, smart timing matters. A full bar is options: you can still tap for blue, hold for a pink wall, or release a gold finisher. A half bar keeps blue and pink available. An empty bar means you are back to pure paddle fundamentals. Conceding a goal refunds some charge, so a fresh point never starts you empty.
 
 # Feature summary
 
 - Static browser game with itch.io-ready entrypoint
 - Single player, local two player, and demo options
+- Keyboard, mouse, touch, and gamepad control, with layout-independent key matching
+- Player-chosen wave tier: tap for blue, hold for pink, hold longer for gold
 - Smooth paddle aiming
-- Shared wave charge system
+- Shared wave charge system with tier notches on the bar
 - Three wave types with different roles
-- XP leveling for wave power
+- XP leveling for wave power, with a felt level-up (charge refund, burst, chime)
+- Comeback support: conceding a goal refunds XP and charge
 - Instant powerups and debuffs
 - XP minions
 - Multiball escalation
-- Ball ownership color feedback
+- Ball ownership color feedback that persists through boosts
 - Boost visuals on fast balls
-- Match stats and persistent history
-- Neon arcade presentation with sound and effects
+- Match-point tension and a match-end winner ceremony
+- Match stats and persistent history, with saved menu settings
+- Neon arcade presentation with layered synth audio and effects
 
 # Recommended play styles
 
