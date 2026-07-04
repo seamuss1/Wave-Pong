@@ -70,9 +70,15 @@
       Number(netcodeConfig.inputSendIntervalTicks) || 4,
       Number(netcodeConfig.maxInputBatchFrames) || 12
     ));
-    // Keep the local sim this many ticks ahead of the last authoritative snapshot
-    // so inputs reach the server before the tick they are stamped for.
-    const leadTicks = Math.max(0, Number(netcodeConfig.inputBufferTicks) || 4);
+    // Keep the local sim ahead of the last authoritative snapshot so inputs
+    // reach the server before the tick they are stamped for. This is the
+    // starting lead; it adapts at runtime from the server-reported input margin.
+    const initialLeadTicks = Math.max(2, Number(netcodeConfig.inputBufferTicks) || 4);
+    const minLeadTicks = 2;
+    const maxLeadTicks = 30; // 250ms at 120Hz; beyond this latency is the problem
+    // Target window for how early our inputs should land at the server, in ticks.
+    const marginLow = 1;
+    const marginHigh = 7;
     const state = {
       enabled: !!(env && env.enabled && fetchImpl && WebSocketImpl),
       session: null,
@@ -88,6 +94,9 @@
       pendingInputs: new Map(),
       lastQueuedTick: -1,
       outgoing: { startTick: -1, frames: [] },
+      leadTicks: initialLeadTicks,
+      lastLeadRaiseMs: 0,
+      lastLeadLowerMs: 0,
       nextSeq: 1,
       pendingControlConnect: null,
       matchReconnectTimer: null,
@@ -240,10 +249,12 @@
         };
       }
       flushOutgoingInputs();
+      adaptLeadTicks(snapshot);
       const stateBlob = engineApi.deserializeStateBlob(snapshot.stateBlob);
       prunePendingInputs(snapshot.serverTick);
       const pendingTicks = Array.from(state.pendingInputs.keys()).sort((a, b) => a - b);
       runtime.setLiveInputEnabled(false);
+      if (typeof runtime.beginNetworkCorrection === 'function') runtime.beginNetworkCorrection();
       runtime.restoreSimulation(stateBlob);
       for (const tick of pendingTicks) {
         runtime.queueInput(state.localSide, tick, state.pendingInputs.get(tick));
@@ -252,11 +263,15 @@
       if (pendingTicks.length) {
         runtime.stepSimulation(pendingTicks[pendingTicks.length - 1] - runtime.state.tick);
       }
-      // Keep the local sim slightly ahead of the server so our inputs arrive
-      // before the tick they are stamped for. Without this the client trails the
-      // server by the network delay and every input lands in the server's past.
-      const targetTick = snapshot.serverTick + leadTicks;
-      if (runtime.state.tick < targetTick) {
+      // Keep the local sim ahead of the server so our inputs arrive before the
+      // tick they are stamped for; when they do, the deterministic replay above
+      // reproduces the server state exactly and no visible correction happens.
+      // Big deficits (match start, reconnect, tab stall) are closed with a hard
+      // fast-forward; small drift is closed by nudging the sim clock a few
+      // percent, which is invisible, instead of stepping (which reads as jitter).
+      const targetTick = snapshot.serverTick + Math.round(state.leadTicks);
+      const behind = targetTick - runtime.state.tick;
+      if (behind >= 10) {
         const lastLocal = state.pendingInputs.get(state.lastQueuedTick);
         const heldLocal = {
           moveAxis: lastLocal ? lastLocal.moveAxis : 0,
@@ -270,8 +285,31 @@
         }
         state.lastQueuedTick = Math.max(state.lastQueuedTick, targetTick);
         runtime.stepSimulation(targetTick - runtime.state.tick);
+        if (typeof runtime.setSimSpeed === 'function') runtime.setSimSpeed(1);
+      } else if (typeof runtime.setSimSpeed === 'function') {
+        runtime.setSimSpeed(1 + Math.max(-0.08, Math.min(0.12, behind * 0.02)));
       }
+      if (typeof runtime.endNetworkCorrection === 'function') runtime.endNetworkCorrection();
       runtime.setLiveInputEnabled(true);
+    }
+
+    // Adaptive tick lead: the server echoes how early (positive) or late
+    // (negative) our newest input batch landed. Late inputs are the direct
+    // cause of own-paddle correction jitter, so react to lateness quickly and
+    // give back excess lead slowly. Adjustments are throttled because margins
+    // reflect batches sent a round trip ago.
+    function adaptLeadTicks(snapshot) {
+      const rawMargin = snapshot.inputMargin ? snapshot.inputMargin[state.localSide] : null;
+      const margin = Number(rawMargin);
+      if (rawMargin == null || !Number.isFinite(margin)) return;
+      const now = Date.now();
+      if (margin < marginLow && now - state.lastLeadRaiseMs > 300) {
+        state.lastLeadRaiseMs = now;
+        state.leadTicks = Math.min(maxLeadTicks, state.leadTicks + Math.min(4, marginLow - margin));
+      } else if (margin > marginHigh && now - state.lastLeadLowerMs > 2000) {
+        state.lastLeadLowerMs = now;
+        state.leadTicks = Math.max(minLeadTicks, state.leadTicks - 1);
+      }
     }
 
     function buildRuntimeInputProvider() {
@@ -379,6 +417,9 @@
         state.pendingInputs.clear();
         state.lastQueuedTick = -1;
         state.outgoing = { startTick: -1, frames: [] };
+        state.leadTicks = initialLeadTicks;
+        state.lastLeadRaiseMs = 0;
+        state.lastLeadLowerMs = 0;
         state.nextSeq = 1;
         state.matchReconnectAttempts = 0;
       }
@@ -423,6 +464,7 @@
           state.matchReconnectAttempts = 0;
           state.pendingInputs.clear();
           state.outgoing = { startTick: -1, frames: [] };
+          if (runtime && typeof runtime.setSimSpeed === 'function') runtime.setSimSpeed(1);
           closeMatchSocket(true);
           emitter.emit('match.result', message.payload);
           emitter.emit('state', snapshotState());
