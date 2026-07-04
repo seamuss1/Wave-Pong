@@ -77,6 +77,29 @@
     return clone;
   }
 
+  // The game-mode picker is a radio-button group, but callers treat it like a
+  // <select> (read/assign .value, scan .options, listen for change/input), so
+  // wrap the radios behind that same surface.
+  function createModeRadioBinding(documentRef) {
+    if (!documentRef || typeof documentRef.querySelectorAll !== 'function') return null;
+    const radios = Array.from(documentRef.querySelectorAll('input[type="radio"][name="modeSelect"]'));
+    if (!radios.length) return null;
+    return {
+      get value() {
+        const checked = radios.find((radio) => radio.checked);
+        return checked ? checked.value : radios[0].value;
+      },
+      set value(next) {
+        const target = radios.find((radio) => radio.value === String(next));
+        if (target) target.checked = true;
+      },
+      options: radios.map((radio) => ({ value: radio.value })),
+      addEventListener(eventName, handler) {
+        radios.forEach((radio) => radio.addEventListener(eventName, handler));
+      }
+    };
+  }
+
   function createUIBindings(documentRef) {
     const get = (id) => (documentRef ? documentRef.getElementById(id) : null);
     return {
@@ -109,7 +132,7 @@
       pausePowerCount: get('pausePowerCount'),
       pauseScoreLimit: get('pauseScoreLimit'),
       menuVersion: get('menuVersion'),
-      modeSelect: get('modeSelect'),
+      modeSelect: createModeRadioBinding(documentRef) || get('modeSelect'),
       difficultySelect: get('difficultySelect'),
       scoreLimitSelect: get('scoreLimitSelect'),
       themeSelect: get('themeSelect'),
@@ -469,6 +492,12 @@
       const fireHoldBalance = balance.fireHold || { pinkAtSeconds: 0.22, goldAtSeconds: 0.5 };
       // Live human fire-hold tracking per side (hold to charge up the requested tier).
       const fireHold = { left: null, right: null };
+      // Human fire control scheme (client-side input preference, never part of the
+      // deterministic sim). 'hold' charges a tier while the fire key is held and fires
+      // it on release; 'auto' fires the best affordable wave the instant fire is pressed.
+      let controlScheme = normalizeControlScheme(
+        options.controlScheme || (config.defaults && config.defaults.controlScheme)
+      );
       // Live pointer steering for the left paddle (mouse hover / touch drag).
       const pointerControl = { targetY: null, atMs: -Infinity, steerPointerId: null };
       // Live gamepad state polled once per frame in loop().
@@ -496,10 +525,27 @@
         return localHumanSide || side;
       }
 
+      function normalizeControlScheme(scheme) {
+        return scheme === 'auto' ? 'auto' : 'hold';
+      }
+
+      function setControlScheme(scheme) {
+        controlScheme = normalizeControlScheme(scheme);
+        // Leaving hold mode mid-press should not leave a stale charge armed.
+        if (controlScheme === 'auto') clearFireHolds();
+        return controlScheme;
+      }
+
       function beginFireHold(side) {
         if (!humanFireAllowed()) return;
         if (state.demoMode) return;
-        fireHold[resolveHumanSide(side)] = nowMs();
+        const targetSide = resolveHumanSide(side);
+        if (controlScheme === 'auto') {
+          // No charge phase: a press immediately fires the best affordable wave.
+          queueHumanFire(targetSide, null);
+          return;
+        }
+        fireHold[targetSide] = nowMs();
       }
 
       function releaseFireHold(side) {
@@ -4176,11 +4222,20 @@ function renderOverlayFX() {
           const fireDown = !!(pad.buttons && ((pad.buttons[0] && pad.buttons[0].pressed) || (pad.buttons[7] && pad.buttons[7].pressed)));
           if (fireDown && control.fireDownMs == null) {
             if (skipPlayCountdown()) return;
-            if (humanFireAllowed() && !state.demoMode) control.fireDownMs = nowMs();
-          } else if (!fireDown && control.fireDownMs != null) {
-            const heldSeconds = (nowMs() - control.fireDownMs) / 1000;
-            control.fireDownMs = null;
             if (humanFireAllowed() && !state.demoMode) {
+              if (controlScheme === 'auto') {
+                // Fire on press; sentinel (-1) marks it handled so release does not refire.
+                queueHumanFire(resolveHumanSide(side), null);
+                control.fireDownMs = -1;
+              } else {
+                control.fireDownMs = nowMs();
+              }
+            }
+          } else if (!fireDown && control.fireDownMs != null) {
+            const startedAt = control.fireDownMs;
+            control.fireDownMs = null;
+            if (startedAt > 0 && humanFireAllowed() && !state.demoMode) {
+              const heldSeconds = (nowMs() - startedAt) / 1000;
               queueHumanFire(resolveHumanSide(side), tierForHoldDuration(heldSeconds));
             }
           }
@@ -4616,6 +4671,7 @@ function renderOverlayFX() {
         hashSimulationState,
         flushEvents,
         setControllers,
+        setControlScheme,
         setInputProvider,
         setLiveInputEnabled,
         setLocalHumanSide,
