@@ -44,14 +44,34 @@ html = replaceExact(
   'the stylesheet link tag'
 );
 
+// itch.io serves games over https, so the checked-in runtime-env.js (which may point
+// at a plain-http LAN backend) would only produce mixed-content errors there. Ship
+// the itch build with online disabled unless ITCH_RUNTIME_ENV_JSON provides an
+// https/wss endpoint config.
+function buildItchRuntimeEnv() {
+  const overrides = process.env.ITCH_RUNTIME_ENV_JSON;
+  const env = overrides
+    ? JSON.parse(overrides)
+    : { apiBaseUrl: '', controlWsUrl: '', workerWsUrl: '', enabled: false };
+  return [
+    '(function (root) {',
+    '  if (!root) return;',
+    '  const injected = root.__WAVE_PONG_ENV__ || {};',
+    `  root.__WAVE_PONG_ENV__ = Object.assign(${JSON.stringify(env, null, 2)}, injected);`,
+    "})(typeof globalThis !== 'undefined' ? globalThis : this);",
+    ''
+  ].join('\n');
+}
+
 const runtimeScriptTagPattern = /^\s*<script src="\.\/*js\/([^"]+)"><\/script>\s*$/gm;
 if (!runtimeScriptTagPattern.test(html)) {
   throw new Error('Could not find the runtime script tags while building the itch.io HTML artifact.');
 }
 runtimeScriptTagPattern.lastIndex = 0;
 html = html.replace(runtimeScriptTagPattern, (match, scriptName) => {
-  const scriptPath = path.join(runtimeDir, 'js', scriptName);
-  const scriptContents = read(scriptPath);
+  const scriptContents = scriptName === 'runtime-env.js'
+    ? buildItchRuntimeEnv()
+    : read(path.join(runtimeDir, 'js', scriptName));
   return `  <script>\n${escapeInlineScript(scriptContents)}\n</script>`;
 });
 
