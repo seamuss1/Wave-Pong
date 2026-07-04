@@ -259,7 +259,8 @@
     const label = getFullscreenElement() ? 'Exit Fullscreen' : 'Fullscreen';
     [fullscreenBtn, pauseFullscreenBtn].forEach((button) => {
       if (!button) return;
-      button.textContent = label;
+      // Runs every animation frame; skip the DOM write unless the label changed.
+      if (button.textContent !== label) button.textContent = label;
     });
   }
 

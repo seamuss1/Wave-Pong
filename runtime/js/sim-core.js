@@ -217,6 +217,10 @@
       // Optional override for the game-over Rematch button (online play swaps the
       // local restart for a return to matchmaking).
       let rematchHandler = null;
+      // Online clock alignment: the netcode nudges this a few percent above or
+      // below 1 so the local sim drifts smoothly into sync with the server
+      // instead of hard-stepping (which reads as jitter).
+      let simSpeed = 1;
 
       function normalizeDifficulty(value) {
         const difficulty = String(value || '').toLowerCase();
@@ -436,8 +440,15 @@
         heartbeatTimer: 0,
         countdownLastSecond: 0,
         gameOverRevealHandle: null,
-        hintStage: 0
+        hintStage: 0,
+        // Render-only paddle offsets that absorb authoritative-snapshot
+        // corrections during online play, decaying to zero over ~50ms so a
+        // correction reads as a glide instead of a snap.
+        paddleCorrection: { left: 0, right: 0 }
       };
+      // Paddle render positions captured before a network restore, so the
+      // post-reconciliation delta can be fed into fx.paddleCorrection.
+      let correctionCapture = null;
       const fireHoldBalance = balance.fireHold || { pinkAtSeconds: 0.22, goldAtSeconds: 0.5 };
       // Live human fire-hold tracking per side (hold to charge up the requested tier).
       const fireHold = { left: null, right: null };
@@ -539,6 +550,9 @@
           windowRef.clearTimeout(fx.gameOverRevealHandle);
         }
         fx.gameOverRevealHandle = null;
+        fx.paddleCorrection.left = 0;
+        fx.paddleCorrection.right = 0;
+        correctionCapture = null;
         clearFireHolds();
       }
 
@@ -1582,6 +1596,7 @@ function startMatch({
         liveInputEnabled = nextLiveInputEnabled !== false;
         replayRecordingEnabled = replayEnabled == null ? (options.replayEnabled !== false) : !!replayEnabled;
         localHumanSide = null;
+        simSpeed = 1;
         state.running = true;
         state.paused = false;
         state.menuOpen = false;
@@ -1627,6 +1642,7 @@ function startMatch({
         state.opponentLabelOverride = '';
         liveInputEnabled = true;
         localHumanSide = null;
+        simSpeed = 1;
         if (ui.menu) ui.menu.classList.remove('hidden');
         if (ui.pause) ui.pause.classList.add('hidden');
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
@@ -2335,8 +2351,14 @@ function updateAI(paddle, dt, isLeft) {
       function restoreSimulation(snapshot) {
         nextBallId = snapshot.nextBallId;
         rng.setState(snapshot.rngState);
-        if (snapshot.history) history = deepClone(snapshot.history);
-        matchStats = deepClone(snapshot.matchStats);
+        // Network blobs are freshly built per message (JSON.parse + Set revival)
+        // and never reused by the caller, so they can be adopted directly.
+        // Cloning them again roughly doubled the per-snapshot restore cost at
+        // 24 restores/sec. Non-network snapshots may be caller-owned (training
+        // tools, rollback buffers) and still get defensive copies.
+        const adopt = snapshot.network ? (value) => value : deepClone;
+        if (snapshot.history) history = adopt(snapshot.history);
+        matchStats = adopt(snapshot.matchStats);
         // Network snapshots omit presentation state; keep the local cosmetic
         // arrays alive across the restore so trails/particles do not flicker.
         const preserved = snapshot.network
@@ -2347,8 +2369,8 @@ function updateAI(paddle, dt, isLeft) {
               ballTrails: new Map(world.balls.map((ball) => [ball.id, ball.trail]))
             }
           : null;
-        Object.assign(state, deepClone(snapshot.state));
-        Object.assign(world, deepClone(snapshot.world));
+        Object.assign(state, adopt(snapshot.state));
+        Object.assign(world, adopt(snapshot.world));
         if (preserved) {
           world.particles = preserved.particles;
           world.floatTexts = preserved.floatTexts;
@@ -2358,13 +2380,32 @@ function updateAI(paddle, dt, isLeft) {
             if (trail) ball.trail = trail;
           }
         }
-        controllerActionState.left = deepClone(snapshot.controllerActionState.left);
-        controllerActionState.right = deepClone(snapshot.controllerActionState.right);
+        controllerActionState.left = adopt(snapshot.controllerActionState.left);
+        controllerActionState.right = adopt(snapshot.controllerActionState.right);
         if (snapshot.replay) {
           replay.actions = deepClone(snapshot.replay.actions);
           replay.events = deepClone(snapshot.replay.events);
           replay.stateHashes = deepClone(snapshot.replay.stateHashes);
         }
+      }
+
+      // Bracket an authoritative restore + input replay so the visual delta the
+      // reconciliation produced is absorbed by fx.paddleCorrection instead of
+      // snapping the rendered paddles. Capture uses the currently *rendered*
+      // position (sim y + live correction) so back-to-back corrections chain.
+      function beginNetworkCorrection() {
+        correctionCapture = {
+          left: world.paddles.left.y + fx.paddleCorrection.left,
+          right: world.paddles.right.y + fx.paddleCorrection.right
+        };
+      }
+
+      function endNetworkCorrection() {
+        if (!correctionCapture) return;
+        const maxOffset = 90;
+        fx.paddleCorrection.left = clamp(correctionCapture.left - world.paddles.left.y, -maxOffset, maxOffset);
+        fx.paddleCorrection.right = clamp(correctionCapture.right - world.paddles.right.y, -maxOffset, maxOffset);
+        correctionCapture = null;
       }
 
       function serializeReplay() {
@@ -3383,6 +3424,20 @@ function renderPowerups() {
         }
       }
 
+function renderPaddleWithCorrection(paddle) {
+        const offset = fx.paddleCorrection[paddle.side] || 0;
+        if (!offset) {
+          renderPaddle(paddle);
+          return;
+        }
+        // Translate the whole paddle visual (body, aimer, meters, hold ring) by
+        // the decaying correction offset; the sim position stays untouched.
+        ctx.save();
+        ctx.translate(0, offset);
+        renderPaddle(paddle);
+        ctx.restore();
+      }
+
 function renderPaddle(paddle) {
         const t = themes[state.theme];
         const color = paddle.side === 'left' ? t.paddleLeft : t.paddleRight;
@@ -3996,8 +4051,8 @@ function renderOverlayFX() {
         renderPulses();
         renderParticles();
         renderFloatTexts();
-        renderPaddle(world.paddles.left);
-        renderPaddle(world.paddles.right);
+        renderPaddleWithCorrection(world.paddles.left);
+        renderPaddleWithCorrection(world.paddles.right);
         renderBalls();
         renderStoppedPlayGhostArrows();
         renderOverlayFX();
@@ -4092,6 +4147,13 @@ function renderOverlayFX() {
       function updatePresentationFx(dt) {
         fx.scorePopLeft = Math.max(0, fx.scorePopLeft - dt * 2.4);
         fx.scorePopRight = Math.max(0, fx.scorePopRight - dt * 2.4);
+        // ~50ms half-life: corrections glide out fast enough to stay accurate
+        // but slow enough that 24Hz authoritative snapshots never read as jitter.
+        const correctionDecay = Math.exp(-dt * 14);
+        for (const side of ['left', 'right']) {
+          fx.paddleCorrection[side] *= correctionDecay;
+          if (Math.abs(fx.paddleCorrection[side]) < 0.4) fx.paddleCorrection[side] = 0;
+        }
         if (fx.wallFlash) {
           fx.wallFlash.t += dt;
           if (fx.wallFlash.t >= fx.wallFlash.dur) fx.wallFlash = null;
@@ -4138,7 +4200,7 @@ function renderOverlayFX() {
         if (fx.hitStopSeconds > 0) {
           fx.hitStopSeconds = Math.max(0, fx.hitStopSeconds - dt);
         } else {
-          fixedAccumulator += dt;
+          fixedAccumulator += dt * simSpeed;
         }
         while (fixedAccumulator >= fixedDt) {
           stepSimulation(1);
@@ -4221,6 +4283,11 @@ function renderOverlayFX() {
 
       function setRematchHandler(handler) {
         rematchHandler = typeof handler === 'function' ? handler : null;
+      }
+
+      function setSimSpeed(value) {
+        const next = Number(value);
+        simSpeed = Number.isFinite(next) ? Math.max(0.5, Math.min(2, next)) : 1;
       }
 
       function flushEvents() {
@@ -4450,6 +4517,9 @@ function renderOverlayFX() {
         setLiveInputEnabled,
         setLocalHumanSide,
         setRematchHandler,
+        setSimSpeed,
+        beginNetworkCorrection,
+        endNetworkCorrection,
         setMuted,
         isPauseButtonPointerEvent,
         mountBrowser,

@@ -105,6 +105,7 @@
         powerups: clone(payload.powerups || []),
         timers: clone(payload.timers || {}),
         lastActions: clone(payload.lastActions || {}),
+        inputMargin: isObject(payload.inputMargin) ? clone(payload.inputMargin) : {},
         stateBlob: payload.stateBlob || null
       }
     };

@@ -133,6 +133,11 @@
         slowmoTimer: state.slowmoTimer
       },
       lastActions: clone(meta && meta.lastActions ? meta.lastActions : {}),
+      // Signed ticks between the newest input batch's first frame and the next
+      // tick the server will simulate. Positive = arrived early (buffered);
+      // negative = arrived late (was clamped forward). Clients use their own
+      // side's margin to keep their tick lead just large enough.
+      inputMargin: clone(meta && meta.inputMargin ? meta.inputMargin : {}),
       stateBlob: meta && meta.includeStateBlob ? serializeStateBlob(runtime.cloneSimulation({ network: true })) : null
     };
   }
@@ -166,6 +171,10 @@
       left: 0,
       right: 0
     };
+    const inputMargin = {
+      left: null,
+      right: null
+    };
     let forcedResult = null;
 
     function start(matchOptions) {
@@ -183,11 +192,17 @@
         full: true,
         includeStateBlob: true,
         ackSeq,
-        lastActions
+        lastActions,
+        inputMargin
       });
     }
 
     function queueFrames(side, batch) {
+      // How early (positive) or late (negative) this batch landed relative to
+      // the next tick the sim will consume. Late frames get clamped forward by
+      // queueInput, which shows up client-side as paddle correction jitter, so
+      // this margin is echoed in snapshots for the client's lead controller.
+      inputMargin[side] = batch.startTick - (runtime.state.tick + 1);
       for (let index = 0; index < batch.frames.length; index += 1) {
         const tick = batch.startTick + index;
         const action = batch.frames[index];
@@ -228,7 +243,8 @@
           full: !!includeStateBlob,
           includeStateBlob: !!includeStateBlob,
           ackSeq,
-          lastActions
+          lastActions,
+          inputMargin
         });
       },
       restore(snapshot) {

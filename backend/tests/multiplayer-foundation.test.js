@@ -101,6 +101,35 @@ test('queued fire actions produce waves in the authoritative engine', () => {
   assert.equal(snapshot.waves[0].side, 'left');
 });
 
+test('snapshots echo how early or late each side\'s inputs arrive', () => {
+  const engine = engineApi.createAuthoritativeMatchEngine({
+    playlistId: 'quick_play',
+    matchId: 'match_margin',
+    seed: 13
+  });
+  engine.start({ skipCountdown: true, leftName: 'Alpha', rightName: 'Bravo' });
+  engine.step(10); // server is now at tick 10; next consumable tick is 11
+
+  // Early batch: stamped 4 ticks ahead of the next server tick.
+  engine.queueFrames('left', {
+    matchId: 'match_margin',
+    seq: 1,
+    startTick: 15,
+    frames: [{ moveAxis: 1, fire: false, fireTier: null }]
+  });
+  // Late batch: stamped 5 ticks behind the next server tick.
+  engine.queueFrames('right', {
+    matchId: 'match_margin',
+    seq: 1,
+    startTick: 6,
+    frames: [{ moveAxis: -1, fire: false, fireTier: null }]
+  });
+
+  const snapshot = engine.snapshot(false);
+  assert.equal(snapshot.inputMargin.left, 4);
+  assert.equal(snapshot.inputMargin.right, -5);
+});
+
 test('network snapshots stay lean and do not grow with match length', () => {
   const engine = engineApi.createAuthoritativeMatchEngine({
     playlistId: 'quick_play',
