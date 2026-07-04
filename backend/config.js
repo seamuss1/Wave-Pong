@@ -33,18 +33,30 @@ function buildRuntimeConfig(options = {}) {
   const controlHost = process.env.WAVE_PONG_CONTROL_HOST || '127.0.0.1';
   const workerHost = process.env.WAVE_PONG_WORKER_HOST || '127.0.0.1';
   const secret = process.env.WAVE_PONG_SECRET || 'wave-pong-local-secret';
+  // Single-port mode mounts the match socket on the control-plane server, so the
+  // whole game sits behind one origin/port (one Cloudflare hostname). It is the
+  // default; set WAVE_PONG_SINGLE_PORT=false to run two separate listeners.
+  const singlePort = boolFromEnv(process.env.WAVE_PONG_SINGLE_PORT, true);
   const apiBaseUrl = trimTrailingSlash(process.env.WAVE_PONG_PUBLIC_API_BASE_URL || `http://${controlHost}:${controlPort}`);
   const controlWsUrl = trimTrailingSlash(process.env.WAVE_PONG_PUBLIC_CONTROL_WS_URL || `${toWsUrl(apiBaseUrl)}/ws/control`);
+  // In single-port mode the match socket lives on the control host/port at /ws/match.
+  const defaultInternalWorkerWsUrl = singlePort
+    ? `ws://${controlHost}:${controlPort}/ws/match`
+    : `ws://${workerHost}:${workerPort}/ws/match`;
   const internalWorkerWsUrl = trimTrailingSlash(
     process.env.WAVE_PONG_INTERNAL_WORKER_WS_URL ||
     process.env.WAVE_PONG_WORKER_URL ||
-    `ws://${workerHost}:${workerPort}/ws/match`
+    defaultInternalWorkerWsUrl
   );
-  const publicWorkerWsUrl = trimTrailingSlash(process.env.WAVE_PONG_PUBLIC_WORKER_WS_URL || internalWorkerWsUrl);
+  const defaultPublicWorkerWsUrl = singlePort
+    ? `${toWsUrl(apiBaseUrl)}/ws/match`
+    : internalWorkerWsUrl;
+  const publicWorkerWsUrl = trimTrailingSlash(process.env.WAVE_PONG_PUBLIC_WORKER_WS_URL || defaultPublicWorkerWsUrl);
   return {
     serviceName,
     environment: process.env.NODE_ENV || process.env.WAVE_PONG_ENVIRONMENT || 'development',
     secret,
+    singlePort,
     control: {
       host: controlHost,
       port: controlPort,
