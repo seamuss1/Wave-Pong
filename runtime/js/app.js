@@ -526,8 +526,21 @@
     }
   }
 
+  const menuOverlay = document.getElementById('menuOverlay');
+
+  function applyModeVisibility() {
+    if (!menuOverlay) return;
+    const mode = runtime.ui.modeSelect ? runtime.ui.modeSelect.value : config.defaults.mode;
+    menuOverlay.querySelectorAll('.modeField').forEach((el) => {
+      const modes = (el.getAttribute('data-modes') || '').split(/\s+/).filter(Boolean);
+      const show = modes.length === 0 || modes.includes(mode);
+      el.classList.toggle('modeHidden', !show);
+    });
+  }
+
   ['change', 'input'].forEach((eventName) => {
     if (runtime.ui.modeSelect) runtime.ui.modeSelect.addEventListener(eventName, syncControllers);
+    if (runtime.ui.modeSelect) runtime.ui.modeSelect.addEventListener(eventName, applyModeVisibility);
     if (runtime.ui.difficultySelect) runtime.ui.difficultySelect.addEventListener(eventName, syncControllers);
     [
       runtime.ui.modeSelect,
@@ -607,6 +620,7 @@
 
   populateBotSelect();
   applySavedMenuSettings();
+  applyModeVisibility();
   syncControllers();
   touchController.bind();
   runtime.setInputProvider(offlineInputProvider);
