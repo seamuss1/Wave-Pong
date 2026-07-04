@@ -663,13 +663,15 @@ Gold is the top-tier super wave, fired from a nearly full bar.
 - consumes almost the entire charge bar (90%)
 - travels as a broad offensive arc
 - is strongest in the **center sweet spot** and weaker at the edges
+- has a tiny **bullseye** at the exact arc center that returns ANY ball, no matter how fast — even over-cap boosted shots
 - rewards accurate aim instead of random spraying
 - can deflect balls strongly in the wave direction when the sweet spot connects
 - can add a boost to the ball on a strong center hit
 - can hit paddles and disrupt them
 - grows slightly when it connects with balls
 - can interact with powerups on the field
-- uses visual diffraction-style effects on wall contact
+- **clashes with opposing gold waves**: two gold arcs that meet destroy each other in a burst
+- splashes off walls and paddles with diffraction-style impact effects
 
 ### Best use cases
 - forcing a scoring window

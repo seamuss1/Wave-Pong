@@ -486,6 +486,9 @@
         wallFlash: null,
         winnerBanner: null,
         confetti: [],
+        // Surface splashes (walls, paddle faces, gold clashes): droplet fans +
+        // an expanding impact ring hugging the impact normal.
+        splashes: [],
         heartbeatTimer: 0,
         countdownLastSecond: 0,
         gameOverRevealHandle: null,
@@ -586,6 +589,33 @@
         }
       }
 
+      // Impact splashes are presentation-only (never hashed, never replayed, never
+      // read by the sim), so plain Math.random is fine here — same precedent as
+      // confetti. normalAngle points away from the struck surface into the field.
+      function spawnImpactSplash(x, y, normalAngle, color, strength = 1) {
+        if (headless || !cosmeticsEnabled) return;
+        if (fx.splashes.length >= 24) fx.splashes.shift();
+        const drops = [];
+        const dropCount = Math.round(7 + strength * 5);
+        for (let i = 0; i < dropCount; i++) {
+          drops.push({
+            angle: normalAngle + (Math.random() - 0.5) * 2.4,
+            speed: (90 + Math.random() * 190) * strength,
+            size: 1.6 + Math.random() * 2.6
+          });
+        }
+        fx.splashes.push({
+          x,
+          y,
+          normalAngle,
+          color,
+          strength,
+          t: 0,
+          dur: 0.5 + strength * 0.12,
+          drops
+        });
+      }
+
       function resetPresentationFx() {
         fx.hitStopSeconds = 0;
         fx.scorePopLeft = 0;
@@ -593,6 +623,7 @@
         fx.wallFlash = null;
         fx.winnerBanner = null;
         fx.confetti.length = 0;
+        fx.splashes.length = 0;
         fx.heartbeatTimer = 0;
         fx.countdownLastSecond = 0;
         if (fx.gameOverRevealHandle != null && windowRef && typeof windowRef.clearTimeout === 'function') {
@@ -1218,6 +1249,28 @@ function getPulseRenderRadius(pulse) {
         if (pulseArcHitsPoint(midX, midY, pushPulse)) return true;
         const otherEdge = getPulseArcEndpoints({ ...otherPulse, arcRadius: otherRadius });
         return pulseArcHitsPoint(otherEdge.x1, otherEdge.y1, pushPulse) || pulseArcHitsPoint(otherEdge.x2, otherEdge.y2, pushPulse);
+      }
+
+      // Sample points along a traveling gold arc's front edge, used to test
+      // gold-vs-gold overlap from both directions.
+      function pushPulseFrontPoints(pulse) {
+        const radius = pulse.arcRadius || 0;
+        const points = [];
+        for (let step = -1; step <= 1; step += 0.5) {
+          const angle = pulse.angle + pulse.cone * step;
+          points.push({ x: pulse.x + Math.cos(angle) * radius, y: pulse.y + Math.sin(angle) * radius });
+        }
+        return points;
+      }
+
+      function pushPulsesCollide(a, b) {
+        for (const point of pushPulseFrontPoints(a)) {
+          if (pulseArcHitsPoint(point.x, point.y, b)) return true;
+        }
+        for (const point of pushPulseFrontPoints(b)) {
+          if (pulseArcHitsPoint(point.x, point.y, a)) return true;
+        }
+        return false;
       }
 
       function pulseArcHitsPaddle(pulse, paddle) {
@@ -2118,7 +2171,16 @@ function handleGoal(leftScored, goalMeta = null) {
         updateStatus(shouldSpawnReplacementBall ? scorerName + ' scores. New ball deployed immediately.' : scorerName + ' scores. Existing balls stay live.');
         playTone(leftScored ? 660 : 620, 0.09, 'square', 0.05);
         emitParticles(leftScored ? 110 : W - 110, H / 2, 30, leftScored ? themes[state.theme].paddleLeft : themes[state.theme].paddleRight, 370);
-        screenShake = Math.max(screenShake, 10);
+        screenShake = Math.max(screenShake, 12);
+        if (!headless && goalMeta) {
+          spawnImpactSplash(
+            leftScored ? W : 0,
+            goalMeta.y == null ? H / 2 : goalMeta.y,
+            leftScored ? Math.PI : 0,
+            goalMeta.color || themes[state.theme].ball,
+            1.6
+          );
+        }
         if (!headless) {
           // Goal ceremony (presentation only): descending motif, digit punch, wall flash, hit-stop.
           playToneRaw(leftScored ? 524 : 494, 0.09, 'square', 0.04, 0.09);
@@ -2577,7 +2639,7 @@ function updateAI(paddle, dt, isLeft) {
           if (paddle.side === 'left') matchStats.leftBallHits += 1;
           else matchStats.rightBallHits += 1;
           paddle.flash = 1;
-          paddle.hitScale = 1.16;
+          paddle.hitScale = 1.22;
           // Only milestone rallies flash the whole screen — flashing on every hit was a strobe.
           if (state.rally > 0 && state.rally % 6 === 0) state.comboFlash = Math.max(state.comboFlash, 0.18);
           matchStats.longestRally = Math.max(matchStats.longestRally, state.rally);
@@ -2586,8 +2648,14 @@ function updateAI(paddle, dt, isLeft) {
           }
           updateUI();
           playTone(180 + Math.min(700, state.rally * 14), 0.045, 'square', 0.04);
-          emitParticles(ball.x, ball.y, 14, paddle.side === 'left' ? themes[state.theme].paddleLeft : themes[state.theme].paddleRight, 300);
-          screenShake = Math.max(screenShake, 4);
+          emitParticles(ball.x, ball.y, 18, paddle.side === 'left' ? themes[state.theme].paddleLeft : themes[state.theme].paddleRight, 320);
+          screenShake = Math.max(screenShake, 5.5);
+          if (!headless) {
+            const paddleFaceX = paddle.side === 'left' ? paddle.x + paddle.w : paddle.x;
+            const paddleFaceNormal = paddle.side === 'left' ? 0 : Math.PI;
+            const paddleColor = paddle.side === 'left' ? themes[state.theme].paddleLeft : themes[state.theme].paddleRight;
+            spawnImpactSplash(paddleFaceX, ball.y, paddleFaceNormal, paddleColor, (paddle.pulseCharge || 0) >= SOLID_CHARGE_THRESHOLD ? 1.2 : 0.8);
+          }
         }
       }
 
@@ -2679,6 +2747,7 @@ function updateBalls(dt) {
       clampBallSpeed(ball);
       playTone(270, 0.04, 'sine', 0.02);
       emitParticles(ball.x, ball.y, 10, themes[state.theme].ball, 200);
+      if (!headless) spawnImpactSplash(ball.x, 12, Math.PI / 2, getBallRenderColor(ball, themes[state.theme]), 0.7);
     }
     if (ball.y + ball.r >= H - 12) {
       ball.y = H - 12 - ball.r;
@@ -2686,6 +2755,7 @@ function updateBalls(dt) {
       clampBallSpeed(ball);
       playTone(270, 0.04, 'sine', 0.02);
       emitParticles(ball.x, ball.y, 10, themes[state.theme].ball, 200);
+      if (!headless) spawnImpactSplash(ball.x, H - 12, -Math.PI / 2, getBallRenderColor(ball, themes[state.theme]), 0.7);
     }
 
     collideBallWithPaddle(ball, world.paddles.left);
@@ -2773,10 +2843,16 @@ function updatePulses(dt) {
               const normal = topContact ? 1 : -1;
               pulse.vy *= -1;
               pulse.angle = Math.atan2(pulse.vy, pulse.vx);
+              const contactY = topContact ? 12 : H - 12;
               pulse.diffraction.push({ x: pulse.x, y: clamp(pulse.y + normal * pulse.arcRadius, 24, H - 24), normal, life: 0.64, phase: 0 });
               const maxDiffraction = 4;
               if (pulse.diffraction.length > maxDiffraction) pulse.diffraction.splice(0, pulse.diffraction.length - maxDiffraction);
-              emitParticles(pulse.x, pulse.y, 8, pulse.color, 180);
+              emitParticles(pulse.x, clamp(pulse.y + normal * pulse.arcRadius, 24, H - 24), 14, pulse.color, 260);
+              screenShake = Math.max(screenShake, 3.5);
+              playTone(170, 0.07, 'triangle', 0.035);
+              if (!headless) {
+                spawnImpactSplash(pulse.x, contactY, normal * Math.PI / 2, pulse.color, 1.3);
+              }
             }
 
             const goalMargin = (pulse.arcRadius || 0) + getPulseHalfThickness(pulse) + 24;
@@ -2805,19 +2881,57 @@ function updatePulses(dt) {
               adjustWaveXP(owner, OPPONENT_HIT_XP);
               adjustWaveXP(opponent, -YELLOW_HIT_XP_LOSS);
               getRoleMetricsForSide(pulse.side).goldPaddleHits += 1;
-              emitParticles(cx, cy, 30, pulse.color, 340);
+              emitParticles(cx, cy, 34, pulse.color, 380);
+              screenShake = Math.max(screenShake, 9);
               playTone(520, 0.05, 'triangle', 0.04);
+              playTone(120, 0.12, 'sawtooth', 0.04);
+              if (!headless) {
+                fx.hitStopSeconds = Math.max(fx.hitStopSeconds, 0.05);
+                const faceX = pulse.side === 'left' ? opponent.x : opponent.x + opponent.w;
+                const faceNormal = pulse.side === 'left' ? Math.PI : 0;
+                spawnImpactSplash(faceX, clamp(pulse.y, opponent.y, opponent.y + opponent.h), faceNormal, pulse.color, 1.5);
+              }
             }
 
+            let clashed = false;
             for (let j = world.pulses.length - 1; j >= 0; j--) {
               const otherPulse = world.pulses[j];
-              if (otherPulse === pulse || otherPulse.side === pulse.side || otherPulse.mode !== 'solid') continue;
+              if (otherPulse === pulse || otherPulse.side === pulse.side) continue;
+              if (otherPulse.mode === 'push') {
+                // Two opposing gold waves annihilate each other in a clash burst.
+                if (!pushPulsesCollide(pulse, otherPulse)) continue;
+                const selfFrontX = pulse.x + Math.cos(pulse.angle) * (pulse.arcRadius || 0);
+                const selfFrontY = pulse.y + Math.sin(pulse.angle) * (pulse.arcRadius || 0);
+                const otherFrontX = otherPulse.x + Math.cos(otherPulse.angle) * (otherPulse.arcRadius || 0);
+                const otherFrontY = otherPulse.y + Math.sin(otherPulse.angle) * (otherPulse.arcRadius || 0);
+                const clashX = clamp((selfFrontX + otherFrontX) / 2, 0, W);
+                const clashY = clamp((selfFrontY + otherFrontY) / 2, 24, H - 24);
+                emitParticles(clashX, clashY, 34, pulse.color, 430);
+                emitParticles(clashX, clashY, 22, '#fff6d8', 360);
+                spawnFloatText(clashX, clashY - 26, 'CLASH!', 'buff');
+                screenShake = Math.max(screenShake, 13);
+                playTone(150, 0.14, 'sawtooth', 0.05);
+                playTone(840, 0.06, 'triangle', 0.035);
+                if (!headless) {
+                  fx.hitStopSeconds = Math.max(fx.hitStopSeconds, 0.09);
+                  spawnImpactSplash(clashX, clashY, pulse.angle + Math.PI / 2, pulse.color, 1.4);
+                  spawnImpactSplash(clashX, clashY, pulse.angle - Math.PI / 2, otherPulse.color, 1.4);
+                }
+                world.pulses.splice(j, 1);
+                const selfIndex = j < i ? i - 1 : i;
+                world.pulses.splice(selfIndex, 1);
+                i = selfIndex;
+                clashed = true;
+                break;
+              }
+              if (otherPulse.mode !== 'solid') continue;
               if (!pulseArcIntersectsPulse(pulse, otherPulse)) continue;
               const burstRadius = getPulseRenderRadius(otherPulse);
               emitParticles(otherPulse.x + Math.cos(otherPulse.angle) * burstRadius, otherPulse.y + Math.sin(otherPulse.angle) * burstRadius, 18, pulse.color, 260);
               world.pulses.splice(j, 1);
               if (j < i) i -= 1;
             }
+            if (clashed) continue;
 
             for (let p = world.powerups.length - 1; p >= 0; p--) {
               const item = world.powerups[p];
@@ -2844,7 +2958,34 @@ function updatePulses(dt) {
                 )
                 : 1;
 
-              if (sweetFactor > goldWaveInteractionBalance.ballHit.centerSweetThreshold) {
+              const deadCenterBalance = goldWaveInteractionBalance.ballHit.deadCenter;
+              if (angularFactor >= deadCenterBalance.angularThreshold) {
+                // Bullseye: the tiny dead-center spot returns any ball no matter how
+                // fast it is moving, ignoring speed caps and blue resistance. This is
+                // the precise defensive answer to over-cap boosted shots.
+                const outSpeed = Math.max(
+                  incomingSpeed * deadCenterBalance.incomingSpeedScale,
+                  deadCenterBalance.minSpeed + pulse.level * deadCenterBalance.speedPerLevel
+                );
+                const outAngle = pulse.angle + offset * deadCenterBalance.angleOffsetScale;
+                ball.vx = Math.cos(outAngle) * outSpeed;
+                ball.vy = Math.sin(outAngle) * outSpeed;
+                setBallBoost(
+                  ball,
+                  deadCenterBalance.boostDuration,
+                  deadCenterBalance.boostIntensity,
+                  waveBalance.gold.color,
+                  Math.log2(1 + Math.max(0, deadCenterBalance.boostIntensity)) * ballBoostBalance.accelerationPerLog2Unit,
+                  Math.max(outSpeed, BALL_SPEED_CAP * deadCenterBalance.boostMaxSpeedCapMultiplier)
+                );
+                spawnFloatText(ball.x, ball.y - 20, 'BULLSEYE!', 'buff');
+                playTone(980, 0.08, 'triangle', 0.05);
+                screenShake = Math.max(screenShake, 9);
+                if (!headless) {
+                  fx.hitStopSeconds = Math.max(fx.hitStopSeconds, 0.09);
+                  spawnImpactSplash(ball.x, ball.y, Math.atan2(ball.vy, ball.vx), waveBalance.gold.color, 1.2);
+                }
+              } else if (sweetFactor > goldWaveInteractionBalance.ballHit.centerSweetThreshold) {
                 const targetSpeed = Math.min(
                   BALL_SPEED_CAP * goldWaveInteractionBalance.ballHit.center.speedCapMultiplier,
                   Math.max(
@@ -2911,8 +3052,8 @@ function updatePulses(dt) {
               clampBallSpeed(ball, BALL_SPEED_CAP);
               ball.lastHitSide = pulse.side;
               ball.flash = 1;
-              screenShake = Math.max(screenShake, 6 + pulse.level);
-              emitParticles(ball.x, ball.y, 18 + pulse.level * 2, pulse.color, 280 + pulse.level * 20);
+              screenShake = Math.max(screenShake, 8 + pulse.level);
+              emitParticles(ball.x, ball.y, 22 + pulse.level * 2, pulse.color, 300 + pulse.level * 20);
               playTone(680 + pulse.level * 18, 0.045, 'triangle', 0.03);
             }
           } else {
@@ -3033,8 +3174,8 @@ function updatePulses(dt) {
               clampBallSpeed(ball, BALL_SPEED_CAP);
               ball.lastHitSide = pulse.side;
               ball.flash = 1;
-              screenShake = Math.max(screenShake, 5 + pulse.level * 0.7);
-              emitParticles(ball.x, ball.y, 12 + pulse.level * 2, pulse.color, 280 + pulse.level * 20);
+              screenShake = Math.max(screenShake, 6 + pulse.level * 0.8);
+              emitParticles(ball.x, ball.y, 14 + pulse.level * 2, pulse.color, 290 + pulse.level * 20);
               playTone(620 + pulse.level * 28, 0.04, 'triangle', 0.03);
             }
           }
@@ -3857,6 +3998,54 @@ function renderParticles() {
         ctx.restore();
       }
 
+function renderImpactSplashes() {
+        if (!fx.splashes.length) return;
+        const reduced = state.lowPerfEffects;
+        ctx.save();
+        for (const splash of fx.splashes) {
+          const p = clamp(splash.t / splash.dur, 0, 1);
+          const fade = 1 - p;
+          const ease = 1 - Math.pow(1 - p, 2.4);
+
+          // Bright core flash right at the impact point.
+          if (p < 0.3) {
+            ctx.globalAlpha = (1 - p / 0.3) * 0.75;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.beginPath();
+            ctx.arc(splash.x, splash.y, 4 + splash.strength * 5 * (1 - p / 0.3), 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Expanding crescent ring opening along the impact normal.
+          ctx.globalAlpha = fade * 0.55;
+          ctx.strokeStyle = splash.color;
+          ctx.lineWidth = 2.6 * fade + 0.6;
+          ctx.shadowColor = splash.color;
+          ctx.shadowBlur = reduced ? 0 : gb(12);
+          ctx.beginPath();
+          ctx.arc(splash.x, splash.y, 6 + ease * (26 + splash.strength * 20), splash.normalAngle - 1.25, splash.normalAngle + 1.25);
+          ctx.stroke();
+
+          if (reduced) continue;
+
+          // Droplets fountain out along the normal, then fall back to the surface.
+          const gravity = 560;
+          const gx = -Math.cos(splash.normalAngle) * gravity;
+          const gy = -Math.sin(splash.normalAngle) * gravity;
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = splash.color;
+          for (const drop of splash.drops) {
+            const dropX = splash.x + Math.cos(drop.angle) * drop.speed * splash.t + gx * splash.t * splash.t * 0.5;
+            const dropY = splash.y + Math.sin(drop.angle) * drop.speed * splash.t + gy * splash.t * splash.t * 0.5;
+            ctx.globalAlpha = fade * 0.8;
+            ctx.beginPath();
+            ctx.arc(dropX, dropY, drop.size * (0.55 + fade * 0.45), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+
 function renderPulses() {
         for (const pulse of world.pulses) {
           const alpha = getPulseRenderAlpha(pulse);
@@ -4156,6 +4345,7 @@ function renderOverlayFX() {
         renderPowerups();
         renderPulses();
         renderParticles();
+        renderImpactSplashes();
         renderFloatTexts();
         renderPaddleWithCorrection(world.paddles.left);
         renderPaddleWithCorrection(world.paddles.right);
@@ -4263,6 +4453,11 @@ function renderOverlayFX() {
         if (fx.wallFlash) {
           fx.wallFlash.t += dt;
           if (fx.wallFlash.t >= fx.wallFlash.dur) fx.wallFlash = null;
+        }
+        for (let i = fx.splashes.length - 1; i >= 0; i--) {
+          const splash = fx.splashes[i];
+          splash.t += dt;
+          if (splash.t >= splash.dur) fx.splashes.splice(i, 1);
         }
         if (fx.winnerBanner) {
           fx.winnerBanner.t += dt;
