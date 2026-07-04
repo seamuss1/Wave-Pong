@@ -4462,37 +4462,55 @@ function renderOverlayFX() {
           const offsetY = (innerH - H * scale) / 2;
           return (e.clientY - offsetY) / (scale || 1);
         };
+        const isTouchLikePointer = (e) => e.pointerType === 'touch' || e.pointerType === 'pen';
         listen(canvas, 'pointermove', (e) => {
           if (state.menuOpen) return;
+          // For touch/pen only the finger that owns steering drives the follow
+          // target. A mouse always steers on hover (no pointer id needed).
+          if (isTouchLikePointer(e) && e.pointerId !== pointerControl.steerPointerId) return;
           pointerControl.targetY = pointerWorldY(e);
           pointerControl.atMs = state.presentationTimeMs;
         });
-        const isTouchLikePointer = (e) => e.pointerType === 'touch' || e.pointerType === 'pen';
         listen(canvas, 'pointerdown', (e) => {
           if (state.menuOpen) return;
           e.preventDefault();
+          if (isTouchLikePointer(e)) {
+            // Touch/pen only steers here (firing is owned by the on-screen touch
+            // controller). Claim the first finger as the steering pointer but do
+            // NOT set a follow target yet: the paddle starts following only once
+            // that finger actually drags (see pointermove). This keeps a
+            // tap-to-fire from yanking the paddle toward the tap, and keeps a
+            // second finger from stealing steering. Releasing clears the target
+            // (pointerup/cancel) so the paddle stops where you left it instead of
+            // gliding on toward, or snapping back to, the last touch point.
+            if (pointerControl.steerPointerId == null) pointerControl.steerPointerId = e.pointerId;
+            skipPlayCountdown();
+            return;
+          }
           pointerControl.targetY = pointerWorldY(e);
           pointerControl.atMs = state.presentationTimeMs;
           if (skipPlayCountdown()) return;
-          if (isTouchLikePointer(e)) {
-            // Touch/pen only steers here. Firing for touch is owned entirely by
-            // the on-screen touch controller (tap-to-fire / second-finger-fire),
-            // so the first steering touch never also launches a wave.
-            if (pointerControl.steerPointerId == null) pointerControl.steerPointerId = e.pointerId;
-            return;
-          }
           beginFireHold('left');
         });
         listen(canvas, 'pointerup', (e) => {
           if (isTouchLikePointer(e)) {
-            if (e.pointerId === pointerControl.steerPointerId) pointerControl.steerPointerId = null;
+            if (e.pointerId === pointerControl.steerPointerId) {
+              pointerControl.steerPointerId = null;
+              pointerControl.targetY = null;
+            }
             return;
           }
           releaseFireHold('left');
         });
         listen(canvas, 'pointercancel', (e) => {
-          if (e.pointerId === pointerControl.steerPointerId) pointerControl.steerPointerId = null;
-          if (!isTouchLikePointer(e)) fireHold.left = null;
+          if (isTouchLikePointer(e)) {
+            if (e.pointerId === pointerControl.steerPointerId) {
+              pointerControl.steerPointerId = null;
+              pointerControl.targetY = null;
+            }
+            return;
+          }
+          fireHold.left = null;
         });
 
         // Auto-pause when the tab is hidden instead of bursting catch-up ticks on return.
