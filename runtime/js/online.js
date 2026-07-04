@@ -41,7 +41,9 @@
     return fetchImpl(url, options).then(async (response) => {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+        const error = new Error(payload.error || payload.message || `HTTP ${response.status}`);
+        error.code = payload.code || (response.status === 401 ? 'auth_error' : undefined);
+        throw error;
       }
       return payload;
     });
@@ -542,9 +544,27 @@
           }
           if (message.type === 'error') {
             const errorMessage = message.payload.message || 'Control socket error.';
+            const errorCode = message.payload.code;
             setStatus(errorMessage);
             if (!state.controlConnected) {
-              if (/expired|token|access/i.test(errorMessage)) {
+              // Settle the pending connect promise with the tagged error before
+              // touching the session/socket: clearSession()/close() can emit a
+              // synchronous 'close' event (real WebSockets are async here, but
+              // test doubles and some environments are not), and that listener
+              // would otherwise win the race and reject with a generic
+              // "closed before authentication completed" error, losing the
+              // auth_error code the recovery logic below depends on.
+              const error = new Error(errorMessage);
+              if (errorCode) error.code = errorCode;
+              finishError(error);
+              // The server tags every auth-related rejection (missing/expired/
+              // malformed token, or a token pointing at a player the in-memory
+              // store no longer has - e.g. after a server restart) with
+              // 'auth_error'. Clearing here means the next connect attempt
+              // requests a fresh guest session instead of retrying the same
+              // broken token forever. The message-text regex is a fallback for
+              // older servers that predate the error code.
+              if (errorCode === 'auth_error' || /expired|token|access|unknown player/i.test(errorMessage)) {
                 clearSession();
               }
               try {
@@ -552,7 +572,6 @@
               } catch (error) {
                 /* noop */
               }
-              finishError(new Error(errorMessage));
             }
           }
         });
@@ -597,43 +616,70 @@
 
     state.session = loadSession();
 
+    // A stored session can look locally "fresh" (its own claimed expiry hasn't
+    // passed) while the server no longer honors it - most commonly because a
+    // server restart wiped the in-memory player store the token pointed at.
+    // That surfaces as an 'auth_error' from either the control socket handshake
+    // or a REST call. Retrying once after discarding the session (which forces
+    // a brand new guest login) turns that from a permanent stuck error into a
+    // transparent recovery, instead of leaving the player stuck re-clicking a
+    // button that fails the same way forever.
+    async function withAuthRecovery(action) {
+      try {
+        return await action();
+      } catch (error) {
+        if (error && error.code === 'auth_error') {
+          clearSession();
+          return await action();
+        }
+        throw error;
+      }
+    }
+
     return {
       on: emitter.on,
       getState: snapshotState,
-      async ensureConnected(displayName) {
-        await ensureGuestSession(displayName);
-        await connectControlSocket();
-        setStatus('Connected.');
+      ensureConnected(displayName) {
+        return withAuthRecovery(async () => {
+          await ensureGuestSession(displayName);
+          await connectControlSocket();
+          setStatus('Connected.');
+        });
       },
-      async joinQueue(payload) {
+      joinQueue(payload) {
         const options = payload || {};
-        await ensureGuestSession(options.displayName);
-        await connectControlSocket();
-        const response = await jsonFetch(fetchImpl, `${env.apiBaseUrl}/queue/join`, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            authorization: `Bearer ${state.session.accessToken}`
-          },
-          body: JSON.stringify({})
+        return withAuthRecovery(async () => {
+          await ensureGuestSession(options.displayName);
+          await connectControlSocket();
+          const response = await jsonFetch(fetchImpl, `${env.apiBaseUrl}/queue/join`, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              authorization: `Bearer ${state.session.accessToken}`
+            },
+            body: JSON.stringify({})
+          });
+          state.queue = response.queue;
+          setStatus('Searching for an opponent...');
+          emitter.emit('state', snapshotState());
         });
-        state.queue = response.queue;
-        setStatus('Searching for an opponent...');
-        emitter.emit('state', snapshotState());
       },
-      async leaveQueue() {
-        if (!state.session) return;
-        const response = await jsonFetch(fetchImpl, `${env.apiBaseUrl}/queue/leave`, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            authorization: `Bearer ${state.session.accessToken}`
-          },
-          body: JSON.stringify({})
+      leaveQueue() {
+        if (!state.session) return Promise.resolve();
+        return withAuthRecovery(async () => {
+          if (!state.session) return;
+          const response = await jsonFetch(fetchImpl, `${env.apiBaseUrl}/queue/leave`, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              authorization: `Bearer ${state.session.accessToken}`
+            },
+            body: JSON.stringify({})
+          });
+          state.queue = response.queue;
+          setStatus('Search cancelled.');
+          emitter.emit('state', snapshotState());
         });
-        state.queue = response.queue;
-        setStatus('Search cancelled.');
-        emitter.emit('state', snapshotState());
       },
       _debugState: state
     };

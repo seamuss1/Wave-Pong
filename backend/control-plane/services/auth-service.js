@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { issueScopedToken, verifySignedPayload } = require('../../lib/tokens.js');
+const { issueScopedToken, verifySignedPayload, authError } = require('../../lib/tokens.js');
 
 function sanitizeDisplayName(value, fallbackPrefix) {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -51,11 +51,16 @@ function createAuthService(options) {
     authenticateAccess(token) {
       const payload = verifySignedPayload(token, secret);
       if (payload.type !== 'access') {
-        throw new Error('Expected an access token.');
+        throw authError('Expected an access token.');
       }
       const player = store.players.get(payload.playerId);
       if (!player) {
-        throw new Error('Unknown player.');
+        // The token itself is still valid, but the in-memory player record it
+        // points at is gone (server restart wiped the store). Tagged the same
+        // as other auth failures so the client knows to discard the stored
+        // session and re-authenticate as a new guest, instead of retrying the
+        // same broken token forever.
+        throw authError('Unknown player.');
       }
       return player;
     },

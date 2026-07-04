@@ -8,6 +8,7 @@ const { AuthoritativeMatch } = require('../match-worker/authoritative-match.js')
 const { createMemoryStore } = require('../control-plane/store.js');
 const { createQueueService } = require('../control-plane/services/queue-service.js');
 const { issueScopedToken } = require('../lib/tokens.js');
+const { createAuthService } = require('../control-plane/services/auth-service.js');
 
 function createExpiredToken(secret, playerId) {
   const payload = {
@@ -258,6 +259,24 @@ test('queue service matches pairs and returns the public worker url to browsers'
   assert.equal(leaveState.queued, false);
 });
 
+test('auth service tags a token whose player was wiped (server restart) as auth_error', () => {
+  const secret = 'test-secret';
+  const authService = createAuthService({
+    store: createMemoryStore(),
+    multiplayer: { auth: {} },
+    secret
+  });
+  // Signature-valid, not expired, but no matching player was ever registered
+  // in this store instance - simulates a client token surviving a server
+  // restart that wiped the in-memory player map.
+  const orphanToken = issueScopedToken(secret, { type: 'access', playerId: 'ghost-player' }, 1200);
+
+  assert.throws(
+    () => authService.authenticateAccess(orphanToken),
+    (error) => error.code === 'auth_error' && /unknown player/i.test(error.message)
+  );
+});
+
 test('online service refreshes expired stored sessions before connecting control socket', async () => {
   const secret = 'test-secret';
   const expiredToken = createExpiredToken(secret, 'expired-player');
@@ -360,6 +379,131 @@ test('online service refreshes expired stored sessions before connecting control
   assert.equal(fetchCalls.length, 1);
   assert.equal(service.getState().controlConnected, true);
   assert.equal(service.getState().session.player.id, 'fresh-player');
+});
+
+test('joinQueue recovers from a stored session the server no longer recognizes', async () => {
+  // Reproduces the reported bug: "Find Match" does nothing and the status
+  // reads "Unknown player." A stored session can look locally fresh (its own
+  // claimed expiry hasn't passed) while pointing at a player the server's
+  // in-memory store no longer has, most commonly because the server restarted
+  // since the token was issued. joinQueue should discard that session and
+  // transparently retry as a new guest instead of failing forever.
+  const secret = 'test-secret';
+  const staleToken = issueScopedToken(secret, { type: 'access', playerId: 'stale-player' }, 1200);
+  const freshToken = issueScopedToken(secret, { type: 'access', playerId: 'fresh-player' }, 1200);
+  const storageState = new Map([
+    ['wavePongOnlineSessionV1', JSON.stringify({ accessToken: staleToken, player: { id: 'stale-player' } })]
+  ]);
+  const storage = {
+    getItem(key) {
+      return storageState.has(key) ? storageState.get(key) : null;
+    },
+    setItem(key, value) {
+      storageState.set(key, value);
+    },
+    removeItem(key) {
+      storageState.delete(key);
+    }
+  };
+
+  class FakeWebSocket {
+    constructor(url) {
+      this.url = url;
+      this.readyState = 1;
+      this.listeners = new Map();
+      FakeWebSocket.instances.push(this);
+      queueMicrotask(() => this.emit('open'));
+    }
+    addEventListener(type, listener) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      this.listeners.get(type).add(listener);
+    }
+    emit(type, payload) {
+      const listeners = this.listeners.get(type);
+      if (!listeners) return;
+      for (const listener of listeners) {
+        if (type === 'message') {
+          listener({ data: JSON.stringify(payload) });
+        } else {
+          listener(payload);
+        }
+      }
+    }
+    send(raw) {
+      const message = JSON.parse(raw);
+      if (message.type !== 'hello') return;
+      if (message.payload.accessToken === staleToken) {
+        // Simulates the server after a restart: signature still verifies, but
+        // the in-memory player record is gone.
+        this.emit('message', {
+          type: 'error',
+          payload: { code: 'auth_error', message: 'Unknown player.' }
+        });
+        return;
+      }
+      this.emit('message', {
+        type: 'hello.ok',
+        payload: { player: { id: 'fresh-player', displayName: 'Fresh' } }
+      });
+    }
+    close() {
+      this.readyState = 3;
+      this.emit('close');
+    }
+  }
+  FakeWebSocket.instances = [];
+
+  const fetchCalls = [];
+  global.__WAVE_PONG_ENV__ = {
+    apiBaseUrl: 'http://127.0.0.1:8787',
+    controlWsUrl: 'ws://127.0.0.1:8787/ws/control',
+    workerWsUrl: 'ws://127.0.0.1:8788/ws/match',
+    enabled: true
+  };
+  delete require.cache[require.resolve('../../runtime/js/env.js')];
+  delete require.cache[require.resolve('../../runtime/js/online.js')];
+  const onlineApi = require('../../runtime/js/online.js');
+
+  const service = onlineApi.createOnlineService({
+    runtime: {},
+    storage,
+    fetch(url) {
+      fetchCalls.push(url);
+      if (url.endsWith('/auth/guest')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            accessToken: freshToken,
+            refreshToken: 'refresh-token',
+            player: { id: 'fresh-player', displayName: 'Fresh' }
+          })
+        });
+      }
+      if (url.endsWith('/queue/join')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ queue: { playlistId: 'quick_play', queueSize: 1, queued: true } })
+        });
+      }
+      throw new Error(`Unexpected fetch url: ${url}`);
+    },
+    WebSocket: FakeWebSocket,
+    window: {
+      fetch: null,
+      WebSocket: FakeWebSocket,
+      localStorage: storage,
+      setTimeout,
+      clearTimeout
+    }
+  });
+
+  await service.joinQueue({ displayName: 'Fresh' });
+
+  const state = service.getState();
+  assert.equal(state.session.player.id, 'fresh-player');
+  assert.equal(state.queue.queued, true);
+  assert.equal(fetchCalls.filter((url) => url.endsWith('/auth/guest')).length, 1);
+  assert.equal(fetchCalls.filter((url) => url.endsWith('/queue/join')).length, 1);
 });
 
 test('online service attempts to reconnect a dropped match websocket', async () => {
