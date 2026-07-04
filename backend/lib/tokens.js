@@ -28,10 +28,16 @@ function signPayload(payload, secret) {
   return `${body}.${signature}`;
 }
 
+function authError(message) {
+  const error = new Error(message);
+  error.code = 'auth_error';
+  return error;
+}
+
 function verifySignedPayload(token, secret) {
   const [body, signature] = String(token || '').split('.');
   if (!body || !signature) {
-    throw new Error('Malformed signed token.');
+    throw authError('Malformed signed token.');
   }
   const expected = crypto
     .createHmac('sha256', secret)
@@ -41,11 +47,11 @@ function verifySignedPayload(token, secret) {
     .replace(/\//g, '_')
     .replace(/=+$/g, '');
   if (expected !== signature) {
-    throw new Error('Signed token verification failed.');
+    throw authError('Signed token verification failed.');
   }
   const payload = JSON.parse(base64urlDecode(body));
   if (payload.exp && Date.now() >= payload.exp) {
-    throw new Error('Signed token expired.');
+    throw authError('Signed token expired.');
   }
   return payload;
 }
@@ -64,5 +70,6 @@ function issueScopedToken(secret, payload, ttlSeconds) {
 
 module.exports = {
   issueScopedToken,
-  verifySignedPayload
+  verifySignedPayload,
+  authError
 };

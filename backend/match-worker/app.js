@@ -46,7 +46,7 @@ function createMatchConnectionHandler(manager) {
       } catch (error) {
         connection.sendJson({
           type: 'error',
-          payload: protocol.createError('match_error', error.message || 'Match message failed.')
+          payload: protocol.createError(error.code || 'match_error', error.message || 'Match message failed.')
         });
       }
     });

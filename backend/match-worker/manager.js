@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { issueScopedToken, verifySignedPayload } = require('../lib/tokens.js');
+const { issueScopedToken, verifySignedPayload, authError } = require('../lib/tokens.js');
 const { AuthoritativeMatch } = require('./authoritative-match.js');
 
 function createMatchWorkerManager(options = {}) {
@@ -59,11 +59,14 @@ function createMatchWorkerManager(options = {}) {
     verifyMatchTicket(ticket) {
       const payload = verifySignedPayload(ticket, secret);
       if (payload.type !== 'match') {
-        throw new Error('Expected a match ticket.');
+        throw authError('Expected a match ticket.');
       }
       const match = matches.get(payload.matchId);
       if (!match) {
-        throw new Error('Unknown match.');
+        // Ticket is signature-valid but the match it names is gone (finished,
+        // abandoned, or the worker restarted) - same class of failure as an
+        // unknown player, so tag it the same way.
+        throw authError('Unknown match.');
       }
       return {
         match,
@@ -72,7 +75,7 @@ function createMatchWorkerManager(options = {}) {
     },
     issueReconnectTicket(matchId, playerId) {
       if (!matches.has(matchId)) {
-        throw new Error('Unknown match.');
+        throw authError('Unknown match.');
       }
       return issueScopedToken(secret, { type: 'match', matchId, playerId }, 60 * 5);
     },

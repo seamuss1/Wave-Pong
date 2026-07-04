@@ -6,6 +6,7 @@ const { createRuntimeStaticHandler } = require('../lib/static-runtime.js');
 const protocol = require('../../shared/protocol/index.js');
 const multiplayer = require('../../shared/multiplayer/config.js');
 const { createMemoryStore, ensurePlayerConnections } = require('./store.js');
+const { authError } = require('../lib/tokens.js');
 const { createAuthService } = require('./services/auth-service.js');
 const { createQueueService } = require('./services/queue-service.js');
 
@@ -61,7 +62,7 @@ function createControlPlaneApp(options = {}) {
   function authenticateRequest(req, body) {
     const token = getBearerToken(req) || (body && body.accessToken) || '';
     if (!token) {
-      throw new Error('Missing access token.');
+      throw authError('Missing access token.');
     }
     return authService.authenticateAccess(token);
   }
@@ -124,8 +125,10 @@ function createControlPlaneApp(options = {}) {
 
   const server = http.createServer((req, res) => {
     handleRequest(req, res).catch((error) => {
-      sendJson(res, 400, {
-        error: error.message || 'Request failed.'
+      const status = error.code === 'auth_error' ? 401 : 400;
+      sendJson(res, status, {
+        error: error.message || 'Request failed.',
+        code: error.code || undefined
       }, CORS_HEADERS);
     });
   });
@@ -168,7 +171,7 @@ function createControlPlaneApp(options = {}) {
         } catch (error) {
           connection.sendJson({
             type: 'error',
-            payload: protocol.createError('control_error', error.message || 'Control message failed.')
+            payload: protocol.createError(error.code || 'control_error', error.message || 'Control message failed.')
           });
         }
       });
