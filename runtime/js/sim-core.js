@@ -1867,8 +1867,13 @@ function startMatch({
         const wasPaused = state.paused;
         state.paused = typeof toggle === 'boolean' ? toggle : !state.paused;
         if (!state.paused) {
+          // Resuming closes any modal opened from the pause menu, so the countdown
+          // never starts hidden behind Help or Settings (e.g. a P / Start press
+          // while Settings is open).
           if (ui.help) ui.help.classList.add('hidden');
+          if (ui.settings) ui.settings.classList.add('hidden');
           state.helpReturnToPause = false;
+          state.settingsReturnToPause = false;
         }
         if (ui.pause) ui.pause.classList.toggle('hidden', !state.paused);
         if (state.paused) {
@@ -4490,11 +4495,16 @@ function renderOverlayFX() {
         if (hintsPending === null) hintsPending = safeStorageGetItem('gameWavePongHintsSeenV1') == null;
         if (!hintsPending) return;
         const charge = world.paddles.left.pulseCharge || 0;
+        const auto = controlScheme === 'auto';
         if (fx.hintStage === 0 && !state.countdownActive) {
-          updateStatus('Tap fire for BLUE. Hold for PINK, hold longer for GOLD.');
+          updateStatus(auto
+            ? 'Auto-Fire: press fire to launch the strongest wave you can afford.'
+            : 'Tap fire for BLUE. Hold for PINK, hold longer for GOLD.');
           fx.hintStage = 1;
         } else if (fx.hintStage === 1 && charge >= FULL_CHARGE_THRESHOLD) {
-          updateStatus('GOLD ready: hold fire and release. A quick tap still fires cheap blue.');
+          updateStatus(auto
+            ? 'GOLD ready: press fire to unleash it. Fire earlier for cheaper, faster waves.'
+            : 'GOLD ready: hold fire and release. A quick tap still fires cheap blue.');
           fx.hintStage = 2;
           hintsPending = false;
           safeStorageSetItem('gameWavePongHintsSeenV1', '1');
