@@ -92,7 +92,6 @@
       globalStatusIcons: get('globalStatusIcons'),
       rightStatusIcons: get('rightStatusIcons'),
       statusPill: get('statusPill'),
-      message: get('message'),
       menu: get('menuOverlay'),
       help: get('helpOverlay'),
       pause: get('pauseOverlay'),
@@ -144,7 +143,6 @@
         defaultHistory,
         powerupDefs,
         wittyLines,
-        scoreLines,
         themes,
         difficultyMap
       } = config;
@@ -169,6 +167,13 @@
 
       const W = canvasBalance.width;
       const H = canvasBalance.height;
+      const pauseButtonRect = {
+        x: W / 2 - 38,
+        y: 16,
+        width: 76,
+        height: 32,
+        radius: 12
+      };
       let scale = 1;
       let lastFrameTime = 0;
       let loopHandle = null;
@@ -177,7 +182,6 @@
       let history;
       let lastWinner = 'None';
       let matchStats;
-      let messageTimer = 0;
       let screenShake = 0;
       let nextBallId = 1;
       let mounted = false;
@@ -204,6 +208,8 @@
         left: (options.controllers && options.controllers.left) || null,
         right: (options.controllers && options.controllers.right) || null
       };
+      let inputProvider = typeof options.inputProvider === 'function' ? options.inputProvider : null;
+      let liveInputEnabled = options.liveInputEnabled !== false;
 
       function normalizeDifficulty(value) {
         const difficulty = String(value || '').toLowerCase();
@@ -267,7 +273,6 @@
         state.countdownTimer = 0;
         state.countdownDuration = matchFlowBalance.countdownSeconds;
         updateStatus(skipped ? 'Countdown skipped. Play live.' : 'Play live. Brace for geometry.');
-        showMessage(skipped ? 'Countdown skipped.' : 'Go!', 0.55);
       }
 
       function skipPlayCountdown() {
@@ -398,7 +403,9 @@
         w: false,
         s: false,
         up: false,
-        down: false
+        down: false,
+        leftFireQueued: false,
+        rightFireQueued: false
       };
       const controllerActionState = {
         left: { moveAxis: 0, fire: false, lastTick: -1 },
@@ -545,6 +552,13 @@
         countdownTimer: 0,
         countdownDuration: matchFlowBalance.countdownSeconds,
         countdownContext: 'start',
+        longRallyMultiballEnabled: true,
+        playerLabels: {
+          left: null,
+          right: null
+        },
+        modeLabelOverride: '',
+        opponentLabelOverride: '',
         tick: 0,
         simulationTimeMs: 0,
         presentationTimeMs: 0
@@ -1294,7 +1308,8 @@ function firePulse(paddle, tierCap = null) {
   return true;
 }
 
-function maybeTriggerLongRallyMultiball() {
+      function maybeTriggerLongRallyMultiball() {
+        if (!state.longRallyMultiballEnabled) return;
         if (world.balls.length >= rallyBalance.stopAddingAtBallCount) return;
         const nextAt = state.nextLongRallySpawnAt || rallyBalance.initialSpawnAtSeconds;
         const rallyThreshold = rallyBalance.thresholdBase + Math.max(0, world.balls.length - 1) * rallyBalance.thresholdPerExtraBall;
@@ -1423,19 +1438,6 @@ function maybeTriggerLongRallyMultiball() {
         playToneRaw(freq, duration, type, volume, 0);
       }
 
-      function showMessage(text, duration = 2.2) {
-        messageTimer = duration;
-        emitRuntimeEvent('message', { text, duration });
-        if (ui.message) {
-          ui.message.textContent = text;
-          ui.message.classList.add('show');
-        }
-      }
-
-      function hideMessage() {
-        if (ui.message) ui.message.classList.remove('show');
-      }
-
       function updateStatus(text) {
         emitRuntimeEvent('status', { text });
         if (ui.statusPill) ui.statusPill.textContent = text;
@@ -1508,7 +1510,6 @@ function spawnServe(direction) {
   state.nextLongRallySpawnAt = rallyBalance.initialSpawnAtSeconds;
   createReplacementBall(direction);
   updateUI();
-  showMessage('Fresh ball deployed. The court refused to calm down.', 0.95);
 }
 
 function startMatch({
@@ -1517,9 +1518,15 @@ function startMatch({
   difficulty = null,
   scoreLimit = null,
   powerupsEnabled = null,
+  longRallyMultiballEnabled = null,
   trailsEnabled = null,
   theme = null,
   skipCountdown = false,
+  leftName = null,
+  rightName = null,
+  modeLabel = null,
+  opponentLabel = null,
+  liveInputEnabled: nextLiveInputEnabled = true,
   leftController = undefined,
   rightController = undefined
 } = {}) {
@@ -1529,9 +1536,15 @@ function startMatch({
         state.scoreLimit = sanitizeScoreLimit(scoreLimit != null ? scoreLimit : (ui.scoreLimitSelect ? ui.scoreLimitSelect.value : defaults.scoreLimit));
         if (ui.scoreLimitSelect) ui.scoreLimitSelect.value = state.scoreLimit;
         state.powerupsEnabled = powerupsEnabled != null ? !!powerupsEnabled : (ui.powerupsToggle ? ui.powerupsToggle.checked : defaults.powerupsEnabled);
+        state.longRallyMultiballEnabled = longRallyMultiballEnabled != null ? !!longRallyMultiballEnabled : true;
         state.trailsEnabled = trailsEnabled != null ? !!trailsEnabled : (ui.trailToggle ? ui.trailToggle.checked : defaults.trailsEnabled);
         state.theme = theme || (ui.themeSelect ? ui.themeSelect.value : defaults.theme);
         state.demoMode = demo;
+        state.playerLabels.left = leftName || null;
+        state.playerLabels.right = rightName || null;
+        state.modeLabelOverride = modeLabel || '';
+        state.opponentLabelOverride = opponentLabel || '';
+        liveInputEnabled = nextLiveInputEnabled !== false;
         state.running = true;
         state.paused = false;
         state.menuOpen = false;
@@ -1556,10 +1569,8 @@ function startMatch({
         if (skipCountdown || headless) {
           state.countdownActive = false;
           state.countdownTimer = 0;
-          showMessage(demo ? 'Demo mode activated.' : 'Match loaded.', 0.6);
         } else {
           beginPlayCountdown('start');
-          showMessage(demo ? 'Demo mode activated. Fire to skip the countdown.' : 'Match loaded. Fire to skip the countdown.', 1.1);
         }
         playTone(330, 0.08, 'triangle', 0.04);
         playTone(660, 0.12, 'triangle', 0.03);
@@ -1573,6 +1584,11 @@ function startMatch({
         state.countdownActive = false;
         state.countdownTimer = 0;
         resetPresentationFx();
+        state.playerLabels.left = null;
+        state.playerLabels.right = null;
+        state.modeLabelOverride = '';
+        state.opponentLabelOverride = '';
+        liveInputEnabled = true;
         if (ui.menu) ui.menu.classList.remove('hidden');
         if (ui.pause) ui.pause.classList.add('hidden');
         if (ui.gameOver) ui.gameOver.classList.add('hidden');
@@ -1657,12 +1673,16 @@ function updateUI() {
   const selectedOpponentLabel = selectedOpponentOption && selectedOpponentOption.dataset && selectedOpponentOption.dataset.summary
     ? selectedOpponentOption.dataset.summary
     : (selectedOpponentOption ? selectedOpponentOption.textContent : formatDifficultyLabel(state.difficulty));
+  const leftLabel = state.playerLabels.left || (state.demoMode ? 'CPU A' : 'PLAYER');
+  const rightLabel = state.playerLabels.right || (state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU'));
+  const modeLabel = state.modeLabelOverride || (state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU'));
+  const opponentLabel = state.opponentLabelOverride || selectedOpponentLabel;
   setText(ui.leftScore, state.leftScore);
   setText(ui.rightScore, state.rightScore);
-  setText(ui.leftName, state.demoMode ? 'CPU A' : 'PLAYER');
-  setText(ui.rightName, state.mode === 'pvp' && !state.demoMode ? 'PLAYER 2' : (state.demoMode ? 'CPU B' : 'CPU'));
-  setText(ui.modeLabel, state.mode === 'pvp' && !state.demoMode ? 'VS HUMAN' : (state.demoMode ? 'DEMO' : 'VS CPU'));
-  setText(ui.difficultyLabel, selectedOpponentLabel);
+  setText(ui.leftName, leftLabel);
+  setText(ui.rightName, rightLabel);
+  setText(ui.modeLabel, modeLabel);
+  setText(ui.difficultyLabel, opponentLabel);
   setText(ui.rallyLabel, state.rally);
   setText(ui.bestRallyLabel, Math.max(state.bestRally || 0, history.bestRally || 0));
   setText(ui.pauseScoreLine, state.leftScore + ' : ' + state.rightScore);
@@ -1671,6 +1691,67 @@ function updateUI() {
   setText(ui.pauseScoreLimit, String(state.scoreLimit));
   renderStatusIcons();
 }
+
+      function consumeQueuedHumanFire(side) {
+        if (side === 'left') {
+          const fire = !!input.leftFireQueued;
+          input.leftFireQueued = false;
+          return fire;
+        }
+        const fire = !!input.rightFireQueued;
+        input.rightFireQueued = false;
+        return fire;
+      }
+
+      function buildKeyboardAction(side) {
+        if (side === 'left') {
+          let up = input.w || (state.mode !== 'pvp' && input.up) || gamepadControl.left.up;
+          let down = input.s || (state.mode !== 'pvp' && input.down) || gamepadControl.left.down;
+          // Mouse / touch-drag steering falls through to the paddle only when no
+          // discrete up/down input is active, matching the offline direct-input feel.
+          if (!up && !down && pointerControl.targetY != null) {
+            const center = world.paddles.left.y + world.paddles.left.h / 2;
+            const pointerDeadband = 14;
+            if (pointerControl.targetY < center - pointerDeadband) up = true;
+            else if (pointerControl.targetY > center + pointerDeadband) down = true;
+          }
+          return {
+            moveAxis: up === down ? 0 : (up ? -1 : 1),
+            fire: consumeQueuedHumanFire('left')
+          };
+        }
+        const up = input.up || gamepadControl.right.up;
+        const down = input.down || gamepadControl.right.down;
+        return {
+          moveAxis: up === down ? 0 : (up ? -1 : 1),
+          fire: consumeQueuedHumanFire('right')
+        };
+      }
+
+      function resolveHumanAction(side) {
+        const defaultAction = buildKeyboardAction(side);
+        if (!inputProvider) return defaultAction;
+        const provided = inputProvider({
+          side,
+          tick: state.tick,
+          defaultAction,
+          state,
+          world,
+          runtime: runtimeApi
+        });
+        return normalizeAction(provided || defaultAction);
+      }
+
+      function shouldQueueHumanInput(side) {
+        if (!liveInputEnabled) return false;
+        if (side === 'left') return !controllerSlots.left && !state.demoMode;
+        return !controllerSlots.right && !state.demoMode && state.mode === 'pvp';
+      }
+
+      function maybeQueueHumanInput(side) {
+        if (!shouldQueueHumanInput(side)) return;
+        queueInput(side, state.tick, resolveHumanAction(side));
+      }
 
 function applyTheme(name) {
         const t = themes[name] || themes.neon;
@@ -1861,7 +1942,6 @@ function handleGoal(leftScored, goalMeta = null) {
         state.nextLongRallySpawnAt = rallyBalance.initialSpawnAtSeconds;
 
         updateUI();
-        showMessage(scoreLines[(rng.next() * scoreLines.length) | 0], 1.25);
         updateStatus(shouldSpawnReplacementBall ? scorerName + ' scores. New ball deployed immediately.' : scorerName + ' scores. Existing balls stay live.');
         playTone(leftScored ? 660 : 620, 0.09, 'square', 0.05);
         emitParticles(leftScored ? 110 : W - 110, H / 2, 30, leftScored ? themes[state.theme].paddleLeft : themes[state.theme].paddleRight, 370);
@@ -2774,10 +2854,6 @@ function updateParticles(dt) {
         state.slowmoTimer = Math.max(0, state.slowmoTimer - dt);
         state.comboFlash = Math.max(0, state.comboFlash - dt);
         screenShake = Math.max(0, screenShake - dt * 22);
-        if (messageTimer > 0) {
-          messageTimer -= dt;
-          if (messageTimer <= 0) hideMessage();
-        }
         if (state.powerDurationTimer > 0) {
           state.powerDurationTimer -= dt;
           if (state.powerDurationTimer <= 0) {
@@ -2812,9 +2888,11 @@ function update(dt) {
 
         maybeRunController('left');
         maybeRunController('right');
+        maybeQueueHumanInput('left');
+        maybeQueueHumanInput('right');
 
-        const leftQueued = controllerSlots.left ? getQueuedAction('left') : null;
-        const rightQueued = controllerSlots.right ? getQueuedAction('right') : null;
+        const leftQueued = (controllerSlots.left || shouldQueueHumanInput('left') || inputQueue.left.has(state.tick)) ? getQueuedAction('left') : null;
+        const rightQueued = (controllerSlots.right || shouldQueueHumanInput('right') || inputQueue.right.has(state.tick)) ? getQueuedAction('right') : null;
 
         if (leftQueued) {
           updatePaddle(world.paddles.left, leftQueued.moveAxis < 0, leftQueued.moveAxis > 0, dt);
@@ -2822,15 +2900,7 @@ function update(dt) {
         } else if (state.demoMode) {
           updateAI(world.paddles.left, dt, true);
         } else {
-          let leftUp = input.w || (state.mode !== 'pvp' && input.up) || gamepadControl.left.up;
-          let leftDown = input.s || (state.mode !== 'pvp' && input.down) || gamepadControl.left.down;
-          if (!leftUp && !leftDown && pointerControl.targetY != null) {
-            const center = world.paddles.left.y + world.paddles.left.h / 2;
-            const pointerDeadband = 14;
-            if (pointerControl.targetY < center - pointerDeadband) leftUp = true;
-            else if (pointerControl.targetY > center + pointerDeadband) leftDown = true;
-          }
-          updatePaddle(world.paddles.left, leftUp, leftDown, dt);
+          updatePaddle(world.paddles.left, false, false, dt);
         }
 
         if (rightQueued) {
@@ -2839,7 +2909,7 @@ function update(dt) {
         } else if (state.demoMode) {
           updateAI(world.paddles.right, dt, false);
         } else if (state.mode === 'pvp') {
-          updatePaddle(world.paddles.right, input.up || gamepadControl.right.up, input.down || gamepadControl.right.down, dt);
+          updatePaddle(world.paddles.right, false, false, dt);
         } else {
           updateAI(world.paddles.right, dt, false);
         }
@@ -3760,7 +3830,49 @@ function renderOverlayFX() {
           ctx.strokeText('MATCH POINT', W / 2, 96);
           ctx.fillText('MATCH POINT', W / 2, 96);
         }
+        if (!state.menuOpen && !state.gameOver) {
+          roundedRect(pauseButtonRect.x, pauseButtonRect.y, pauseButtonRect.width, pauseButtonRect.height, pauseButtonRect.radius);
+          ctx.fillStyle = 'rgba(8, 16, 28, 0.84)';
+          ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+          ctx.lineWidth = 2;
+          ctx.shadowBlur = 0;
+          ctx.fill();
+          ctx.stroke();
+
+          const barWidth = 7;
+          const barHeight = 14;
+          const barGap = 8;
+          const centerX = pauseButtonRect.x + pauseButtonRect.width / 2;
+          const centerY = pauseButtonRect.y + pauseButtonRect.height / 2;
+          ctx.fillStyle = '#eef6ff';
+          ctx.fillRect(centerX - barGap - barWidth / 2, centerY - barHeight / 2, barWidth, barHeight);
+          ctx.fillRect(centerX + barGap - barWidth / 2, centerY - barHeight / 2, barWidth, barHeight);
+        }
         ctx.restore();
+      }
+
+      function getCanvasWorldPoint(event) {
+        if (!canvas || !windowRef) return null;
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
+        const offsetX = (windowRef.innerWidth - W * scale) / 2;
+        const offsetY = (windowRef.innerHeight - H * scale) / 2;
+        const x = (event.clientX - rect.left - offsetX) / scale;
+        const y = (event.clientY - rect.top - offsetY) / scale;
+        return { x, y };
+      }
+
+      function isPauseButtonHit(point) {
+        if (!point) return false;
+        return point.x >= pauseButtonRect.x &&
+          point.x <= pauseButtonRect.x + pauseButtonRect.width &&
+          point.y >= pauseButtonRect.y &&
+          point.y <= pauseButtonRect.y + pauseButtonRect.height;
+      }
+
+      function isPauseButtonPointerEvent(event) {
+        if (!event || !canvas || state.menuOpen || state.gameOver || (ui.help && !ui.help.classList.contains('hidden'))) return false;
+        return isPauseButtonHit(getCanvasWorldPoint(event));
       }
 
       function render() {
@@ -3949,6 +4061,7 @@ function renderOverlayFX() {
           handler();
         };
         const onPointerDown = (event) => {
+          if (event && event.pointerType === 'touch') return;
           lastPointerFire = windowRef && windowRef.performance ? windowRef.performance.now() : Date.now();
           run(event);
         };
@@ -3982,6 +4095,14 @@ function renderOverlayFX() {
         if (Object.prototype.hasOwnProperty.call(nextControllers, 'right')) {
           controllerSlots.right = nextControllers.right;
         }
+      }
+
+      function setInputProvider(nextInputProvider) {
+        inputProvider = typeof nextInputProvider === 'function' ? nextInputProvider : null;
+      }
+
+      function setLiveInputEnabled(nextValue) {
+        liveInputEnabled = !!nextValue;
       }
 
       function flushEvents() {
@@ -4111,6 +4232,13 @@ function renderOverlayFX() {
           }
         });
 
+        listen(canvas, 'pointerdown', (event) => {
+          if (!isPauseButtonPointerEvent(event)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          pauseGame();
+        });
+
         wireMenuButton('startBtn', () => startMatch({ demo: false }));
         wireMenuButton('demoBtn', () => startMatch({ demo: true }));
         wireMenuButton('menuHelpBtn', openHelp);
@@ -4145,7 +4273,6 @@ function renderOverlayFX() {
         updateMenuStats();
         updateUI();
         render();
-        showMessage(defaults.startupMessage, defaults.startupMessageSeconds);
         lastFrameTime = 0;
         fixedAccumulator = 0;
         loopHandle = windowRef.requestAnimationFrame(loop);
@@ -4193,7 +4320,10 @@ function renderOverlayFX() {
         hashSimulationState,
         flushEvents,
         setControllers,
+        setInputProvider,
+        setLiveInputEnabled,
         setMuted,
+        isPauseButtonPointerEvent,
         mountBrowser,
         unmountBrowser,
         render,

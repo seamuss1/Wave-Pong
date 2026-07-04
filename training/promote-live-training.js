@@ -9,7 +9,7 @@ const { EventEmitter } = require('events');
 const repoRoot = path.resolve(__dirname, '..');
 
 function parseArgs(argv) {
-  const livePromotionDir = path.join(repoRoot, 'tools', 'reports', 'live-promotion');
+  const livePromotionDir = path.join(repoRoot, 'training', 'reports', 'live-promotion');
   const args = {
     pid: null,
     port: 9229,
@@ -51,7 +51,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log('Usage: node tools/promote-live-training.js --pid <node-pid> [options]');
+  console.log('Usage: node training/promote-live-training.js --pid <node-pid> [options]');
   console.log('');
   console.log('Options:');
   console.log('  --pid <number>           Node pid for the active training process');

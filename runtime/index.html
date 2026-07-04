@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Wave Pong</title>
   <link rel="stylesheet" href="./styles/main.css" />
 </head>
@@ -20,8 +20,15 @@
       </div>
     </div>
 
-    <div id="message" class="message">Ball deployed.</div>
     <div id="statusPill" class="srOnly">Ready to embarrass a rectangle.</div>
+  </div>
+
+  <div id="touchControls" class="touchControls" aria-hidden="true">
+    <div id="touchMoveZone" class="touchMoveZone">
+      <div id="touchStick" class="touchStick">
+        <div id="touchStickKnob" class="touchStickKnob"></div>
+      </div>
+    </div>
   </div>
 
   <div id="menuOverlay" class="overlay">
@@ -29,7 +36,7 @@
       <div class="menuHeader">
         <div class="menuHeaderTop">
           <h1>Wave Pong</h1>
-          <div id="menuVersion" class="menuVersion">v0.7.0</div>
+          <div id="menuVersion" class="menuVersion">v0.13.0</div>
         </div>
         <div class="menuSubtle">Set up the match here, then open Help for controls, rules, and powerups.</div>
       </div>
@@ -83,7 +90,58 @@
         <div class="btnRow">
           <button id="startBtn" class="primary">Start Match</button>
           <button id="demoBtn" class="secondary">CPU vs CPU Demo</button>
+          <button id="fullscreenBtn" class="secondary">Fullscreen</button>
           <button id="menuHelpBtn" class="ghost">Help</button>
+        </div>
+      </div>
+
+      <div class="section onlineSection">
+        <div class="sectionHeader">
+          <h2>Online alpha</h2>
+          <div id="onlineEnabledPill" class="onlineStatePill">Offline</div>
+        </div>
+        <div class="menuSubtle">Online mode can come from <code>runtime/js/runtime-env.js</code> or temporary query params like <code>?api=http://127.0.0.1:8787&amp;controlWs=ws://127.0.0.1:8787/ws/control</code>.</div>
+        <div class="form">
+          <label>
+            Display Name
+            <input id="onlineNameInput" type="text" maxlength="20" placeholder="Guest name" />
+          </label>
+
+          <label>
+            Playlist
+            <select id="onlinePlaylistSelect"></select>
+          </label>
+
+          <label>
+            Region
+            <select id="onlineRegionSelect"></select>
+          </label>
+        </div>
+
+        <div class="btnRow">
+          <button id="onlineConnectBtn" class="primary">Connect Guest</button>
+          <button id="onlineVerifyBtn" class="secondary">Verify Account</button>
+          <button id="onlineQueueBtn" class="secondary">Join Queue</button>
+          <button id="onlineLeaveQueueBtn" class="ghost">Leave Queue</button>
+        </div>
+
+        <div class="onlineStatusPanel">
+          <div id="onlineStatusText" class="onlineStatusText">Online disabled. Add runtime env query params to connect.</div>
+          <div class="onlineFacts">
+            <div class="miniStat"><div class="label">Session</div><div class="value" id="onlineSessionState">none</div></div>
+            <div class="miniStat"><div class="label">Queue</div><div class="value" id="onlineQueueState">idle</div></div>
+            <div class="miniStat"><div class="label">Match</div><div class="value" id="onlineMatchState">offline</div></div>
+          </div>
+        </div>
+
+        <div class="section onlineChatBlock">
+          <h2>Lobby chat</h2>
+          <div id="onlineChatLog" class="onlineChatLog"></div>
+          <div class="chatComposer">
+            <input id="onlineChatInput" type="text" maxlength="280" placeholder="Verified accounts can send lobby chat here." />
+            <button id="onlineChatSendBtn" class="secondary">Send</button>
+          </div>
+          <div id="quickChatRow" class="quickChatRow"></div>
         </div>
       </div>
     </div>
@@ -102,6 +160,7 @@
           <div class="helpList">
             <div class="controlItem"><strong>Player 1</strong><br>W/S or Arrow keys move &bull; mouse or touch-drag also steers &bull; F or Space fires (Slash and Right Ctrl work too in single player)</div>
             <div class="controlItem"><strong>Player 2</strong><br>Arrow Up and Arrow Down move &bull; Slash, Right Ctrl, or Numpad 0 fires</div>
+            <div class="controlItem"><strong>Touch</strong><br>Drag the floating joystick up or down to move &bull; tap the fire button to launch a wave</div>
             <div class="controlItem"><strong>Pick your wave</strong><br>Tap fire for BLUE &bull; hold ~0.25s and release for PINK &bull; hold ~0.5s for GOLD. The ring at your paddle shows what will fire.</div>
             <div class="controlItem"><strong>Gamepad</strong><br>Left stick or D-pad moves &bull; A (or right trigger) fires with the same hold-to-charge rules &bull; Start pauses</div>
             <div class="controlItem"><strong>Pause</strong><br>P or Escape pauses the match</div>
@@ -137,6 +196,7 @@
       <div class="btnRow pauseActions">
         <button id="resumeBtn" class="primary">Resume</button>
         <button id="pauseBotInfoBtn" class="secondary">Bot Info</button>
+        <button id="pauseFullscreenBtn" class="secondary">Fullscreen</button>
         <button id="pauseHelpBtn" class="secondary">Help</button>
         <button id="pauseMenuBtn" class="ghost">Back to Menu</button>
       </div>
@@ -210,10 +270,16 @@
   </div>
 
   <script src="./js/version.js"></script>
+  <script src="./js/runtime-env.js"></script>
   <script src="./js/config.js"></script>
+  <script src="./js/env.js"></script>
+  <script src="./js/shared/multiplayer.js"></script>
+  <script src="./js/shared/protocol.js"></script>
   <script src="./js/controllers.js"></script>
   <script src="./js/sim-core.js"></script>
+  <script src="./js/shared/engine.js"></script>
   <script src="./js/bot-roster.js"></script>
+  <script src="./js/online.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wave-pong-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wave_pong
+      POSTGRES_USER: wavepong
+      POSTGRES_PASSWORD: wavepong
+    ports:
+      - "5432:5432"
+    volumes:
+      - wave-pong-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wavepong -d wave_pong"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: wave-pong-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - wave-pong-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  wave-pong-postgres-data:
+  wave-pong-redis-data:

@@ -26,6 +26,11 @@ const TRAINING_METRIC_GUIDE = Object.freeze({
   waveHitRate: 'Wave hits per shot.',
   ballHitRate: 'Ball contacts per shot.',
   paceScore: 'Combined match goals per 1000 ticks.',
+  fastWinScore: 'Rewards wins that end quickly; zero on draws and losses.',
+  quickLossPenalty: 'Penalty for losing quickly so suicidal rushdown does not dominate.',
+  creativityScore: 'Rewards productive variety: wave usage spread, powerups, ball control, and fast exchanges.',
+  shotWastePenalty: 'Penalty for high shot volume with weak ball and wave conversion.',
+  stallPenalty: 'Penalty for long low-event matches, especially when they do not produce a win.',
   blueShotShare: 'Blue shots divided by all shots.',
   pinkShotShare: 'Pink shots divided by all shots.',
   goldShotShare: 'Gold shots divided by all shots.',
@@ -34,183 +39,27 @@ const TRAINING_METRIC_GUIDE = Object.freeze({
   nonGoldShotShare: 'Non-gold shots divided by all shots.'
 });
 
-const COMMON_PROFILE_WEIGHTS = Object.freeze({
+const GENERIC_FITNESS_WEIGHTS = Object.freeze({
+  win: 100,
+  goalDiff: 22,
   activeMatch: 10,
-  inactiveMatch: -28,
-  movedTickRate: 16,
-  waveHitRate: 8,
-  paceScore: 12
+  inactiveMatch: -30,
+  movedTickRate: 18,
+  movementRate: 5,
+  shots: 0.25,
+  shotRate: 0.05,
+  ballHitRate: 18,
+  waveHitRate: 10,
+  paceScore: 14,
+  fastWinScore: 36,
+  creativityScore: 18,
+  quickLossPenalty: -22,
+  shotWastePenalty: -12,
+  stallPenalty: -16,
+  powerups: 0.9,
+  againstGoals: -20,
+  longestRally: 0.18
 });
-
-const ARCHETYPES = [
-  {
-    id: 'defensive',
-    label: 'Anchor',
-    personality: 'Covers the lane early and values survival over flair.',
-    fitness: mergeWeights(COMMON_PROFILE_WEIGHTS, {
-      win: 100,
-      goalDiff: 18,
-      shots: 0.25,
-      shotRate: 0.2,
-      powerups: 0.9,
-      againstGoals: -20,
-      longestRally: 0.2
-    })
-  },
-  {
-    id: 'aggressive',
-    label: 'Volt',
-    personality: 'Pushes pressure, spends charge, and looks for quick finishes.',
-    fitness: mergeWeights(COMMON_PROFILE_WEIGHTS, {
-      win: 100,
-      goalDiff: 24,
-      shots: 1.0,
-      shotRate: 0.55,
-      paceScore: 18,
-      powerups: 0.4,
-      againstGoals: -16
-    })
-  },
-  {
-    id: 'control',
-    label: 'Weaver',
-    personality: 'Leans into pickups, long exchanges, and court control.',
-    fitness: mergeWeights(COMMON_PROFILE_WEIGHTS, {
-      win: 100,
-      goalDiff: 16,
-      shots: 0.55,
-      shotRate: 0.3,
-      powerups: 1.4,
-      againstGoals: -18,
-      longestRally: 0.25
-    })
-  },
-  {
-    id: 'trickster',
-    label: 'Glitch',
-    personality: 'Varies tempo and angle pressure without giving up match discipline.',
-    fitness: mergeWeights(COMMON_PROFILE_WEIGHTS, {
-      win: 100,
-      goalDiff: 19,
-      shots: 0.9,
-      shotRate: 0.4,
-      paceScore: 14,
-      powerups: 0.7,
-      againstGoals: -18
-    })
-  }
-];
-
-const ROLE_TRAINING_PROFILES = {
-  strategist: {
-    id: 'strategist',
-    label: 'Strategist',
-    personality: 'Uses blue wave timing to shape rallies, control ball routes, and keep the court predictable.',
-    fitness: mergeWeights(COMMON_PROFILE_WEIGHTS, {
-      win: 100,
-      goalDiff: 18,
-      againstGoals: -18,
-      longestRally: 0.2,
-      shots: -0.08,
-      shotRate: -0.22,
-      waveHitRate: 18,
-      ballHitRate: 26,
-      blueShots: 0.08,
-      blueShotShare: 12,
-      blueBallHits: 2.4,
-      blueTowardHits: 3.2,
-      blueAwayHits: 1.2,
-      blueResistGrants: 1.8,
-      blueWavePowerups: 1.1,
-      nonBlueShots: -0.18,
-      nonBlueShotShare: -6,
-      goldShots: -0.5
-    }),
-    promotion: {
-      desiredWaveKey: 'blue',
-      minShotsPerMatch: 6,
-      minDesiredShotShare: 0.45,
-      minMovedTickRate: 0.08,
-      minMetrics: {
-        ballHitRate: 0.16,
-        blueBallHits: 6,
-        waveHitRate: 0.22
-      },
-      maxMetrics: {
-        shotRate: 12.5
-      }
-    }
-  },
-  defensive_specialist: {
-    id: 'defensive_specialist',
-    label: 'Defensive Specialist',
-    personality: 'Prioritizes pink wave survival windows, stabilizes losing rallies, and buys time to recover position.',
-    fitness: mergeWeights(COMMON_PROFILE_WEIGHTS, {
-      win: 100,
-      goalDiff: 16,
-      againstGoals: -24,
-      longestRally: 0.3,
-      shots: -0.08,
-      shotRate: -0.18,
-      waveHitRate: 14,
-      ballHitRate: 14,
-      pinkShots: 0.8,
-      pinkShotShare: 34,
-      pinkBallHits: 3.2,
-      pinkThreatHits: 4.6,
-      pinkEmergencyHits: 5.8,
-      pinkWavePowerups: 2.6,
-      nonPinkShots: -0.35,
-      nonPinkShotShare: -16,
-      goldShots: -0.5
-    }),
-    promotion: {
-      desiredWaveKey: 'pink',
-      minShotsPerMatch: 3,
-      minDesiredShotShare: 0.45,
-      minMovedTickRate: 0.1,
-      minWaveHitsPerMatch: 1,
-      minMetrics: {
-        ballHitRate: 0.12,
-        pinkBallHits: 0.25
-      }
-    }
-  },
-  sniper: {
-    id: 'sniper',
-    label: 'Sniper',
-    personality: 'Uses gold waves to line up pickups, create punish windows, and convert brief openings into scoring pressure.',
-    fitness: mergeWeights(COMMON_PROFILE_WEIGHTS, {
-      win: 100,
-      goalDiff: 24,
-      againstGoals: -16,
-      paceScore: 18,
-      shotRate: 0.65,
-      ballHitRate: 12,
-      goldShots: 1.8,
-      goldShotShare: 40,
-      goldBallHits: 2.4,
-      goldCenterHits: 3.6,
-      goldPaddleHits: 5.4,
-      goldWavePowerups: 5.0,
-      blueShots: -0.18,
-      blueShotShare: -8,
-      nonGoldShots: -0.12,
-      nonGoldShotShare: -14
-    }),
-    promotion: {
-      desiredWaveKey: 'gold',
-      minShotsPerMatch: 3,
-      minDesiredShotShare: 0.4,
-      minDesiredShotsPerMatch: 1.5,
-      minMovedTickRate: 0.08,
-      minMetrics: {
-        ballHitRate: 0.35,
-        goldBallHits: 0.6
-      }
-    }
-  }
-};
 
 function mergeControllerTrainingConfig(base, overrides = {}) {
   return {
@@ -268,104 +117,8 @@ const DEFAULT_CONTROLLER_TRAINING = {
   }
 };
 
-const ARCHETYPE_CONTROLLER_TRAINING = {
-  defensive: mergeControllerTrainingConfig(DEFAULT_CONTROLLER_TRAINING, {
-    moveThreshold: 0.53,
-    fireThreshold: 0.64,
-    mutation: {
-      fireChance: 0.7,
-      fireStd: 0.04
-    }
-  }),
-  aggressive: mergeControllerTrainingConfig(DEFAULT_CONTROLLER_TRAINING, {
-    moveThreshold: 0.54,
-    fireThreshold: 0.54,
-    mutation: {
-      fireChance: 0.82,
-      fireStd: 0.05
-    }
-  }),
-  control: mergeControllerTrainingConfig(DEFAULT_CONTROLLER_TRAINING, {
-    moveThreshold: 0.55,
-    fireThreshold: 0.6
-  }),
-  trickster: mergeControllerTrainingConfig(DEFAULT_CONTROLLER_TRAINING, {
-    moveThreshold: 0.54,
-    fireThreshold: 0.58,
-    mutation: {
-      moveChance: 0.76,
-      fireChance: 0.78
-    }
-  })
-};
-
-const ROLE_CONTROLLER_TRAINING = {
-  strategist: mergeControllerTrainingConfig(ARCHETYPE_CONTROLLER_TRAINING.control, {
-    moveThreshold: 0.54,
-    fireThreshold: 0.62,
-    lineageBudget: 3,
-    rescueLineageBudget: 4,
-    mutation: {
-      fireChance: 0.72,
-      fireStd: 0.04
-    },
-    rescueMutation: {
-      randomizeOutputChance: 0.16
-    },
-    inactivity: {
-      minActiveMatch: 0.28,
-      minShotsPerMatch: 2,
-      minMovedTickRate: 0.05,
-      minWaveHitsPerMatch: 0.25
-    }
-  }),
-  defensive_specialist: mergeControllerTrainingConfig(ARCHETYPE_CONTROLLER_TRAINING.control, {
-    moveThreshold: 0.46,
-    fireThreshold: 0.63,
-    lineageBudget: 4,
-    rescueLineageBudget: 6,
-    mutation: {
-      moveChance: 0.9,
-      moveStd: 0.06,
-      fireChance: 0.72,
-      fireStd: 0.05
-    },
-    rescueMutation: {
-      moveChance: 0.98,
-      moveStd: 0.1,
-      fireChance: 0.9,
-      fireStd: 0.085,
-      biasChance: 0.94,
-      biasStd: 0.3,
-      weightChance: 0.58,
-      weightStd: 0.36,
-      randomizeHiddenChance: 0.18,
-      randomizeOutputChance: 0.4
-    },
-    inactivity: {
-      minActiveMatch: 0.42,
-      minShotsPerMatch: 1.5,
-      minMovedTickRate: 0.05,
-      minWaveHitsPerMatch: 0.3
-    }
-  }),
-  sniper: mergeControllerTrainingConfig(ARCHETYPE_CONTROLLER_TRAINING.aggressive, {
-    moveThreshold: 0.53,
-    fireThreshold: 0.52,
-    lineageBudget: 3,
-    rescueLineageBudget: 4,
-    mutation: {
-      fireChance: 0.86,
-      fireStd: 0.055
-    },
-    inactivity: {
-      minActiveMatch: 0.3,
-      minShotsPerMatch: 1.5,
-      minMovedTickRate: 0.04,
-      minWaveHitsPerMatch: 0.2
-    }
-  })
-};
+const DEFAULT_EXPORT_BOT_COUNT = 5;
+const POPULATION_KEY = 'open';
 
 function parseArgs(argv) {
   const args = {
@@ -374,9 +127,9 @@ function parseArgs(argv) {
     seed: 1337,
     scoreLimit: 5,
     maxTicks: 120 * 90,
-    reportsDir: path.join(repoRoot, 'tools', 'reports'),
-    exportFile: path.join(repoRoot, 'tools', 'reports', 'exported-bots.js'),
-    ratingsFile: path.join(repoRoot, 'tools', 'reports', 'review-ratings.json'),
+    reportsDir: path.join(repoRoot, 'training', 'reports'),
+    exportFile: path.join(repoRoot, 'training', 'reports', 'exported-bots.js'),
+    ratingsFile: path.join(repoRoot, 'training', 'reports', 'review-ratings.json'),
     logFile: null,
     rosterFile: path.join(repoRoot, 'runtime', 'js', 'bot-roster.js'),
     rosterMode: 'none',
@@ -649,16 +402,6 @@ function normalizeRoleKey(value) {
 }
 
 function resolveControllerTrainingProfile(subject, fallbackArchetypeId = null) {
-  const roleKey = normalizeRoleKey(
-    subject && typeof subject === 'object'
-      ? ((subject.metadata && subject.metadata.roleName) || subject.name || '')
-      : subject
-  );
-  if (roleKey && ROLE_CONTROLLER_TRAINING[roleKey]) return ROLE_CONTROLLER_TRAINING[roleKey];
-  const archetypeId = subject && typeof subject === 'object'
-    ? (subject.archetype || fallbackArchetypeId || null)
-    : (ARCHETYPE_CONTROLLER_TRAINING[roleKey] ? roleKey : fallbackArchetypeId);
-  if (archetypeId && ARCHETYPE_CONTROLLER_TRAINING[archetypeId]) return ARCHETYPE_CONTROLLER_TRAINING[archetypeId];
   return DEFAULT_CONTROLLER_TRAINING;
 }
 
@@ -739,60 +482,19 @@ function assessLineageRecovery(bot, seedBot = null) {
 }
 
 function getTrainingProfile(bot) {
-  const roleName = normalizeRoleKey(bot && bot.metadata && bot.metadata.roleName);
-  if (roleName && ROLE_TRAINING_PROFILES[roleName]) return ROLE_TRAINING_PROFILES[roleName];
-  const nameKey = normalizeRoleKey(bot && bot.name);
-  if (nameKey && ROLE_TRAINING_PROFILES[nameKey]) return ROLE_TRAINING_PROFILES[nameKey];
-  return ARCHETYPES.find((entry) => entry.id === (bot && bot.archetype)) || ARCHETYPES[0];
+  return {
+    id: 'open',
+    label: 'Open',
+    personality: null,
+    fitness: GENERIC_FITNESS_WEIGHTS
+  };
 }
 
 function assessPromotionReadiness(bot, profile) {
-  const promotion = profile && profile.promotion ? profile.promotion : null;
-  const averages = bot && bot.metricAverages ? bot.metricAverages : {};
-  if (!promotion) {
-    return {
-      blocked: false,
-      reasons: [],
-      desiredWaveKey: null
-    };
-  }
-
-  const reasons = [];
-  if (promotion.minShotsPerMatch != null && (Number(averages.shots) || 0) < promotion.minShotsPerMatch) {
-    reasons.push(`shots<${promotion.minShotsPerMatch}`);
-  }
-  if (promotion.minMovedTickRate != null && (Number(averages.movedTickRate) || 0) < promotion.minMovedTickRate) {
-    reasons.push(`movedTickRate<${promotion.minMovedTickRate}`);
-  }
-  if (promotion.minWaveHitsPerMatch != null && (Number(averages.waveHits) || 0) < promotion.minWaveHitsPerMatch) {
-    reasons.push(`waveHits<${promotion.minWaveHitsPerMatch}`);
-  }
-  if (promotion.desiredWaveKey) {
-    const desiredKey = String(promotion.desiredWaveKey);
-    const shareKey = `${desiredKey}ShotShare`;
-    const shotsKey = `${desiredKey}Shots`;
-    if (promotion.minDesiredShotShare != null && (Number(averages[shareKey]) || 0) < promotion.minDesiredShotShare) {
-      reasons.push(`${shareKey}<${promotion.minDesiredShotShare}`);
-    }
-    if (promotion.minDesiredShotsPerMatch != null && (Number(averages[shotsKey]) || 0) < promotion.minDesiredShotsPerMatch) {
-      reasons.push(`${shotsKey}<${promotion.minDesiredShotsPerMatch}`);
-    }
-  }
-  for (const [metricKey, threshold] of Object.entries(promotion.minMetrics || {})) {
-    if ((Number(averages[metricKey]) || 0) < Number(threshold)) {
-      reasons.push(`${metricKey}<${threshold}`);
-    }
-  }
-  for (const [metricKey, threshold] of Object.entries(promotion.maxMetrics || {})) {
-    if ((Number(averages[metricKey]) || 0) > Number(threshold)) {
-      reasons.push(`${metricKey}>${threshold}`);
-    }
-  }
-
   return {
-    blocked: reasons.length > 0,
-    reasons,
-    desiredWaveKey: promotion.desiredWaveKey || null
+    blocked: false,
+    reasons: [],
+    desiredWaveKey: null
   };
 }
 
@@ -900,7 +602,7 @@ function summarizeHumanReviewSignal(summary) {
 function formatBotRoleName(bot) {
   return bot && bot.metadata && bot.metadata.roleName
     ? String(bot.metadata.roleName)
-    : String((bot && bot.archetype) || 'unknown');
+    : String((bot && bot.archetype) || 'Open');
 }
 
 function formatBotTag(bot) {
@@ -1139,18 +841,27 @@ function mutateNetwork(network, random, options = {}) {
   return next;
 }
 
-function createGenome(archetype, generation, inputSize, random, parent = null, options = {}) {
-  const baseId = `${archetype.id}-${generation}-${Math.floor(random() * 1e9).toString(36)}`;
-  const subject = parent || options.seedBot || archetype;
-  const controllerTraining = resolveControllerTrainingProfile(subject, archetype.id);
+function createGenome(generation, inputSize, random, parent = null, options = {}) {
+  const lineagePrefix = options.lineagePrefix
+    || (parent && (parent.sourceBotId || parent.lineageId || parent.id))
+    || 'open';
+  const normalizedPrefix = String(lineagePrefix).replace(/-[^-]+$/, '') || 'open';
+  const baseId = `${normalizedPrefix}-${generation}-${Math.floor(random() * 1e9).toString(36)}`;
+  const subject = parent || options.seedBot || null;
+  const controllerTraining = resolveControllerTrainingProfile(subject, null);
   const mutationSettings = options.rescue ? controllerTraining.rescueMutation : controllerTraining.mutation;
   const network = parent ? mutateNetwork(parent.network, random, mutationSettings) : createRandomNetwork(inputSize, random);
+  const defaultName = options.defaultName || `Open ${baseId.slice(-4)}`;
   return {
     id: baseId,
-    name: parent && parent.name ? parent.name : `${archetype.label} ${baseId.slice(-4)}`,
+    name: parent && parent.name ? parent.name : defaultName,
     schemaVersion: 1,
-    archetype: archetype.id,
-    personality: parent && parent.personality ? parent.personality : archetype.personality,
+    archetype: parent && Object.prototype.hasOwnProperty.call(parent, 'archetype')
+      ? parent.archetype
+      : (Object.prototype.hasOwnProperty.call(options, 'archetype') ? options.archetype : null),
+    personality: parent && Object.prototype.hasOwnProperty.call(parent, 'personality')
+      ? parent.personality
+      : (Object.prototype.hasOwnProperty.call(options, 'personality') ? options.personality : null),
     generation,
     lineageId: parent ? parent.lineageId : baseId,
     sourceBotId: parent ? (parent.sourceBotId || null) : null,
@@ -1171,21 +882,20 @@ function createGenome(archetype, generation, inputSize, random, parent = null, o
       ? mutateControllerParams(subject, parent.controllerParams, random, {
         rescue: !!options.rescue,
         rescueVariant: options.rescueVariant || null,
-        fallbackArchetypeId: archetype.id
+        fallbackArchetypeId: null
       })
-      : createDefaultControllerParams(subject, archetype.id),
+      : createDefaultControllerParams(subject, null),
     network
   };
 }
 
 function normalizeRosterSeed(bot) {
-  const archetype = ARCHETYPES.find((entry) => entry.id === bot.archetype) || ARCHETYPES[0];
   return {
     id: bot.id,
-    name: bot.name || `${archetype.label} ${String(bot.id || '').slice(-4)}`,
+    name: bot.name || `Open ${String(bot.id || '').slice(-4)}`,
     schemaVersion: 1,
-    archetype: archetype.id,
-    personality: bot.personality || archetype.personality,
+    archetype: Object.prototype.hasOwnProperty.call(bot, 'archetype') ? bot.archetype : null,
+    personality: Object.prototype.hasOwnProperty.call(bot, 'personality') ? bot.personality : null,
     generation: Number(bot.generation) || 0,
     lineageId: bot.lineageId || bot.id,
     sourceBotId: bot.sourceBotId || bot.id,
@@ -1203,7 +913,7 @@ function normalizeRosterSeed(bot) {
       source: bot.id,
       kind: 'roster-seed'
     },
-    controllerParams: buildTrainingControllerParams(bot, bot.controllerParams, archetype.id),
+    controllerParams: buildTrainingControllerParams(bot, bot.controllerParams, null),
     network: cloneNetwork(bot.network)
   };
 }
@@ -1212,59 +922,58 @@ function loadRosterBots(filePath) {
   if (!filePath || !fs.existsSync(filePath)) return [];
   const rosterValue = loadModule(filePath);
   const rawBots = Array.isArray(rosterValue) ? rosterValue : [];
-  return rawBots.filter((bot) => bot && bot.network && bot.archetype).map(normalizeRosterSeed);
+  return rawBots.filter((bot) => bot && bot.network).map(normalizeRosterSeed);
 }
 
 function createPopulation(inputSize, populationSize, random, rosterSeeds = [], options = {}) {
-  const populations = {};
-  const seedsByArchetype = new Map();
+  const populations = {
+    [POPULATION_KEY]: []
+  };
   const focusBotId = options.focusBotId || null;
   const focusedSeed = focusBotId
     ? rosterSeeds.find((bot) => bot.id === focusBotId || bot.sourceBotId === focusBotId) || null
     : null;
-  for (const archetype of ARCHETYPES) {
-    seedsByArchetype.set(archetype.id, []);
-  }
-  for (const seedBot of rosterSeeds) {
-    if (!seedsByArchetype.has(seedBot.archetype)) seedsByArchetype.set(seedBot.archetype, []);
-    seedsByArchetype.get(seedBot.archetype).push(clone(seedBot));
-  }
-  for (const archetype of ARCHETYPES) {
-    if (focusedSeed && archetype.id !== focusedSeed.archetype) {
-      populations[archetype.id] = [];
+  const seeded = focusedSeed ? [clone(focusedSeed)] : rosterSeeds.map((bot) => clone(bot));
+  let seededParentCursor = 0;
+  populations[POPULATION_KEY] = seeded.map((bot) => ({
+    ...clone(bot),
+    fitnessScore: 0,
+    matches: 0,
+    metricTotals: createMetricTotals(),
+    metricSamples: 0,
+    metricAverages: clone(bot.metricAverages || null),
+    roleFitScore: Number(bot.roleFitScore) || 0
+  }));
+  const targetSize = Math.max(populationSize, populations[POPULATION_KEY].length);
+  while (populations[POPULATION_KEY].length < targetSize) {
+    if (focusedSeed) {
+      populations[POPULATION_KEY].push(createGenome(0, inputSize, random, focusedSeed, {
+        lineagePrefix: focusedSeed.id,
+        defaultName: focusedSeed.name || `Open ${String(focusedSeed.id || '').slice(-4)}`,
+        archetype: Object.prototype.hasOwnProperty.call(focusedSeed, 'archetype') ? focusedSeed.archetype : null,
+        personality: Object.prototype.hasOwnProperty.call(focusedSeed, 'personality') ? focusedSeed.personality : null
+      }));
       continue;
     }
-    const seeded = seedsByArchetype.get(archetype.id) || [];
-    let seededParentCursor = 0;
-    populations[archetype.id] = seeded.map((bot) => ({
-      ...clone(bot),
-      fitnessScore: 0,
-      matches: 0,
-      metricTotals: createMetricTotals(),
-      metricSamples: 0,
-      metricAverages: clone(bot.metricAverages || null),
-      roleFitScore: Number(bot.roleFitScore) || 0
-    }));
-    const targetSize = Math.max(populationSize, populations[archetype.id].length);
-    while (populations[archetype.id].length < targetSize) {
-      if (focusedSeed && archetype.id === focusedSeed.archetype) {
-        populations[archetype.id].push(createGenome(archetype, 0, inputSize, random, focusedSeed));
-        continue;
-      }
-      if (seeded.length) {
-        const parent = seeded[seededParentCursor % seeded.length];
-        const shouldRescueSeed = (Number(parent.trainingHours) || 0) <= 0.1;
-        const rescueVariant = shouldRescueSeed ? getRescueVariant(seededParentCursor) : null;
-        seededParentCursor += 1;
-        populations[archetype.id].push(createGenome(archetype, 0, inputSize, random, parent, {
-          rescue: shouldRescueSeed,
-          rescueVariant,
-          seedBot: parent
-        }));
-        continue;
-      }
-      populations[archetype.id].push(createGenome(archetype, 0, inputSize, random));
+    if (seeded.length) {
+      const parent = seeded[seededParentCursor % seeded.length];
+      const shouldRescueSeed = (Number(parent.trainingHours) || 0) <= 0.1;
+      const rescueVariant = shouldRescueSeed ? getRescueVariant(seededParentCursor) : null;
+      seededParentCursor += 1;
+      populations[POPULATION_KEY].push(createGenome(0, inputSize, random, parent, {
+        rescue: shouldRescueSeed,
+        rescueVariant,
+        seedBot: parent,
+        lineagePrefix: parent.id,
+        defaultName: parent.name || `Open ${String(parent.id || '').slice(-4)}`,
+        archetype: Object.prototype.hasOwnProperty.call(parent, 'archetype') ? parent.archetype : null,
+        personality: Object.prototype.hasOwnProperty.call(parent, 'personality') ? parent.personality : null
+      }));
+      continue;
     }
+    populations[POPULATION_KEY].push(createGenome(0, inputSize, random, null, {
+      defaultName: 'Open Seed'
+    }));
   }
   return populations;
 }
@@ -1317,6 +1026,26 @@ function averageMetricTotals(totals, count) {
   return averages;
 }
 
+function safeRatio(numerator, denominator) {
+  const denom = Number(denominator) || 0;
+  if (denom <= 0) return 0;
+  return (Number(numerator) || 0) / denom;
+}
+
+function normalizedShotDiversity(counts) {
+  const values = (counts || []).map((value) => Math.max(0, Number(value) || 0));
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const activeKinds = values.filter((value) => value > 0).length;
+  if (total <= 0 || activeKinds <= 1) return 0;
+  let entropy = 0;
+  for (const value of values) {
+    if (value <= 0) continue;
+    const p = value / total;
+    entropy -= p * Math.log(p);
+  }
+  return entropy / Math.log(activeKinds);
+}
+
 function accumulateBotMetrics(bot, metrics) {
   bot.metricTotals = accumulateMetricTotals(bot.metricTotals || createMetricTotals(), metrics);
   bot.metricSamples = (Number(bot.metricSamples) || 0) + 1;
@@ -1338,15 +1067,38 @@ function buildSideMetrics({
   ballHits,
   waveHits,
   movement,
-  durationTicks
+  durationTicks,
+  maxBallSpeed,
+  maxDurationTicks
 }) {
   const safeDuration = Math.max(1, durationTicks);
+  const safeMaxDuration = Math.max(safeDuration, Number(maxDurationTicks) || safeDuration);
   const safeShots = Math.max(1, shots);
   const totalGoals = ownScore + opponentScore;
   const blueShots = roleMetrics.blueShots || 0;
   const pinkShots = roleMetrics.pinkShots || 0;
   const goldShots = roleMetrics.goldShots || 0;
   const inactiveMatch = shots <= 0 && (movement.movedTicks || 0) <= 0 ? 1 : 0;
+  const winQuickness = result > 0.5 ? clamp((safeMaxDuration - safeDuration) / safeMaxDuration, 0, 1) : 0;
+  const shotDiversity = normalizedShotDiversity([blueShots, pinkShots, goldShots]);
+  const ballControlScore = clamp(safeRatio(ballHits, Math.max(1, shots * 0.6)), 0, 1.5);
+  const waveConversionScore = clamp(safeRatio(waveHits, Math.max(1, shots * 0.5)), 0, 1.5);
+  const powerupCreativity = clamp(safeRatio(powerups, Math.max(1, totalGoals + 1)), 0, 1.5);
+  const speedCreativity = clamp(safeRatio(maxBallSpeed, config.balance.ball.speedCap || 1), 0, 1.5);
+  const eventDensity = clamp((shots + ballHits + waveHits + powerups) / Math.max(6, safeDuration / 120), 0, 2);
+  const creativityScore = (
+    (shotDiversity * 0.28) +
+    (ballControlScore * 0.26) +
+    (waveConversionScore * 0.18) +
+    (powerupCreativity * 0.12) +
+    (speedCreativity * 0.16)
+  ) * clamp(eventDensity, 0, 1.4) * (result > 0 ? 1 : 0.55);
+  const shotWastePenalty = Math.max(0, safeRatio(shots - ((ballHits * 0.85) + (waveHits * 0.65)), Math.max(1, shots)));
+  const slowMatchRatio = clamp(safeDuration / safeMaxDuration, 0, 1);
+  const quickMatchRatio = 1 - slowMatchRatio;
+  const lowEventMatch = clamp(1 - (eventDensity / 0.9), 0, 1);
+  const quickLossPenalty = result < 0.5 ? (1 - result) * quickMatchRatio * (1 - lowEventMatch * 0.35) : 0;
+  const stallPenalty = (1 - result) * slowMatchRatio * lowEventMatch;
 
   return {
     win: result,
@@ -1365,6 +1117,11 @@ function buildSideMetrics({
     waveHits,
     waveHitRate: shots > 0 ? waveHits / safeShots : 0,
     ballHitRate: shots > 0 ? ballHits / safeShots : 0,
+    fastWinScore: winQuickness * (1 + Math.max(0, ownScore - opponentScore) * 0.12),
+    quickLossPenalty,
+    creativityScore,
+    shotWastePenalty,
+    stallPenalty,
     activeMatch: inactiveMatch ? 0 : 1,
     inactiveMatch,
     movedTicks: movement.movedTicks || 0,
@@ -1467,7 +1224,9 @@ function evaluateMatch(leftBot, rightBot, seed, settings) {
     ballHits: leftBallHits,
     waveHits: leftWaveHits,
     movement: leftMovement,
-    durationTicks
+    durationTicks,
+    maxBallSpeed,
+    maxDurationTicks: settings.maxTicks
   });
 
   const rightMetrics = buildSideMetrics({
@@ -1481,7 +1240,9 @@ function evaluateMatch(leftBot, rightBot, seed, settings) {
     ballHits: rightBallHits,
     waveHits: rightWaveHits,
     movement: rightMovement,
-    durationTicks
+    durationTicks,
+    maxBallSpeed,
+    maxDurationTicks: settings.maxTicks
   });
 
   return {
@@ -1532,7 +1293,7 @@ function makeReplayBundle(match, leftBot, rightBot, seed) {
   };
 }
 
-function selectArchetypeElites(ranked, protectedSeedIds) {
+function selectPopulationElites(ranked, protectedSeedIds) {
   const protectedIds = new Set((protectedSeedIds || []).filter(Boolean));
   const baseEliteCount = Math.max(2, Math.floor(ranked.length / 3));
   const protectedElites = [];
@@ -1561,7 +1322,7 @@ function selectArchetypeElites(ranked, protectedSeedIds) {
   };
 }
 
-function buildTrackedLineagePlans(archetype, ranked, protectedSeedIds, trackedSeedBotsById) {
+function buildTrackedLineagePlans(ranked, protectedSeedIds, trackedSeedBotsById) {
   return (protectedSeedIds || [])
     .filter(Boolean)
     .map((seedId) => {
@@ -1570,7 +1331,7 @@ function buildTrackedLineagePlans(archetype, ranked, protectedSeedIds, trackedSe
         : null;
       const lineageLeader = ranked.find((bot) => (bot.sourceBotId || bot.id) === seedId) || seedBot;
       if (!lineageLeader) return null;
-      const controllerTraining = resolveControllerTrainingProfile(lineageLeader || seedBot, archetype.id);
+      const controllerTraining = resolveControllerTrainingProfile(lineageLeader || seedBot, null);
       const recovery = assessLineageRecovery(lineageLeader, seedBot);
       const targetCount = Math.max(
         2,
@@ -1590,7 +1351,7 @@ function buildTrackedLineagePlans(archetype, ranked, protectedSeedIds, trackedSe
 function runGeneration(populations, generation, random, settings) {
   const mutableBots = Object.values(populations).flat();
   const staticBots = Array.isArray(settings.staticBots) ? settings.staticBots : [];
-  const protectedSeedIdsByArchetype = settings.protectedSeedIdsByArchetype || {};
+  const protectedSeedIdsByPopulation = settings.protectedSeedIdsByPopulation || {};
   const trackedSeedBotsById = settings.trackedSeedBotsById || new Map();
   const allBots = mutableBots.concat(staticBots);
   const replayBundles = [];
@@ -1667,46 +1428,44 @@ function runGeneration(populations, generation, random, settings) {
   for (const bot of mutableBots) {
     finalizeBotMetrics(bot);
   }
-  for (const archetype of ARCHETYPES) {
-    const ranked = populations[archetype.id]
+  for (const [populationKey, populationBots] of Object.entries(populations)) {
+    const ranked = populationBots
       .slice()
       .sort((a, b) => (b.fitnessScore / Math.max(1, b.matches)) - (a.fitnessScore / Math.max(1, a.matches)));
     if (!ranked.length) {
-      nextPopulations[archetype.id] = [];
+      nextPopulations[populationKey] = [];
       continue;
     }
     summary.push({
-      archetype: archetype.id,
+      archetype: populationKey,
       topBotId: ranked[0].id,
       topFitness: ranked[0].fitnessScore / Math.max(1, ranked[0].matches),
       topElo: ranked[0].elo
     });
     const lineagePlans = buildTrackedLineagePlans(
-      archetype,
       ranked,
-      protectedSeedIdsByArchetype[archetype.id],
+      protectedSeedIdsByPopulation[populationKey],
       trackedSeedBotsById
     );
-    const { elites } = selectArchetypeElites(ranked, protectedSeedIdsByArchetype[archetype.id]);
-    nextPopulations[archetype.id] = elites.map((bot) => ({
+    const { elites } = selectPopulationElites(ranked, protectedSeedIdsByPopulation[populationKey]);
+    nextPopulations[populationKey] = elites.map((bot) => ({
       ...JSON.parse(JSON.stringify(bot)),
       generation: generation + 1
     }));
 
     const lineageCounts = new Map();
-    for (const bot of nextPopulations[archetype.id]) {
+    for (const bot of nextPopulations[populationKey]) {
       const trackedSeedId = bot.sourceBotId || bot.id;
       if (!trackedSeedId) continue;
       lineageCounts.set(trackedSeedId, (lineageCounts.get(trackedSeedId) || 0) + 1);
     }
     for (const plan of lineagePlans) {
       while (
-        nextPopulations[archetype.id].length < ranked.length &&
+        nextPopulations[populationKey].length < ranked.length &&
         (lineageCounts.get(plan.seedId) || 0) < plan.targetCount
       ) {
         const lineageIndex = lineageCounts.get(plan.seedId) || 0;
-        nextPopulations[archetype.id].push(createGenome(
-          archetype,
+        nextPopulations[populationKey].push(createGenome(
           generation + 1,
           settings.inputSize,
           random,
@@ -1714,13 +1473,21 @@ function runGeneration(populations, generation, random, settings) {
           {
             rescue: plan.recovery.needsRescue,
             rescueVariant: plan.recovery.needsRescue ? getRescueVariant(lineageIndex) : null,
-            seedBot: plan.seedBot || plan.lineageLeader
+            seedBot: plan.seedBot || plan.lineageLeader,
+            lineagePrefix: plan.seedId,
+            defaultName: (plan.lineageLeader && plan.lineageLeader.name) || (plan.seedBot && plan.seedBot.name) || 'Open',
+            archetype: plan.seedBot && Object.prototype.hasOwnProperty.call(plan.seedBot, 'archetype')
+              ? plan.seedBot.archetype
+              : (plan.lineageLeader && Object.prototype.hasOwnProperty.call(plan.lineageLeader, 'archetype') ? plan.lineageLeader.archetype : null),
+            personality: plan.seedBot && Object.prototype.hasOwnProperty.call(plan.seedBot, 'personality')
+              ? plan.seedBot.personality
+              : (plan.lineageLeader && Object.prototype.hasOwnProperty.call(plan.lineageLeader, 'personality') ? plan.lineageLeader.personality : null)
           }
         ));
         lineageCounts.set(plan.seedId, (lineageCounts.get(plan.seedId) || 0) + 1);
       }
     }
-    while (nextPopulations[archetype.id].length < ranked.length) {
+    while (nextPopulations[populationKey].length < ranked.length) {
       let parent = elites[Math.floor(random() * elites.length)];
       let genomeOptions = {};
       if (lineagePlans.length && random() < 0.35) {
@@ -1731,17 +1498,30 @@ function runGeneration(populations, generation, random, settings) {
           genomeOptions = {
             rescue: plan.recovery.needsRescue,
             rescueVariant: plan.recovery.needsRescue ? getRescueVariant(lineageIndex) : null,
-            seedBot: plan.seedBot || plan.lineageLeader
+            seedBot: plan.seedBot || plan.lineageLeader,
+            lineagePrefix: plan.seedId,
+            defaultName: (plan.lineageLeader && plan.lineageLeader.name) || (plan.seedBot && plan.seedBot.name) || 'Open',
+            archetype: plan.seedBot && Object.prototype.hasOwnProperty.call(plan.seedBot, 'archetype')
+              ? plan.seedBot.archetype
+              : (plan.lineageLeader && Object.prototype.hasOwnProperty.call(plan.lineageLeader, 'archetype') ? plan.lineageLeader.archetype : null),
+            personality: plan.seedBot && Object.prototype.hasOwnProperty.call(plan.seedBot, 'personality')
+              ? plan.seedBot.personality
+              : (plan.lineageLeader && Object.prototype.hasOwnProperty.call(plan.lineageLeader, 'personality') ? plan.lineageLeader.personality : null)
           };
         }
       }
-      nextPopulations[archetype.id].push(createGenome(
-        archetype,
+      nextPopulations[populationKey].push(createGenome(
         generation + 1,
         settings.inputSize,
         random,
         parent,
-        genomeOptions
+        {
+          lineagePrefix: parent && (parent.sourceBotId || parent.lineageId || parent.id),
+          defaultName: (parent && parent.name) || 'Open',
+          archetype: parent && Object.prototype.hasOwnProperty.call(parent, 'archetype') ? parent.archetype : null,
+          personality: parent && Object.prototype.hasOwnProperty.call(parent, 'personality') ? parent.personality : null,
+          ...genomeOptions
+        }
       ));
       const trackedSeedId = parent && parent.sourceBotId ? parent.sourceBotId : (parent && parent.id ? parent.id : null);
       if (trackedSeedId) {
@@ -1891,7 +1671,7 @@ function buildRankedExportBots(populations, reviewRatings, bestRosterSeedCandida
     ? buildFocusedBotExport(exportSeedPool.length ? exportSeedPool : (exportPool.length ? exportPool : promotionCandidates), focusSeedBot)
     : args.updateAllRoster
     ? buildUpdateAllRosterExport(exportSeedPool.length ? exportSeedPool : (exportPool.length ? exportPool : promotionCandidates), mutableRosterSeeds)
-    : (exportPool.length ? exportPool : promotionCandidates).slice(0, 12);
+    : (exportPool.length ? exportPool : promotionCandidates).slice(0, DEFAULT_EXPORT_BOT_COUNT);
   const exportBots = (args.updateAllRoster || args.focusBotId) ? selectedForExport : assignDifficultyBands(selectedForExport);
   const rankedBots = exportBots.map((bot) => ({
     id: bot.id,
@@ -1949,7 +1729,7 @@ function buildEvolutionReport({
     runtimeVersion,
     seed: args.seed,
     generations: args.generations,
-    populationPerArchetype: args.population,
+    population: args.population,
     rosterMode: args.rosterMode,
     focusBotId: args.focusBotId,
     selfPlay: args.selfPlay,
@@ -1990,7 +1770,7 @@ function buildEvolutionReport({
 }
 
 function publishBotsToRoster(exportFile, reportsDir, destinationFile, logger) {
-  const publishScript = path.join(repoRoot, 'tools', 'publish-bots.js');
+  const publishScript = path.join(repoRoot, 'training', 'publish-bots.js');
   const publishReport = path.join(reportsDir, 'published-bots-report.json');
   childProcess.execFileSync(
     process.execPath,
@@ -2062,7 +1842,7 @@ function main() {
 
     const humanRatings = loadHumanRatings(args.ratingsFile);
     const reviewRatings = aggregateHumanRatings(humanRatings);
-    const invokedCommand = ['node', 'tools/evolve-bots.js', ...process.argv.slice(2)].map(formatCommandArg).join(' ');
+    const invokedCommand = ['node', 'training/evolve-bots.js', ...process.argv.slice(2)].map(formatCommandArg).join(' ');
     const rosterBots = loadRosterBots(args.rosterFile);
     if (args.updateAllRoster && !rosterBots.length) {
       throw new Error(`--update-all-roster requires a non-empty roster file: ${args.rosterFile}`);
@@ -2085,10 +1865,11 @@ function main() {
       : (args.rosterMode === 'static'
         ? rosterBots.map((bot) => ({ ...clone(bot), isStaticRosterBot: true }))
         : []);
-    const protectedSeedIdsByArchetype = {};
+    const protectedSeedIdsByPopulation = {
+      [POPULATION_KEY]: []
+    };
     for (const seedBot of mutableRosterSeeds) {
-      if (!protectedSeedIdsByArchetype[seedBot.archetype]) protectedSeedIdsByArchetype[seedBot.archetype] = [];
-      protectedSeedIdsByArchetype[seedBot.archetype].push(seedBot.id);
+      protectedSeedIdsByPopulation[POPULATION_KEY].push(seedBot.id);
     }
     const trackedSeedBotsById = new Map(mutableRosterSeeds.map((bot) => [bot.id, bot]));
 
@@ -2126,7 +1907,7 @@ function main() {
       logger.warn('No human review ratings loaded; promotion and fine tuning are using simulation signals only.');
     }
     if (!mutableRosterSeeds.length) {
-      logger.warn('No mutable roster seeds are being tracked; role-specific fine-tuning diagnostics will only appear in the JSON report.');
+      logger.warn('No mutable roster seeds are being tracked; lineage diagnostics will only appear in the JSON report.');
     }
     logger.fileOnly(`Rerun | ${invokedCommand}`);
 
@@ -2139,7 +1920,7 @@ function main() {
         maxTicks: args.maxTicks,
         inputSize,
         staticBots: staticRosterBots,
-        protectedSeedIdsByArchetype,
+        protectedSeedIdsByPopulation,
         trackedSeedBotsById,
         progressEveryMatches: args.progressEveryMatches,
         onProgress(progress) {
@@ -2199,7 +1980,7 @@ function main() {
           seed: args.seed,
           generationCompleted: generation,
           generationsPlanned: args.generations,
-          populationPerArchetype: args.population,
+          population: args.population,
           scoreLimit: args.scoreLimit,
           maxTicks: args.maxTicks,
           progressEveryMatches: args.progressEveryMatches,

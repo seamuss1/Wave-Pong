@@ -1,0 +1,8 @@
+environment              = "dev"
+control_plane_public_url = "https://wave-pong-control-dev.example.com"
+match_worker_public_ws_url = "wss://wave-pong-worker-dev.example.com/ws/match"
+match_worker_internal_ws_url = "ws://wave-pong-worker.internal:8788/ws/match"
+static_client_origin     = "https://wave-pong-dev.example.com"
+database_url             = "postgres://wavepong:wavepong@db.example.com:5432/wave_pong"
+redis_url                = "redis://default:password@redis.example.com:6379"
+wave_pong_secret         = "replace-me"

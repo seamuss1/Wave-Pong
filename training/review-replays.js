@@ -10,9 +10,9 @@ const controllers = require(path.join(repoRoot, 'runtime/js/controllers.js'));
 
 function parseArgs(argv) {
   const args = {
-    replaysDir: path.join(repoRoot, 'tools', 'reports', 'replays'),
-    output: path.join(repoRoot, 'tools', 'reports', 'review-manifest.json'),
-    ratingsFile: path.join(repoRoot, 'tools', 'reports', 'review-ratings.json')
+    replaysDir: path.join(repoRoot, 'training', 'reports', 'replays'),
+    output: path.join(repoRoot, 'training', 'reports', 'review-manifest.json'),
+    ratingsFile: path.join(repoRoot, 'training', 'reports', 'review-ratings.json')
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -86,7 +86,7 @@ function main() {
   ensureDir(path.dirname(args.output));
   const ratingsByReplayId = loadRatings(args.ratingsFile);
   const clipsDir = path.join(path.dirname(args.output), 'clips');
-  const toolsDir = path.join(repoRoot, 'tools');
+  const trainingDir = path.join(repoRoot, 'training');
   const replayFiles = fs.existsSync(args.replaysDir)
     ? fs.readdirSync(args.replaysDir).filter((file) => file.endsWith('.json'))
     : [];
@@ -132,10 +132,10 @@ function main() {
       replayId: bundle.replayId,
       replayPath: bundlePath,
       replayFileName: path.basename(bundlePath),
-      replayRelativePath: path.relative(toolsDir, bundlePath),
+      replayRelativePath: path.relative(trainingDir, bundlePath),
       clipPath,
       clipFileName: path.basename(clipPath),
-      clipRelativePath: path.relative(toolsDir, clipPath),
+      clipRelativePath: path.relative(trainingDir, clipPath),
       clipExists: fs.existsSync(clipPath),
       seed: bundle.seed,
       configHash: bundle.configHash,

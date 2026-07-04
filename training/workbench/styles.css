@@ -1,0 +1,652 @@
+:root {
+  color-scheme: dark;
+  --bg: #071017;
+  --bg-soft: #0d1720;
+  --panel: rgba(12, 22, 31, 0.92);
+  --panel-strong: rgba(16, 30, 42, 0.96);
+  --panel-soft: rgba(255, 255, 255, 0.035);
+  --line: rgba(132, 216, 255, 0.18);
+  --line-strong: rgba(132, 216, 255, 0.4);
+  --line-good: rgba(215, 255, 113, 0.28);
+  --text: #eff8fb;
+  --muted: #97adba;
+  --accent: #84d8ff;
+  --accent-strong: #d7ff71;
+  --danger: #ff8d86;
+  --good: #8ef0b2;
+  --warn: #ffc978;
+  --shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+  --radius: 24px;
+  --radius-small: 16px;
+  --mono: "Cascadia Mono", Consolas, monospace;
+  --sans: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(132, 216, 255, 0.16), transparent 28rem),
+    radial-gradient(circle at top right, rgba(215, 255, 113, 0.1), transparent 32rem),
+    linear-gradient(180deg, #071017 0%, #0a141c 100%);
+  color: var(--text);
+  font-family: var(--sans);
+}
+
+body {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(132, 216, 255, 0.08);
+  color: var(--text);
+  padding: 0.72rem 1rem;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: rgba(132, 216, 255, 0.14);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.primary {
+  background: rgba(215, 255, 113, 0.14);
+  border-color: var(--line-good);
+}
+
+.danger {
+  background: rgba(255, 141, 134, 0.12);
+  border-color: rgba(255, 141, 134, 0.3);
+}
+
+.appShell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.2rem;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(7, 16, 23, 0.96), rgba(7, 16, 23, 0.84));
+  backdrop-filter: blur(14px);
+}
+
+.statusStrip,
+.buttonRow,
+.presetRow,
+.tabRow,
+.transportBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.statusPill,
+.summaryPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.78rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.summaryPill strong {
+  color: var(--text);
+}
+
+.dashboard {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(20rem, 24rem) minmax(0, 1fr);
+  padding: 1rem;
+}
+
+.sidebar,
+.content {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.panel,
+.miniPanel,
+.reviewCard {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.miniPanel,
+.reviewCard {
+  border-radius: var(--radius-small);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+}
+
+.panelHeader,
+.reviewCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 1rem 1rem 0.45rem;
+}
+
+.panelBody {
+  padding: 1rem;
+}
+
+.miniPanelHeader {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.controlStack,
+.decisionStack,
+.fieldGrid,
+.toggleGrid,
+.parameterSummary,
+.detailList,
+.ratingGrid,
+.metaGrid,
+.snapshotGrid,
+.reviewColumn,
+.sidebar .panelBody {
+  display: grid;
+  gap: 1rem;
+}
+
+.controlSections {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.fieldGrid label,
+.detailList > div {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.fieldGrid span,
+.transportField span,
+.detailList dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.fieldGrid input[type="number"],
+.decisionStack select,
+.decisionStack textarea,
+.filters input,
+.filters select,
+.transportField select {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(7, 16, 23, 0.78);
+  padding: 0.78rem 0.88rem;
+}
+
+.inputPair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6rem;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--muted);
+}
+
+.parameterSummary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.parameterChip,
+.runList button,
+.replayList button,
+.statCard,
+.infoCard,
+.ratingCard,
+.metaGrid > div,
+.detailList > div,
+.infoNote {
+  border-radius: var(--radius-small);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--panel-soft);
+}
+
+.parameterChip,
+.infoNote {
+  padding: 0.8rem 0.9rem;
+}
+
+.parameterChip {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.runList,
+.replayList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.runList {
+  max-height: 28rem;
+  overflow: auto;
+}
+
+.replayList {
+  max-height: 26rem;
+  overflow: auto;
+}
+
+.runList button,
+.replayList button {
+  width: 100%;
+  padding: 1rem;
+  text-align: left;
+}
+
+.runList button.is-active,
+.replayList button.is-active,
+.tabRow button.is-active {
+  border-color: var(--line-strong);
+  background: rgba(132, 216, 255, 0.14);
+}
+
+.runTitle,
+.replayTitle {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.runMeta,
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.24rem 0.58rem;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.tag.good {
+  color: #d9ffea;
+  border-color: rgba(142, 240, 178, 0.34);
+  background: rgba(142, 240, 178, 0.12);
+}
+
+.tag.warn {
+  color: #ffe0b6;
+  border-color: rgba(255, 191, 120, 0.3);
+  background: rgba(255, 191, 120, 0.12);
+}
+
+.tag.live {
+  color: #d8f5ff;
+  border-color: rgba(132, 216, 255, 0.28);
+  background: rgba(132, 216, 255, 0.12);
+}
+
+.statGrid,
+.snapshotGrid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.statGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.snapshotGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.statCard,
+.infoCard,
+.ratingCard,
+.metaGrid > div,
+.detailList > div {
+  padding: 0.95rem;
+}
+
+.statCard strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.35rem;
+}
+
+.chartCard {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius-small);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.chartHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.85rem;
+}
+
+#progressChart {
+  display: block;
+  width: 100%;
+  height: 220px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(132, 216, 255, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.listStack {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.logConsole {
+  min-height: 16rem;
+  max-height: 22rem;
+  overflow: auto;
+  margin: 0;
+  border-radius: var(--radius-small);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #061018;
+  padding: 1rem;
+  color: #cae7f2;
+  font-family: var(--mono);
+  font-size: 0.83rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.replayLayout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1.2fr) minmax(21rem, 24rem);
+  align-items: start;
+}
+
+.studioColumn {
+  display: grid;
+  gap: 1rem;
+}
+
+.studioToolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.playerShell {
+  border-radius: var(--radius-small);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  background: #02070b;
+}
+
+.canvasStage,
+.videoStage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  display: grid;
+  place-items: center;
+}
+
+.canvasStage canvas,
+.videoStage video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #02070b;
+}
+
+.canvasStage canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.emptyOverlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+  background: linear-gradient(180deg, rgba(2, 7, 11, 0.24), rgba(2, 7, 11, 0.56));
+}
+
+.transportBar {
+  align-items: center;
+}
+
+.transportBar input[type="range"] {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+}
+
+.transportField {
+  display: inline-grid;
+  gap: 0.35rem;
+}
+
+.reviewSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13rem;
+  gap: 0.75rem;
+}
+
+.reviewCard {
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.ratingGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ratingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 0.55rem;
+}
+
+.ratingRow output {
+  color: var(--accent-strong);
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+.decisionStack textarea {
+  min-height: 7rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.detailList dt,
+.metaGrid dt {
+  margin: 0 0 0.2rem;
+}
+
+.detailList dd,
+.metaGrid dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.emptyState {
+  padding: 1rem;
+  border-radius: var(--radius-small);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.02);
+  line-height: 1.55;
+}
+
+.dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  background: rgba(2, 7, 11, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.dialogCard {
+  width: min(42rem, 100%);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+
+.errorDialogBody {
+  width: 100%;
+  min-height: 11rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #061018;
+  padding: 0.9rem;
+  color: #cae7f2;
+  font-family: var(--mono);
+  line-height: 1.45;
+  resize: vertical;
+}
+
+@media (max-width: 1500px) {
+  .dashboard,
+  .replayLayout,
+  .snapshotGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .runList,
+  .replayList {
+    max-height: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .statusStrip,
+  .buttonRow,
+  .presetRow,
+  .transportBar,
+  .filters,
+  .ratingGrid,
+  .parameterSummary,
+  .statGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters {
+    display: grid;
+  }
+}
