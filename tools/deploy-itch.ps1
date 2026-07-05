@@ -245,7 +245,21 @@ if (-not $env:BUTLER_API_KEY) {
   Write-Host "BUTLER_API_KEY is not set in the shell or .env. That is fine if this machine is already authenticated with 'butler login'."
 }
 
-& $resolvedButler @arguments
-if ($LASTEXITCODE -ne 0) {
-  exit $LASTEXITCODE
+# Invoke butler via Start-Process -Wait rather than the call operator (&).
+# The call operator waits for butler's stdout/stderr streams to reach EOF, but
+# `butler push` leaves a short-lived detached helper (self-update check / upload
+# daemon) holding those inherited handles for up to several minutes after the
+# upload itself has finished. That made this script appear to hang long after the
+# build was already processing on itch.io. Start-Process -Wait waits on the
+# process handle instead, so it returns as soon as butler.exe exits; -NoNewWindow
+# keeps butler's live progress output in this console.
+# Pre-quote any argument containing whitespace: Windows PowerShell's -ArgumentList
+# joins array elements with spaces and does not quote elements itself, so an
+# unquoted build path with a space would split into multiple arguments.
+$butlerArguments = $arguments | ForEach-Object {
+  if ($_ -match '\s') { '"' + $_ + '"' } else { $_ }
+}
+$butlerProcess = Start-Process -FilePath $resolvedButler -ArgumentList $butlerArguments -NoNewWindow -Wait -PassThru
+if ($butlerProcess.ExitCode -ne 0) {
+  exit $butlerProcess.ExitCode
 }
