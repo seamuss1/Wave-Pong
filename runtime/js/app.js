@@ -662,6 +662,70 @@
       const show = modes.length === 0 || modes.includes(mode);
       el.classList.toggle('modeHidden', !show);
     });
+    // Switching modes changes which fields/buttons are visible, so the menu's
+    // height changes; re-fit it to the screen (phone portrait).
+    scheduleMenuFit();
+  }
+
+  // --- Main-menu scale-to-fit (phone portrait) -------------------------------
+  // On phone portrait the setup menu can be taller than the viewport. Rather
+  // than letting it scroll, uniformly scale the whole card down so it always
+  // fits while keeping its exact proportions ("same size and shape"). This is a
+  // no-op on landscape/desktop or whenever the menu already fits at scale 1.
+  let menuFitRaf = 0;
+
+  function fitMenuOverlay() {
+    if (!menuOverlay) return;
+    const card = menuOverlay.querySelector('.menuCard');
+    if (!card) return;
+
+    // Start from a clean, unscaled state so measurements reflect natural size.
+    card.style.transform = '';
+    menuOverlay.classList.remove('menuFitted');
+
+    if (menuOverlay.classList.contains('hidden')) return;
+    // Scale-to-fit is a portrait affordance; wide/landscape layouts fit already.
+    if (window.matchMedia && !window.matchMedia('(orientation: portrait)').matches) return;
+
+    // menuFitted lifts the card's responsive max-height cap so tall content
+    // reports its true height (not the scroll-clamped one) and hides overlay
+    // scrollbars while we measure and scale.
+    menuOverlay.classList.add('menuFitted');
+    const cs = window.getComputedStyle(menuOverlay);
+    const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const availW = menuOverlay.clientWidth - padX;
+    const availH = menuOverlay.clientHeight - padY;
+    const natW = card.offsetWidth;
+    const natH = card.offsetHeight;
+    if (availW <= 0 || availH <= 0 || natW <= 0 || natH <= 0) {
+      menuOverlay.classList.remove('menuFitted');
+      return;
+    }
+
+    const scale = Math.min(1, availW / natW, availH / natH);
+    if (scale >= 0.999) {
+      // Already fits; keep the natural, unscaled layout.
+      menuOverlay.classList.remove('menuFitted');
+      return;
+    }
+    // The layout box stays at its natural (unscaled) height, so scaling from
+    // top-center alone would leave it top-anchored. Nudge it down by the leftover
+    // vertical slack so the shrunken menu stays vertically centered.
+    const dy = Math.max(0, (availH - scale * natH) / 2);
+    card.style.transform = 'translateY(' + dy.toFixed(2) + 'px) scale(' + scale.toFixed(4) + ')';
+  }
+
+  function scheduleMenuFit() {
+    if (!window.requestAnimationFrame) {
+      fitMenuOverlay();
+      return;
+    }
+    if (menuFitRaf) window.cancelAnimationFrame(menuFitRaf);
+    menuFitRaf = window.requestAnimationFrame(() => {
+      menuFitRaf = 0;
+      fitMenuOverlay();
+    });
   }
 
   // Driven explicitly (rather than a CSS :checked selector) so the highlight also
@@ -813,6 +877,33 @@
   applySavedMenuSettings();
   applyModeVisibility();
   syncModeSegmentStyle();
+
+  // Keep the setup menu fitted to the screen as it is shown, resized, or rotated.
+  if (menuOverlay) {
+    if (window.MutationObserver) {
+      let menuWasHidden = menuOverlay.classList.contains('hidden');
+      // Watch only the hidden state so our own menuFitted toggle can't re-trigger
+      // this observer into a loop.
+      const menuVisibilityObserver = new MutationObserver(() => {
+        const hidden = menuOverlay.classList.contains('hidden');
+        if (hidden === menuWasHidden) return;
+        menuWasHidden = hidden;
+        if (!hidden) scheduleMenuFit();
+      });
+      menuVisibilityObserver.observe(menuOverlay, { attributes: true, attributeFilter: ['class'] });
+    }
+    window.addEventListener('resize', scheduleMenuFit);
+    window.addEventListener('orientationchange', scheduleMenuFit);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleMenuFit);
+    // Measuring/scaling relies on requestAnimationFrame, which is paused while the
+    // tab is hidden. Re-fit when it becomes visible so a menu first laid out in
+    // the background still gets scaled.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) scheduleMenuFit();
+    });
+    scheduleMenuFit();
+  }
+
   applyControlScheme();
   ensureGuestName();
   syncControllers();

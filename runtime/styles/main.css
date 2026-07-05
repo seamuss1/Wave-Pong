@@ -748,6 +748,25 @@
       gap: 18px;
     }
 
+    /* Phone-portrait scale-to-fit. When the setup menu is taller than the
+       viewport, app.js measures the card at its natural size and applies a
+       uniform transform: scale() (see fitMenuOverlay) so the whole menu shrinks
+       to fit on screen with its shape intact, instead of scrolling. These rules
+       let it measure/render unclamped; the ID specificity beats the responsive
+       max-height caps below. No-op on landscape/desktop or when it already fits. */
+    #menuOverlay.menuFitted {
+      overflow: hidden;
+      /* Anchor the (larger-than-viewport) card to the top so scaling from
+         top-center is predictable; app.js re-centers with a translateY. */
+      align-items: start;
+    }
+
+    #menuOverlay.menuFitted .menuCard {
+      max-height: none;
+      overflow: visible;
+      transform-origin: top center;
+    }
+
     .botInfoCard {
       width: min(760px, calc(100vw - 24px));
       display: grid;
