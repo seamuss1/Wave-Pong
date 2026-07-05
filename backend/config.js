@@ -1,3 +1,4 @@
+const path = require('path');
 const { loadEnvFiles } = require('./lib/env-loader.js');
 
 function parseInteger(value, fallback) {
@@ -52,6 +53,14 @@ function buildRuntimeConfig(options = {}) {
     ? `${toWsUrl(apiBaseUrl)}/ws/match`
     : internalWorkerWsUrl;
   const publicWorkerWsUrl = trimTrailingSlash(process.env.WAVE_PONG_PUBLIC_WORKER_WS_URL || defaultPublicWorkerWsUrl);
+  // Usage/popularity/engagement metrics persist to a JSON file at the app root
+  // (data/metrics.json by default). It sits beside backend/ shared/ runtime/, so
+  // deploys - which only overwrite those - leave accumulated metrics intact.
+  const metricsEnabled = boolFromEnv(process.env.WAVE_PONG_METRICS_ENABLED, true);
+  const metricsFile = process.env.WAVE_PONG_METRICS_FILE || path.join(__dirname, '..', 'data', 'metrics.json');
+  // Optional shared secret for GET /metrics. When unset the endpoint is open
+  // (it only exposes aggregate counts, never player data).
+  const metricsToken = process.env.WAVE_PONG_METRICS_TOKEN || '';
   return {
     serviceName,
     environment: process.env.NODE_ENV || process.env.WAVE_PONG_ENVIRONMENT || 'development',
@@ -76,6 +85,11 @@ function buildRuntimeConfig(options = {}) {
       controlWsUrl,
       workerWsUrl: publicWorkerWsUrl,
       enabled: boolFromEnv(process.env.WAVE_PONG_ONLINE_ENABLED, !!(apiBaseUrl && controlWsUrl))
+    },
+    metrics: {
+      enabled: metricsEnabled,
+      filePath: metricsFile,
+      token: metricsToken
     }
   };
 }
