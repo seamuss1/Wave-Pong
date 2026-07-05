@@ -193,6 +193,10 @@ class AuthoritativeMatch {
       reason: result.reason || 'completed',
       leftScore: result.leftScore,
       rightScore: result.rightScore,
+      // Engagement signals for server metrics: whether the match actually got
+      // underway (both players accepted) and, if so, how long it ran.
+      started: this.started,
+      durationMs: this.started && this.simStartMs ? Date.now() - this.simStartMs : 0,
       players: {
         left: { playerId: this.players.left.id, displayName: this.players.left.displayName },
         right: { playerId: this.players.right.id, displayName: this.players.right.displayName }

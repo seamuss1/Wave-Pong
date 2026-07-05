@@ -10,6 +10,7 @@
 
 ## File map
 
+- `backend/lib/metrics.js`: dependency-free usage/popularity/engagement metrics collector. Persists to a local JSON file (`data/metrics.json` by default, configurable via `WAVE_PONG_METRICS_*`), instrumented at the auth/queue/match/WS choke points, and exposed read-only at `GET /metrics` (optional token gate).
 - `runtime/index.html`: overlay markup and script/style includes.
 - `runtime/js/version.js`: runtime-exposed build version shown in the menu UI.
 - `runtime/styles/main.css`: all page and HUD styling.

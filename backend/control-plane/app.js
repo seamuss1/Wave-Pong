@@ -24,6 +24,10 @@ function createControlPlaneApp(options = {}) {
   const workerManager = options.workerManager;
   const workerUrl = options.workerUrl || 'ws://127.0.0.1:8788/ws/match';
   const publicWorkerUrl = options.publicWorkerUrl || workerUrl;
+  // Optional metrics collector (see lib/metrics.js). Absent in unit tests, so
+  // every call site guards on it.
+  const metrics = options.metrics || null;
+  const metricsToken = options.metricsToken || '';
   if (!workerManager) {
     throw new Error('createControlPlaneApp requires a workerManager.');
   }
@@ -48,7 +52,8 @@ function createControlPlaneApp(options = {}) {
     store,
     workerManager,
     broadcastToPlayer,
-    publicWorkerUrl
+    publicWorkerUrl,
+    metrics
   });
 
   workerManager.setMatchFinishedHandler((summary) => {
@@ -57,6 +62,7 @@ function createControlPlaneApp(options = {}) {
       record.status = 'completed';
       record.result = summary;
     }
+    if (metrics) metrics.recordMatchFinished(summary);
   });
 
   function authenticateRequest(req, body) {
@@ -79,9 +85,27 @@ function createControlPlaneApp(options = {}) {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === '/metrics') {
+      if (!metrics || !metrics.enabled) {
+        sendJson(res, 404, { error: 'Metrics are disabled.' }, CORS_HEADERS);
+        return;
+      }
+      if (metricsToken) {
+        const provided = getBearerToken(req) || url.searchParams.get('token') || '';
+        if (provided !== metricsToken) {
+          sendJson(res, 401, { error: 'Unauthorized.' }, CORS_HEADERS);
+          return;
+        }
+      }
+      sendJson(res, 200, metrics.snapshot(), CORS_HEADERS);
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === '/auth/guest') {
       const body = await readJsonBody(req);
-      sendJson(res, 200, authService.createGuest(body), CORS_HEADERS);
+      const session = authService.createGuest(body);
+      if (metrics) metrics.recordGuestCreated();
+      sendJson(res, 200, session, CORS_HEADERS);
       return;
     }
 
@@ -144,6 +168,12 @@ function createControlPlaneApp(options = {}) {
             player = authService.authenticateAccess(message.payload.accessToken);
             ensurePlayerConnections(store, player.id).add(connection);
             connection.playerId = player.id;
+            // Count each authenticated control socket once for the live-players
+            // gauge, even if the client re-sends hello/resume on the same socket.
+            if (metrics && !connection._metricsCounted) {
+              connection._metricsCounted = true;
+              metrics.recordControlConnected();
+            }
             connection.sendJson({
               type: 'hello.ok',
               payload: {
@@ -177,6 +207,10 @@ function createControlPlaneApp(options = {}) {
       });
 
       connection.on('close', () => {
+        if (metrics && connection._metricsCounted) {
+          connection._metricsCounted = false;
+          metrics.recordControlDisconnected();
+        }
         if (!player) return;
         const connections = ensurePlayerConnections(store, player.id);
         connections.delete(connection);

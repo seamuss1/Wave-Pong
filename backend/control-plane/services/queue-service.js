@@ -2,6 +2,7 @@ const QUICK_PLAY_PLAYLIST_ID = 'quick_play';
 
 function createQueueService(options) {
   const { store, workerManager, broadcastToPlayer } = options;
+  const metrics = options.metrics || null;
 
   function serializeQueueState(playerId) {
     return {
@@ -36,6 +37,7 @@ function createQueueService(options) {
         status: 'found',
         createdAt: new Date().toISOString()
       });
+      if (metrics) metrics.recordMatchCreated();
       broadcastToPlayer(leftPlayer.id, 'match.found', {
         matchId: created.matchId,
         playlistId: QUICK_PLAY_PLAYLIST_ID,
@@ -62,11 +64,13 @@ function createQueueService(options) {
         playerId: player.id,
         queuedAt: Date.now()
       });
+      if (metrics) metrics.recordQueueJoin(player.id);
       maybeCreateMatches();
       return serializeQueueState(player.id);
     },
     leaveQueue(player) {
       removeFromQueue(player.id);
+      if (metrics) metrics.recordQueueLeave();
       return serializeQueueState(player.id);
     }
   };
