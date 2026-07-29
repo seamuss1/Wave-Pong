@@ -518,14 +518,19 @@
       if (!state.session || !state.session.accessToken) {
         return Promise.reject(new Error('No online session is available.'));
       }
-      state.pendingControlConnect = new Promise((resolve, reject) => {
+      let constructorFailed = false;
+      const pending = new Promise((resolve, reject) => {
         let socket;
         try {
           socket = new WebSocketImpl(normalizeSocketUrl(env.controlWsUrl));
         } catch (error) {
           // Constructing the socket throws outright on a malformed URL, and on
           // a ws:// endpoint requested from an https:// page (mixed content).
-          state.pendingControlConnect = null;
+          // Every other settle path runs from an event listener, i.e. after the
+          // assignment below, so it can clear the cache directly. This one runs
+          // inside the executor - before the assignment - so it only flags, and
+          // the assignment skips caching a promise that is already rejected.
+          constructorFailed = true;
           reject(offlineError(error));
           return;
         }
@@ -618,7 +623,8 @@
           finishError(offlineError(new Error('Control websocket connection failed.')));
         });
       });
-      return state.pendingControlConnect;
+      state.pendingControlConnect = constructorFailed ? null : pending;
+      return pending;
     }
 
     async function ensureGuestSession(displayName) {
