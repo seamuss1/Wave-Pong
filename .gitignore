@@ -1,6 +1,7 @@
 .idea/
 tools/node_modules/
 itch-build/
+web-build/
 data/
 .env
 .env.local
