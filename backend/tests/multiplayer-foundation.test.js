@@ -796,3 +796,72 @@ test('HTTP errors from a reachable backend keep their own message and code', asy
     }
   );
 });
+
+test('a websocket constructor that throws does not poison later connect attempts', async () => {
+  // connectControlSocket caches its in-flight promise so concurrent callers
+  // share one socket. Every settle path clears that cache from an event
+  // listener, but a constructor that throws settles synchronously, inside the
+  // executor - so clearing there was undone by the assignment that installed
+  // the promise, and the rejection stayed cached forever. Mixed content is the
+  // realistic trigger: a bundle served over https:// with a ws:// backend
+  // throws on construction, and the player could never retry without a reload.
+  global.__WAVE_PONG_ENV__ = {
+    apiBaseUrl: 'http://127.0.0.1:8787',
+    controlWsUrl: 'ws://127.0.0.1:8787/ws/control',
+    workerWsUrl: 'ws://127.0.0.1:8788/ws/match',
+    enabled: true
+  };
+  delete require.cache[require.resolve('../../runtime/js/env.js')];
+  delete require.cache[require.resolve('../../runtime/js/online.js')];
+  const onlineApi = require('../../runtime/js/online.js');
+
+  const storage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+    removeItem() {}
+  };
+
+  let constructed = 0;
+  class ThrowingWebSocket {
+    constructor() {
+      constructed += 1;
+      throw new SyntaxError("Failed to construct 'WebSocket': insecure endpoint.");
+    }
+  }
+
+  const service = onlineApi.createOnlineService({
+    runtime: {},
+    storage,
+    fetch: () => Promise.resolve({
+      ok: true,
+      json: async () => ({
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        player: { id: 'guest-1', displayName: 'Guest' }
+      })
+    }),
+    WebSocket: ThrowingWebSocket,
+    window: {
+      fetch: null,
+      WebSocket: ThrowingWebSocket,
+      localStorage: storage,
+      setTimeout,
+      clearTimeout
+    }
+  });
+
+  const expectOffline = (error) => {
+    assert.equal(error.code, 'offline');
+    assert.match(error.message, /Match server unreachable/);
+    return true;
+  };
+
+  await assert.rejects(() => service.ensureConnected('Guest'), expectOffline);
+  await assert.rejects(() => service.ensureConnected('Guest'), expectOffline);
+
+  // The second attempt has to build a fresh socket rather than replay the
+  // cached rejection - otherwise no retry can ever succeed.
+  assert.equal(constructed, 2);
+});
