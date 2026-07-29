@@ -47,6 +47,15 @@ function parseArgs(argv) {
   return args;
 }
 
+// True when child is parent itself or sits underneath it. Uses path.relative so
+// trailing separators, '..' segments, and Windows drive-letter case all
+// normalize away instead of defeating a string prefix test.
+function contains(parent, child) {
+  const rel = path.relative(parent, child);
+  if (rel === '') return true;
+  return !path.isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${path.sep}`);
+}
+
 function copyDir(from, to) {
   fs.mkdirSync(to, { recursive: true });
   for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
@@ -92,8 +101,13 @@ function main() {
   if (!fs.existsSync(runtimeDir)) {
     throw new Error(`Expected the runtime at ${runtimeDir}.`);
   }
-  if (args.out === repoRoot || runtimeDir.startsWith(`${args.out}${path.sep}`)) {
-    throw new Error(`Refusing to build into ${args.out}: it would delete the repo or the runtime.`);
+  // The output directory is cleared before the copy, so it must not be the
+  // runtime itself (that deletes the source), sit inside it (copyDir would find
+  // its own destination and recurse), or contain it (that takes the repo with it).
+  if (contains(args.out, runtimeDir) || contains(runtimeDir, args.out)) {
+    throw new Error(
+      `Refusing to build into ${args.out}: it overlaps the runtime source at ${runtimeDir}, and the output directory is deleted first.`
+    );
   }
 
   fs.rmSync(args.out, { recursive: true, force: true });
