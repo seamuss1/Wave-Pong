@@ -43,9 +43,36 @@ Open `runtime/index.html` in a modern desktop browser.
 - `training/readme.md` documents the training workspace layout and leaves room for future standalone training runtime code.
 - `tools/write-runtime-env.js` writes `runtime/js/runtime-env.js` from the current `.env` values so the static client can follow local or cloud endpoints without query params.
 - `tools/serve-runtime.js` serves the static runtime locally on `http://127.0.0.1:8080/runtime/index.html` and writes request plus browser debug logs under `logging/`.
+- `tools/build-web-bundle.js` copies the runtime into a static bundle for self-hosting on any web server, with `runtime-env.js` generated for the chosen backend.
 - `tools/browser-smoke-test.ps1` launches the Windows smoke test browser and cleans it up.
 - `tools/browser-smoke-test.js` contains the DevTools-driven smoke assertions and can also attach to an already-launched browser.
 - `tools/package.json` contains tooling-only Node metadata.
+
+## Self-hosting the game on your own site
+
+The runtime is plain static files, so any web server can host the game directly
+instead of embedding a third-party player. That keeps touch input, fullscreen,
+and load time under your control, and the page is same-origin with the host site.
+
+```bash
+node tools/build-web-bundle.js --out ../Seamus_Gallagher_Portfolio/public/games/wave-pong
+```
+
+That writes a self-contained directory: `index.html`, `js/`, `styles/`, a
+generated `js/runtime-env.js`, and `build-info.json` recording the source commit
+and version. Serve the directory and open its index; no build step or Node
+runtime is needed on the host.
+
+Options:
+
+- `--api <url>` points online play at a backend (defaults to
+  `WAVE_PONG_PUBLIC_URL`, otherwise the production host). The control plane
+  answers cross-origin, so the bundle can live on a different domain.
+- `--offline` disables online play entirely. Single player, local two-player,
+  and the full bot roster still work — they never call the backend.
+
+When the backend is unreachable, the client keeps working offline and the online
+panel says so rather than surfacing a raw browser error.
 
 ## itch.io packaging
 

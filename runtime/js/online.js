@@ -37,7 +37,25 @@
     };
   }
 
+  // The client is static and can be hosted apart from the backend (this server,
+  // file://, a portfolio site, itch.io), so "the match server is not reachable"
+  // is a normal state, not a crash. Browsers report it as bare "Failed to fetch"
+  // or an untyped websocket error event, which reads like a broken game. Map
+  // every transport-level failure to one message that says what still works.
+  const OFFLINE_MESSAGE =
+    'Match server unreachable. Online play is offline right now - single player and two players on one keyboard still work.';
+
+  function offlineError(cause) {
+    const error = new Error(OFFLINE_MESSAGE);
+    error.code = 'offline';
+    // Keep the browser's own wording for debugging without showing it to players.
+    if (cause) error.cause = cause;
+    return error;
+  }
+
   function jsonFetch(fetchImpl, url, options) {
+    // Two-argument then(): the rejection handler must only see transport
+    // failures, not the HTTP errors thrown by the success handler below.
     return fetchImpl(url, options).then(async (response) => {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -46,6 +64,8 @@
         throw error;
       }
       return payload;
+    }, (error) => {
+      throw offlineError(error);
     });
   }
 
@@ -499,7 +519,16 @@
         return Promise.reject(new Error('No online session is available.'));
       }
       state.pendingControlConnect = new Promise((resolve, reject) => {
-        const socket = new WebSocketImpl(normalizeSocketUrl(env.controlWsUrl));
+        let socket;
+        try {
+          socket = new WebSocketImpl(normalizeSocketUrl(env.controlWsUrl));
+        } catch (error) {
+          // Constructing the socket throws outright on a malformed URL, and on
+          // a ws:// endpoint requested from an https:// page (mixed content).
+          state.pendingControlConnect = null;
+          reject(offlineError(error));
+          return;
+        }
         state.controlSocket = socket;
         let settled = false;
         function finishSuccess() {
@@ -578,13 +607,15 @@
         socket.addEventListener('close', () => {
           state.controlConnected = false;
           if (!settled) {
-            finishError(new Error('Control websocket connection closed before authentication completed.'));
+            // Server-side rejections settle above with their own tagged error,
+            // so an unsettled close here means the socket never got that far.
+            finishError(offlineError(new Error('Control websocket closed before authentication completed.')));
             return;
           }
           emitter.emit('state', snapshotState());
         });
         socket.addEventListener('error', () => {
-          finishError(new Error('Control websocket connection failed.'));
+          finishError(offlineError(new Error('Control websocket connection failed.')));
         });
       });
       return state.pendingControlConnect;

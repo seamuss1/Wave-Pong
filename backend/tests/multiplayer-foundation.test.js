@@ -651,3 +651,148 @@ test('online service attempts to reconnect a dropped match websocket', async () 
   const resumedSocket = FakeWebSocket.instances[2];
   assert.equal(resumedSocket.sent.some((message) => message.type === 'resume' && message.payload.ticket === 'resume-ticket'), true);
 });
+
+test('unreachable backends report an offline message instead of the raw browser error', async () => {
+  // The runtime is static and can be hosted apart from the backend, so an
+  // unreachable match server is a normal state rather than a crash. Browsers
+  // reject with a bare "Failed to fetch", which used to land in the online
+  // status panel verbatim and read like the game itself was broken.
+  global.__WAVE_PONG_ENV__ = {
+    apiBaseUrl: 'http://127.0.0.1:8787',
+    controlWsUrl: 'ws://127.0.0.1:8787/ws/control',
+    workerWsUrl: 'ws://127.0.0.1:8788/ws/match',
+    enabled: true
+  };
+  delete require.cache[require.resolve('../../runtime/js/env.js')];
+  delete require.cache[require.resolve('../../runtime/js/online.js')];
+  const onlineApi = require('../../runtime/js/online.js');
+
+  const storage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+    removeItem() {}
+  };
+
+  class DeadWebSocket {
+    constructor() {
+      this.readyState = 0;
+      this.listeners = new Map();
+    }
+    addEventListener(type, listener) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      this.listeners.get(type).add(listener);
+      // A websocket to a host that is not answering errors out on its own.
+      if (type === 'error') setImmediate(() => listener({}));
+    }
+    send() {}
+    close() {}
+  }
+
+  function createService(fetchImpl) {
+    return onlineApi.createOnlineService({
+      runtime: {},
+      storage,
+      fetch: fetchImpl,
+      WebSocket: DeadWebSocket,
+      window: {
+        fetch: null,
+        WebSocket: DeadWebSocket,
+        localStorage: storage,
+        setTimeout,
+        clearTimeout
+      }
+    });
+  }
+
+  const failedFetch = createService(() => Promise.reject(new TypeError('Failed to fetch')));
+  await assert.rejects(
+    () => failedFetch.joinQueue({ displayName: 'Guest' }),
+    (error) => {
+      assert.equal(error.code, 'offline');
+      assert.match(error.message, /single player/i);
+      assert.doesNotMatch(error.message, /Failed to fetch/);
+      // The browser's own wording stays available for debugging.
+      assert.equal(error.cause.message, 'Failed to fetch');
+      return true;
+    }
+  );
+
+  // A backend that serves the auth call but drops the control socket lands in
+  // the same place for the player.
+  const deadSocket = createService(() => Promise.resolve({
+    ok: true,
+    json: async () => ({
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      player: { id: 'guest-1', displayName: 'Guest' }
+    })
+  }));
+  await assert.rejects(
+    () => deadSocket.ensureConnected('Guest'),
+    (error) => {
+      assert.equal(error.code, 'offline');
+      assert.match(error.message, /Match server unreachable/);
+      return true;
+    }
+  );
+});
+
+test('HTTP errors from a reachable backend keep their own message and code', async () => {
+  // The offline mapping must not swallow real server responses: auth recovery
+  // keys off the auth_error code that a 401 carries.
+  global.__WAVE_PONG_ENV__ = {
+    apiBaseUrl: 'http://127.0.0.1:8787',
+    controlWsUrl: 'ws://127.0.0.1:8787/ws/control',
+    workerWsUrl: 'ws://127.0.0.1:8788/ws/match',
+    enabled: true
+  };
+  delete require.cache[require.resolve('../../runtime/js/env.js')];
+  delete require.cache[require.resolve('../../runtime/js/online.js')];
+  const onlineApi = require('../../runtime/js/online.js');
+
+  const storage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+    removeItem() {}
+  };
+
+  class IdleWebSocket {
+    constructor() {
+      this.readyState = 0;
+    }
+    addEventListener() {}
+    send() {}
+    close() {}
+  }
+
+  const service = onlineApi.createOnlineService({
+    runtime: {},
+    storage,
+    fetch: () => Promise.resolve({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: 'Queue is closed for maintenance.', code: 'queue_closed' })
+    }),
+    WebSocket: IdleWebSocket,
+    window: {
+      fetch: null,
+      WebSocket: IdleWebSocket,
+      localStorage: storage,
+      setTimeout,
+      clearTimeout
+    }
+  });
+
+  await assert.rejects(
+    () => service.joinQueue({ displayName: 'Guest' }),
+    (error) => {
+      assert.equal(error.code, 'queue_closed');
+      assert.equal(error.message, 'Queue is closed for maintenance.');
+      return true;
+    }
+  );
+});
